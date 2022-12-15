@@ -1,0 +1,25 @@
+{
+  "name": "minditor",
+  "version": "0.0.1",
+  "description": "A highly customizable rich text editor for developers.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/minditor/minditor.git"
+  },
+  "author": "sskyy <skyking_H@hotmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/minditor/minditor/issues"
+  },
+  "homepage": "https://github.com/minditor/minditor#readme",
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "vite": "^4.0.1"
+  }
+}
