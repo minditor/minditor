@@ -1,13 +1,14 @@
-import {patchable, reactive, isReactive, shallowRef} from '@ariesate/reactivity'
+import {collectionPatchPoint, reactive, isReactive, shallowRef} from '@ariesate/reactivity'
 
 const modelToLinkedReactiveNode = new WeakMap()
 
 // TODO insertBefore 没有处理里面所有节点的 parent 啊
 
 
-const patchableInsertAfter = patchable(function insertAfter(node, refNode) {
+const patchableInsertAfter = collectionPatchPoint(function insertAfter(node, refNode) {
     // refNode 为空表示插在头部
     // 支持 insert LinkedList
+    if (refNode && !modelToLinkedReactiveNode.get(refNode)) throw new Error('not my node')
     const afterItem = refNode ? modelToLinkedReactiveNode.get(refNode) : this.head
     const afterItemNext = afterItem.next
 
@@ -37,6 +38,12 @@ const patchableInsertAfter = patchable(function insertAfter(node, refNode) {
 
         // 标记一下，不能再用了
         node.move(2)
+        return {
+            added: {
+                from: node.head,
+                to: node.tail
+            }
+        }
     } else {
         if (isReactive(node) || isReactive(refNode)) {
             // 有问题
@@ -58,13 +65,18 @@ const patchableInsertAfter = patchable(function insertAfter(node, refNode) {
         if (this.tail?.node === refNode) {
             this.tail = item
         }
+
+        return {
+            added: {from: item.prev, to: item}
+        }
     }
 })
-
-const patchableRemoveBetween = patchable(function removeBetween(start, end) {
+// 不包括 start 节点
+const patchableRemoveBetween = collectionPatchPoint(function removeBetween(start, end) {
     // debugger
     const startItem = start ? modelToLinkedReactiveNode.get(start) : this.head
     const endItem = modelToLinkedReactiveNode.get(end)
+    const removedStart = startItem.next
     startItem.next = endItem?.next
     // 原来后面的要接上
     if (endItem?.next) {
@@ -75,12 +87,19 @@ const patchableRemoveBetween = patchable(function removeBetween(start, end) {
     if (!end || endItem === this.tail) {
         this.tail = startItem
     }
-    return startItem.next
+
+    return {
+        removed: {
+            from: removedStart,
+            to: endItem
+        }
+    }
 })
 
 
-
+let uuid = 0
 export class LinkedList {
+    id = uuid++
     head = reactive({})
     moveFlag = 0
     tail
@@ -133,5 +152,25 @@ export class LinkedList {
             current = current.next
         }
 
+    }
+    iterator(start = this.head, end = this.tail) {
+        // 不包括 from，包括 end
+        let current = start.next
+        return {
+            next() {
+                const done = current === end
+                // 可能是个空的
+                const value = current?.node
+                current = current?.next
+                return { done, value};
+            },
+            return() {
+                console.log("Closing");
+                return { done: true };
+            },
+        }
+    }
+    [Symbol.iterator]() {
+        return this.iterator()
     }
 }

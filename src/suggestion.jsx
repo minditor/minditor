@@ -36,7 +36,7 @@ function useActivateHandle(Component) {
 
 function useReactiveValue(reactiveValue, defaultValue) {
     const [value, setValue] = useState(defaultValue)
-
+    // CAUTION 对对象和数组只做到了浅层监听。
     useEffect(() => {
         return autorun(() => {
             if (isRef(reactiveValue)) {

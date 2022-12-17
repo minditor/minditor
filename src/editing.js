@@ -214,7 +214,12 @@ export function replaceNode(newNodeData, refNode) {
     const { result: newNode } = buildModelFromData(newNodeData, refNode.parent)
     refNode.parent.children.insertBefore(newNode, refNode)
     refNode.parent.children.removeBetween(newNode, refNode)
+}
 
+export function insertContentNodeAfter(newNodeData, refNode) {
+    const { result: newNode } = buildModelFromData(newNodeData, refNode.parent)
+    // TODO 这里有很大问题！！！我们是插到 content li
+    refNode.parent.content.insertAfter(newNode, refNode)
 }
 
 

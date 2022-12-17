@@ -2,7 +2,7 @@
 import {createElement} from "./DOM";
 import {LinkedList} from "./linkedList";
 import {createReactiveAttribute} from "./buildReactiveView";
-import {patchable, reactive} from '@ariesate/reactivity'
+import {patchPoint, reactive} from '@ariesate/reactivity'
 
 import Table from './components/Table'
 import Code from './components/Code'
@@ -70,7 +70,7 @@ class List extends TextBlock{
 }
 
 
-const patchableUpdateValue = patchable(function (newValue) {
+const patchableUpdateValue = patchPoint(function (newValue) {
     this.value.value = newValue
 })
 
