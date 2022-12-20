@@ -33,12 +33,6 @@ declare module 'file-saver' {
   export function saveAs(blob: any, name: any): void
 }
 
-declare module '@vue/repl' {
-  import { ComponentOptions } from '@vue/runtime-core'
-  const Repl: ComponentOptions
-  const ReplStore: any
-  export { Repl, ReplStore }
-}
 
 declare interface String {
   /**
@@ -46,3 +40,21 @@ declare interface String {
    */
   substring(start: number, end?: number): string
 }
+
+// This directory contains a number of d.ts assertions
+// use \@ts-expect-error where errors are expected.
+
+export function describe(_name: string, _fn: () => void): void
+export function test(_name: string, _fn: () => any): void
+
+export function expectType<T>(value: T): void
+export function expectError<T>(value: T): void
+export function expectAssignable<T, T2 extends T = T>(value: T2): void
+
+export type IsUnion<T, U extends T = T> = (
+    T extends any ? (U extends T ? false : true) : never
+    ) extends false
+    ? false
+    : true
+
+export type IsAny<T> = 0 extends 1 & T ? true : false

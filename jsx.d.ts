@@ -26,7 +26,6 @@
 //                 Kanitkorn Sujautra <https://github.com/lukyth>
 //                 Sebastian Silbermann <https://github.com/eps1lon>
 
-import { VNode } from '@vue/runtime-core'
 import * as CSS from 'csstype'
 
 export interface CSSProperties
@@ -1325,7 +1324,7 @@ type NativeElements = {
 
 declare global {
   namespace JSX {
-    interface Element extends VNode {}
+    interface Element {}
     interface ElementClass {
       $props: {}
     }

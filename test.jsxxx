@@ -1,5 +1,5 @@
 /**@jsx createElement*/
-import {createElement} from "./src/DOM";
+import {createElement} from "./src/DOM.js";
 import {buildReactiveView, createReactiveAttribute} from "./src/buildReactiveView";
 
 import patchTextEvents from "./src/patchTextEvents";

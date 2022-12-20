@@ -1,4 +1,4 @@
-import {formatRange, updateRange} from "./editing";
+import {formatRange, splitTextAsBlock, updateRange} from "./editing";
 
 
 function getCurrentRange() {
@@ -65,8 +65,18 @@ export default function patchTextEvents(on, trigger) {
             updateRange(selection.getRangeAt(0), e.key, true)
 
             trigger(new CustomEvent('userInput',  { detail: {data: e.key} }))
+        } else  if (e.key === 'Enter') {
+            // 回车
+            console.log("enter", e)
+            e.preventDefault()
+            e.stopPropagation()
+            splitTextAsBlock(selection.getRangeAt(0))
+        } else  if (e.key === 'Backspace') {
+            // TODO 退格
         }
+
         //2.  TODO 回车/退格/ 不需要响应的功能键
+
     })
 
 

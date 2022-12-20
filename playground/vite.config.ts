@@ -10,7 +10,7 @@ export default {
   },
   resolve: {
     alias: [
-      {find: '@ariesate/reactivity', replacement: path.resolve(__dirname, '../reactivity/dist/reactivity.esm.js')},
+      {find: '@ariesate/reactivity', replacement: path.resolve(__dirname, '../../reactivity/dist/reactivity.esm.js')},
     ]
   }
 }
