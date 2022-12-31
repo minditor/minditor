@@ -102,6 +102,7 @@ export function buildReactiveView(node: NodeType) {
     }
 
     // TODO 如果 props 也希望被 reactiveView 化呢？
+    // TODO 针对 leaf component 节点需要插入一个空的前节点帮助选中
     const element = node.render!({content:reactiveContent, children: reactiveChildren, value: reactiveValue, props: node.props})
     if (!element) throw new Error('must return a element')
     viewToNodeMap.set(element, node)

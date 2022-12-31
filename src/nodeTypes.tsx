@@ -16,12 +16,16 @@ type RenderProp = {content?: Function, children?: Function, value?: Object, prop
 
 
 export class NodeType {
-    constructor(data: NodeData, parent?:NodeType) {
+    constructor(data: NodeData, container?:LinkedList) {
+        this.data = data
+        this.container = container
     }
     static hasContent?: Boolean
     static hasChildren?: Boolean
     static isLeaf?: Boolean
-    parent?:NodeType
+    container?: LinkedList
+    // @ts-ignore
+    parent?: NodeType
     children? : LinkedList
     content? : LinkedList
     updateValue? : Function
@@ -35,15 +39,19 @@ export class NodeType {
 
 
 class TextBlock implements NodeType{
-    content = new LinkedList()
-    children = new LinkedList()
+    content = new LinkedList(this)
+    children = new LinkedList(this)
     data: NodeData
-    parent?: NodeType
+    container?: LinkedList
     static hasContent = true
     static hasChildren = true
-    constructor(data: NodeData , parent?: NodeType) {
+    constructor(data: NodeData, container?:LinkedList) {
         this.data = data
-        this.parent = parent
+        this.container = container
+    }
+    // @ts-ignore
+    get parent() {
+        return this.container?.owner
     }
 }
 
@@ -110,13 +118,13 @@ class Text implements NodeType{
     data
     value
     props
-    parent
-    constructor(data: NodeData, parent: NodeType) {
+    container
+    constructor(data: NodeData, container: LinkedList) {
         const { value = '', props = {}} = data
         this.data = data
+        this.container = container
         this.value = reactive({ value })
         this.props = reactive(props)
-        this.parent = parent
     }
     updateValue = patchableUpdateValue
     render({ value, props }: RenderProp) {
@@ -129,6 +137,10 @@ class Text implements NodeType{
 
         // @ts-ignore
         return <span _uuid style={style}>{value}</span>
+    }
+    // @ts-ignore
+    get parent() {
+        return this.container?.owner
     }
 }
 

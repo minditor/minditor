@@ -5,18 +5,22 @@ import {reactive} from "@ariesate/reactivity";
 
 function Table({ value }) {
     return (
-        <table border={1} contentEditable={false}>
-            <thead>
+        <div data-component tabindex="-1">
+            <span></span>
+            <table border={1} contentEditable={true}>
+                <thead>
                 <tr>
                     <th>head</th>
                 </tr>
-            </thead>
-            <tbody>
+                </thead>
+                <tbody>
                 <tr>
-                    {value(<td></td>)}
+                    <td>1111111</td>
                 </tr>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+            <span></span>
+        </div>
     )
 }
 

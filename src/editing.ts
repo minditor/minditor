@@ -1,6 +1,7 @@
 import {nodeToElement, waitUpdate} from "./buildReactiveView";
+// @ts-ignore
 import {NodeType, nodeTypes} from "./nodeTypes";
-import {LinkedListFragment} from "./linkedList";
+import {LinkedList, LinkedListFragment} from "./linkedList";
 
 
 export const viewToNodeMap = new WeakMap()
@@ -14,9 +15,9 @@ export type NodeData = {
     props?: any
 }
 
-export function buildModelFromData(data: NodeData, parent?: Object) {
+export function buildModelFromData(data: NodeData, container?: LinkedList) {
     const Type =  nodeTypes[data.type] as typeof NodeType
-    const result = new Type(data, parent)
+    const result = new Type(data, container)
     let firstLeaf: NodeType, lastLeaf: NodeType
 
     if (Type.isLeaf) {
@@ -24,7 +25,7 @@ export function buildModelFromData(data: NodeData, parent?: Object) {
     } else {
         // 添加 content
         data.content?.forEach((contentItem) => {
-            const { result: contentItemResult, firstLeaf: firstContentItemLeaf} = buildModelFromData(contentItem, result)
+            const { result: contentItemResult, firstLeaf: firstContentItemLeaf} = buildModelFromData(contentItem, result.content)
             // debugger
             result.content!.insertBefore(contentItemResult)
             if (!firstLeaf) firstLeaf = firstContentItemLeaf
@@ -32,7 +33,7 @@ export function buildModelFromData(data: NodeData, parent?: Object) {
 
         // 添加 children
         data.children?.forEach((child) => {
-            const {result: childResult, lastLeaf: lastChildLeaf} = buildModelFromData(child, result)
+            const {result: childResult, lastLeaf: lastChildLeaf} = buildModelFromData(child, result.children)
 
             result.children!.insertBefore(childResult)
             if(lastChildLeaf) {
@@ -61,9 +62,9 @@ export function findNodeFromElement(element: HTMLElement | Node) {
 
 
 
-function insertTextNodeValue(node: NodeType, offset: number, textToInsert: string, needUseDefaultBehavior?: boolean) {
+function insertTextNodeValue(node: NodeType, offset: number, textToInsert: string, useDefaultBehavior?: boolean) {
     const newValue = node.value!.value.slice(0, offset) + textToInsert + node.value!.value.slice(offset)
-    if (needUseDefaultBehavior) {
+    if (useDefaultBehavior) {
         node.updateValue!(newValue)
     } else {
         node.value!.value = newValue
@@ -224,19 +225,19 @@ function cloneDeep(obj: Object) {
 
 
 export function replaceNode(newNodeData: NodeData, refNode: NodeType) {
-    const { result: newNode } = buildModelFromData(newNodeData, refNode.parent)
+    const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
     refNode.parent!.children!.insertBefore(newNode, refNode)
     refNode.parent!.children!.removeBetween(newNode, refNode)
 }
 
 export function insertContentNodeAfter(newNodeData: NodeData , refNode: NodeType ) {
-    const { result: newNode } = buildModelFromData(newNodeData, refNode.parent)
+    const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
     refNode.parent!.content!.insertAfter(newNode, refNode)
 }
 
 
 export function insertChildNodeAfter(newNodeData: NodeData , refNode: NodeType ) {
-    const { result: newNode } = buildModelFromData(newNodeData, refNode.parent)
+    const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
     refNode.parent!.children!.insertAfter(newNode, refNode)
 }
 
@@ -246,7 +247,7 @@ export function splitTextNode(node: NodeType, offset: number, splitAsPrev?: bool
     if (offset === node.value!.value.length && (!splitAsPrev)) return
     const newNodeData = cloneDeep(node.data)
     newNodeData.value = splitAsPrev ? node.value!.value.slice(0, offset) : node.value!.value.slice(offset)
-    const { result: newNode } = buildModelFromData(newNodeData, node.parent)
+    const { result: newNode } = buildModelFromData(newNodeData, node.container)
     const insertMethod =  splitAsPrev ?
         node.parent!.content!.insertBefore :
         node.parent!.content!.insertAfter
@@ -273,7 +274,7 @@ export async function splitTextAsBlock(inputNode: RangeLike | Range) {
     await waitUpdate()
     const parent = node.parent!
     const { removed } = parent!.content!.removeBetween(undefined, node)
-    const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.parent)
+    const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container)
     newNode.content!.insertBefore( new LinkedListFragment(removed) )
 
     parent.parent!.children!.insertBefore(newNode, parent)

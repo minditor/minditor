@@ -18,9 +18,11 @@ type CollectionMutateResult = {
 
 
 
+type LinkedListNode = {
+    container?: LinkedList
+}
 
-
-const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: LinkedList, node: any | LinkedList, refNode?: any) {
+const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: LinkedList, node: LinkedListNode | LinkedList | LinkedListFragment, refNode?: any) {
     // refNode 为空表示插在头部
     // 支持 insert LinkedList
     if (node instanceof LinkedList && !node.tail) return {}
@@ -58,7 +60,7 @@ const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: Lin
             }
         }
 
-
+        LinkedList.iterate(node.head!, node.tail!, (itemNode: LinkedListNode) => itemNode.container = this)
         // 标记一下，不能再用了
         node.move(2)
         return {
@@ -84,6 +86,8 @@ const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: Lin
             this.tail = to
         }
 
+        LinkedList.iterate(from.prev!, to!, (itemNode: LinkedListNode) => itemNode.container = this)
+
         return {
             added: { from: from.prev, to}
         }
@@ -102,6 +106,8 @@ const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: Lin
         } else {
             this.tail = item
         }
+
+        node.container = this
 
         return {
             added: {from: item.prev, to: item}
@@ -161,6 +167,10 @@ export class LinkedList {
     head = reactive({})
     moveFlag = 0
     tail?: LinkedListItem
+    owner?: any
+    constructor(owner: any) {
+        this.owner = owner
+    }
 
     insertBefore(node: any | LinkedList, refNode?: any) {
         // refNode 为空表示插在尾部
