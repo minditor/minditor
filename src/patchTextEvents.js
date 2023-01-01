@@ -1,5 +1,5 @@
-import {findNodeFromElement, formatRange, splitTextAsBlock, updateRange} from "./editing";
-import {nodeToElement} from "./buildReactiveView";
+import {findNodeFromElement, formatRange, setCursor, splitTextAsBlock, updateRange} from "./editing";
+import {nodeToElement, waitUpdate} from "./buildReactiveView";
 
 
 function getCurrentRange() {
@@ -46,7 +46,7 @@ function handleSelection(selection) {
 export default function patchTextEvents(on, trigger) {
     // 一致按着会有很多次 keydown 事件
 
-    on('keydown', (e) => {
+    on('keydown', async (e) => {
         const selection = window.getSelection()
         if (!selection.rangeCount) return
 
@@ -63,7 +63,16 @@ export default function patchTextEvents(on, trigger) {
             handleSelection(selection)
             console.log("inserting", e.key)
             // CAUTION 不能在这里插入字符是因为这个时候并不知道是不是输入法的 keydown
-            updateRange(selection.getRangeAt(0), e.key, true)
+            const updateInfo = updateRange(selection.getRangeAt(0), e.key, true)
+            // 如果success ===false，说明使用 defaultBehavior 失败了
+            console.log(updateInfo)
+            if (!updateInfo.success) {
+                console.log('use default failed')
+                e.preventDefault()
+                e.stopPropagation()
+                await waitUpdate()
+                setCursor(updateInfo.node, updateInfo.offset)
+            }
 
             trigger(new CustomEvent('userInput',  { detail: {data: e.key} }))
         } else  if (e.key === 'Enter') {
@@ -71,9 +80,12 @@ export default function patchTextEvents(on, trigger) {
             console.log("enter", e)
             e.preventDefault()
             e.stopPropagation()
-            splitTextAsBlock(selection.getRangeAt(0))
+            const splitPointNode = await splitTextAsBlock(selection.getRangeAt(0))
+            // restore cursor
+            await waitUpdate()
+            setCursor(splitPointNode, 0)
         } else  if (e.key === 'Backspace') {
-            // TODO 退格
+            // TODO 退格，破坏性删除怎么处理？
         }
 
         //2.  TODO 回车/退格/ 不需要响应的功能键
@@ -99,18 +111,33 @@ export default function patchTextEvents(on, trigger) {
 
     // TODO 如果碰到了 component + 普通节点的组合，要选中整个 component.
     document.addEventListener('selectionchange', (e) => {
-        adjustSelection()
+        // adjustSelection()
     })
 }
 
 function adjustSelection() {
+
     const selection = window.getSelection()
+    if (!selection.rangeCount) return
+
     const range = selection.getRangeAt(0)
     if (!range) return
 
     const ancestorNode = findNodeFromElement(range.commonAncestorContainer)
     if (!ancestorNode) {
         console.warn('not in a same document context')
+    }
+
+    if(range.collapsed) {
+        // TODO 空字符节点由于插入了' '来站位，应该把光标调整到 offset 0 的位置去。
+        if (!ancestorNode.value?.value && range.startOffset!== 0) {
+            const newRange = range.cloneRange()
+            newRange.setStart(newRange.startContainer, 0)
+            selection.removeAllRanges()
+            selection.addRange(newRange)
+        }
+
+        return
     }
 
     const endNode = findNodeFromElement(range.endContainer)
@@ -133,19 +160,12 @@ function adjustSelection() {
     newRange.setStart(startContainer, startOffset)
     newRange.setEnd(endContainer, endOffset)
     if (startIsolateNode) {
-        console.log(1, nodeToElement.get(startIsolateNode))
         newRange.setStartBefore(nodeToElement.get(startIsolateNode))
     }
 
     if (endIsolateNode) {
-        // TODO 怎么选中最后的 offset?
-        console.log(2, nodeToElement.get(endIsolateNode))
         newRange.setEndAfter(nodeToElement.get(endIsolateNode))
     }
-
-    console.log(startContainer, startOffset, endContainer, endOffset)
-    console.log(range.startContainer, range.endContainer)
-    console.log(newRange.startContainer, newRange.endContainer)
 
     selection.removeAllRanges()
     selection.addRange(newRange)
@@ -167,5 +187,5 @@ function findFarthestIsolateNode(startNode, endAncestorNode) {
 }
 
 
-
+window.findNodeFromElement = findNodeFromElement
 

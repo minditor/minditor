@@ -87,9 +87,7 @@ export function registerCommands() {
                 ref = componentRef
             }
 
-
             ReactDOM.createRoot(container).render(<Container Component={Suggestion} attachRef={attachRef} {...props}/>)
-
 
             return new Proxy({}, {
                 get(target, key) {

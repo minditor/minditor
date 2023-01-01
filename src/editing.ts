@@ -11,7 +11,7 @@ export type NodeData = {
     content?: Array<any>,
     children?: Array<any>,
     value?: string,
-    updateValue? : Function,
+    syncValue? : Function,
     props?: any
 }
 
@@ -62,13 +62,17 @@ export function findNodeFromElement(element: HTMLElement | Node) {
 
 
 
-function insertTextNodeValue(node: NodeType, offset: number, textToInsert: string, useDefaultBehavior?: boolean) {
+function insertTextNodeValue(node: NodeType, offset: number, textToInsert: string, useDefaultBehavior?: boolean) : boolean{
     const newValue = node.value!.value.slice(0, offset) + textToInsert + node.value!.value.slice(offset)
-    if (useDefaultBehavior) {
-        node.updateValue!(newValue)
+    // 如果字符本身不是空的，那么就不能 default behavior，因为我们使用了 &ZeroWidthSpace 占位，需要处理一下。
+    if (useDefaultBehavior && textToInsert && node.value!.value) {
+        node.syncValue!(newValue)
+        // 表示使用 syncValue 成功了
+        return true
     } else {
         node.value!.value = newValue
     }
+    return false
 }
 
 
@@ -84,7 +88,7 @@ function insertTextNodeValue(node: NodeType, offset: number, textToInsert: strin
 // }
 
 
-function mergeContent(startNode: NodeType, startOffset: number, endNode: NodeType, endOffset: number, textToInsert: string, useDefaultBehavior?: boolean) {
+function mergeContent(startNode: NodeType, startOffset: number, endNode: NodeType, endOffset: number, textToInsert: string, tryUseDefaultBehavior = false) : boolean{
     // 看看是不是在同一个文本区域
     let inSameTextCollection = startNode === endNode
     let pointer = startNode
@@ -105,11 +109,11 @@ function mergeContent(startNode: NodeType, startOffset: number, endNode: NodeTyp
     }
 
     // 2. 处理合并情况
-    if (useDefaultBehavior && inSameTextCollection) {
+    if (tryUseDefaultBehavior && inSameTextCollection) {
         // 支持使用 defaultBehavior，updateValue 方法被 patch 了，不会触发视图重新计算。
-        startNode.updateValue!(startNode.value!.value.slice(0, startOffset) + textToInsert + endNode.value!.value.slice(endOffset))
+        startNode.syncValue!(startNode.value!.value.slice(0, startOffset) + textToInsert + endNode.value!.value.slice(endOffset))
     } else {
-        if (useDefaultBehavior) console.warn('not in same content collection, can use default behavior')
+        if (tryUseDefaultBehavior) console.warn('not in same content collection, can use default behavior')
         startNode.value!.value = startNode.value!.value.slice(0, startOffset) + textToInsert + endNode.value!.value.slice(endOffset)
     }
 
@@ -120,6 +124,8 @@ function mergeContent(startNode: NodeType, startOffset: number, endNode: NodeTyp
         endNode.parent!.content!.removeBetween(undefined, endNode)
         startNode.parent!.content!.insertBefore(endNode.parent!.content!.move())
     }
+    // 表示是否成功使用了 syncValue
+    return tryUseDefaultBehavior && inSameTextCollection
 }
 
 function updateStartNodeToAncestor(startNode: NodeType, ancestorNode: NodeType) {
@@ -171,29 +177,27 @@ function updateEndNodeToAncestor(endNode: NodeType, ancestorNode: NodeType, ance
 }
 
 // TODO 支持 RangeLike 作为参数
-export function updateRange(range: Range, textToInsert: string, needUseDefaultBehavior?:boolean) {
+export function updateRange(range: Range, textToInsert: string, tryUseDefaultBehavior?:boolean) {
     const startNode = findNodeFromElement(range.startContainer as HTMLElement)
+    let useDefaultBehaviorSuccess = false
 
     if (range.collapsed) {
-        insertTextNodeValue(startNode, range.startOffset, textToInsert, needUseDefaultBehavior)
-        console.log(startNode.value.value)
-        return true
+        useDefaultBehaviorSuccess = insertTextNodeValue(startNode, range.startOffset, textToInsert, tryUseDefaultBehavior)
+    } else {
+        const endNode = findNodeFromElement(range.endContainer as HTMLElement)
+        const ancestorNode = findNodeFromElement(range.commonAncestorContainer as HTMLElement)
+        if (!startNode || !endNode || !ancestorNode) {
+            throw new Error('range not valid')
+        }
+
+        useDefaultBehaviorSuccess = mergeContent(startNode, range.startOffset, endNode, range.endOffset, textToInsert, tryUseDefaultBehavior)
+
+        // 删除 range 之间的所有节点
+        const ancestorStartChild = updateStartNodeToAncestor(startNode, ancestorNode)
+        updateEndNodeToAncestor(endNode, ancestorNode, ancestorStartChild!, startNode.parent)
     }
 
-
-    const endNode = findNodeFromElement(range.endContainer as HTMLElement)
-    const ancestorNode = findNodeFromElement(range.commonAncestorContainer as HTMLElement)
-    if (!startNode || !endNode || !ancestorNode) {
-        throw new Error('range not valid')
-    }
-
-
-    mergeContent(startNode, range.startOffset, endNode, range.endOffset, textToInsert, needUseDefaultBehavior)
-    console.log(startNode.value.value)
-
-    // 删除 range 之间的所有节点
-    const ancestorStartChild = updateStartNodeToAncestor(startNode, ancestorNode)
-    updateEndNodeToAncestor(endNode, ancestorNode, ancestorStartChild!, startNode.parent)
+    return {node: startNode, offset: range.startOffset + textToInsert.length, success: useDefaultBehaviorSuccess}
 }
 
 // function findRangeText(range) {
@@ -260,24 +264,60 @@ export function splitTextNode(node: NodeType, offset: number, splitAsPrev?: bool
 }
 
 
+function createDefaultContent() {
+    return [{type: 'Text', value: ''}]
+}
+
+
 // 回车行为的主要调用者
-export async function splitTextAsBlock(inputNode: RangeLike | Range) {
+// TODO 如果是在行尾部，应该是建立一个新的 Para 节点
+export async function splitTextAsBlock(inputNode: RangeLike | Range) : Promise<NodeType>{
     const node = inputNode instanceof Range ? findNodeFromElement(inputNode.startContainer) : inputNode
     const offset = inputNode.startOffset
     if(!(node.constructor as typeof NodeType).isLeaf) throw new Error('split as block can only start from text leaf')
-    // 往前产生一个 type 相同的
-    // TODO 这里抽象泄漏了！！！！但暂时好像没有其他方法，因为调用了 splitTextNode，里面又调用了 insertBefore，
-    //  但后面又把 insert 进去的全部 removeBetween 了，这个时候原本 insertBefore 拿到的 patchResult 里面的引用 又都变了。
-    //  等到真正去走 patch function 的时候，引用已经变了。
-    // TODO 或者先 remove，再单独处理 fragment ?
-    splitTextNode(node, offset)
-    await waitUpdate()
-    const parent = node.parent!
-    const { removed } = parent!.content!.removeBetween(undefined, node)
-    const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container)
-    newNode.content!.insertBefore( new LinkedListFragment(removed) )
 
-    parent.parent!.children!.insertBefore(newNode, parent)
+    const parent = node.parent!
+    const isAtContentEnd = node === node.container.tail.node && offset === node.value.value.length
+    if (!isAtContentEnd) {
+        // 往前产生一个 type 相同的
+        // TODO 这里抽象泄漏了！！！！但暂时好像没有其他方法，因为调用了 splitTextNode，里面又调用了 insertBefore，
+        //  但后面又把 insert 进去的全部 removeBetween 了，这个时候原本 insertBefore 拿到的 patchResult 里面的引用 又都变了。
+        //  等到真正去走 patch function 的时候，引用已经变了。
+        // TODO 或者先 remove，再单独处理 fragment ?
+        splitTextNode(node, offset)
+        await waitUpdate()
+
+        const { removed } = parent!.content!.removeBetween(undefined, node)
+        const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container)
+        newNode.content!.insertBefore( new LinkedListFragment(removed) )
+        // 插到头部去
+        parent.parent!.children!.insertBefore(newNode, parent)
+        // 返回断开处的第一个节点，外部可以用来 setCursor
+        return parent!.content!.head.next.node
+    } else {
+        console.log('at end')
+        // 如果是在一个可以有 children 的 content 的结尾，那么应该是建立这个节点的 children
+        if (parent.constructor.hasChildren && !parent.constructor.createSiblingAsDefault) {
+            // 但这里有个例外，list 这种回车也是建立一个兄弟节点怎么算？Section 是建立 children，但 list 不是？
+            // 创建一个 children 节点，TODO 要制定 Default 类型？
+            const childType = parent.constructor.defaultChildType || 'Para'
+            const { result: newNode } = buildModelFromData({
+                type: childType,
+                content: (nodeTypes[childType]!.createDefaultContent || createDefaultContent)()
+            })
+            parent.children!.insertBefore(newNode)
+            return newNode.content!.head.next.node
+        } else {
+            // 如果是一个不能有 children 的，那么应该是建立一个兄弟节点，例如 Para。
+            // 创建一个 sibling
+            const { result: newNode } = buildModelFromData({
+                type: parent.data.type,
+                content: (parent.constructor.createDefaultContent || createDefaultContent)()
+            })
+            parent.parent!.children!.insertAfter(newNode, parent)
+            return newNode.content!.head.next.node
+        }
+    }
 }
 
 
@@ -367,9 +407,6 @@ export function formatRange(range : RangeLike | Range, format: Object) {
 
 // TODO 理论上应该支持任何一种 node 开始 setCursor
 export function setCursor(node: NodeType, offset: number) {
-    if(!(node.constructor as typeof NodeType).isLeaf) {
-        return console.error('not implemented')
-    }
 
     const element = nodeToElement.get(node)
     if (!element) {

@@ -20,9 +20,9 @@ function buildReactiveLinkedList(contentLinkedList: LinkedList) {
 
                 const item = contentLinkedList.getItem(node)
                 const refElement = nodeToElement.get(item.next?.node)
-                if (parentEl === dom){
+                if (parentEl === dom && item.next?.node && !refElement){
                     // parentEl === dom 但是却没有 next 说明是最后一个，或者之前是空的？
-                    if (!refElement) debugger
+                    debugger
                 }
 
                 // TODO 这里有大问题，因为可能存在 refElement，但并不是同一个 parentEl 的，例如 updateRange 的情况，出现了中间新建节点，拼合后面已有节点的情况。
@@ -54,17 +54,22 @@ function buildReactiveLinkedList(contentLinkedList: LinkedList) {
 function buildReactiveValue(node: NodeType) {
     return function attach(dom: HTMLElement ) {
         viewToNodeMap.set(dom, node)
-        let textNode = document.createTextNode('')
+        // let textNode = document.createTextNode('')
+        let isLastTextEmpty = false
 
         autorun(() => {
-                textNode.nodeValue = node.value?.value || null
+                // textNode.nodeValue = node.value?.value || null
+                dom.innerHTML = node.value?.value || '&ZeroWidthSpace;'
+                isLastTextEmpty = !node.value?.value
             },
             // @ts-ignore
             ({ on }) => {
             // 自定义组件不一定有这个方法
-                if (node.updateValue) {
-                    on(node.updateValue, [node],  () => {
-                        // 这里什么都不做，利用的是 contenteditable 的默认行为
+                if (node.syncValue) {
+                    on(node.syncValue, [node],  () => {
+                        // 如果是从空变成有，或者有变成空，那么都还是要更新，无法利用增量跳过。
+                        if(isLastTextEmpty || !node.value?.value) throw new Error('cannot patch from empty string')
+
                         console.log('use default behavior', node.value?.value)
                     })
                 }
@@ -72,7 +77,7 @@ function buildReactiveValue(node: NodeType) {
             scheduleUpdate
         )
 
-        dom.appendChild(textNode)
+        // dom.appendChild(textNode)
     }
 }
 
@@ -112,6 +117,7 @@ export function buildReactiveView(node: NodeType) {
 const tokensToUpdate = new Set<Function>()
 let scheduleTask: undefined | Promise<any>
 function updateQueue() {
+    // @ts-ignore
     for(let update of tokensToUpdate) {
         update()
     }

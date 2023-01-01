@@ -20,6 +20,7 @@ export class NodeType {
         this.data = data
         this.container = container
     }
+    static createDefaultContent?: Function
     static hasContent?: Boolean
     static hasChildren?: Boolean
     static isLeaf?: Boolean
@@ -28,7 +29,7 @@ export class NodeType {
     parent?: NodeType
     children? : LinkedList
     content? : LinkedList
-    updateValue? : Function
+    syncValue? : Function
     value?: {
         value: string
     }
@@ -99,12 +100,28 @@ class Section extends TextBlock {
 class List extends TextBlock{
     static readonly hasContent = false
     render({ children }:RenderProp) {
+        return (
+            <div>
+                {children}
+            </div>
+        )
+    }
+}
 
+class ListItem extends TextBlock{
+    static readonly createSiblingAsDefault = true
+    render({ children, content }:RenderProp) {
+        return (
+            <div data-type-listitem>
+                <div data-type-listitem-content>{content}</div>
+                <div data-type-listitem-children>{children}</div>
+            </div>
+        )
     }
 }
 
 
-const patchableUpdateValue = patchPoint(function (this: NodeType, newValue: string) {
+const patchableSyncValue = patchPoint(function (this: NodeType, newValue: string) {
     this.value!.value = newValue
 })
 
@@ -126,7 +143,7 @@ class Text implements NodeType{
         this.value = reactive({ value })
         this.props = reactive(props)
     }
-    updateValue = patchableUpdateValue
+    syncValue = patchableSyncValue
     render({ value, props }: RenderProp) {
         // TODO format to style
         const style = createReactiveAttribute(() => {
@@ -150,6 +167,7 @@ export const nodeTypes: {[key: string]: typeof NodeType} = {
     Para,
     Text,
     List,
+    ListItem,
     Section,
     Table,
     Code,
