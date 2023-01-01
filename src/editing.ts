@@ -1,6 +1,7 @@
 import {nodeToElement, waitUpdate} from "./buildReactiveView";
 // @ts-ignore
-import {NodeType, nodeTypes} from "./nodeTypes";
+import {nodeTypes} from "./nodeTypes";
+import {NodeType} from "./NodeType";
 import {LinkedList, LinkedListFragment} from "./linkedList";
 
 
@@ -90,42 +91,58 @@ function insertTextNodeValue(node: NodeType, offset: number, textToInsert: strin
 
 function mergeContent(startNode: NodeType, startOffset: number, endNode: NodeType, endOffset: number, textToInsert: string, tryUseDefaultBehavior = false) : boolean{
     // 看看是不是在同一个文本区域
-    let inSameTextCollection = startNode === endNode
+    let inSameTextCollection = startNode.container === endNode.container
     let pointer = startNode
     while (pointer && !inSameTextCollection) {
         if (pointer === endNode) {
             inSameTextCollection = true
         } else {
-            pointer = pointer.parent!.content!.getItem(pointer).next?.node
+            pointer = pointer.nextSibling
         }
     }
 
 
     // 1. 先处理头
-    if (!inSameTextCollection) {
-        startNode.parent!.content!.removeBetween(startNode)
-    } else {
-        startNode.parent!.content!.removeBetween(startNode, endNode)
+    if (startNode !== endNode) {
+        if (!inSameTextCollection) {
+            startNode.parent!.content!.removeBetween(startNode)
+        } else {
+            startNode.parent!.content!.removeBetween(startNode, endNode)
+        }
     }
 
+
     // 2. 处理合并情况
-    if (tryUseDefaultBehavior && inSameTextCollection) {
+    // TODO 如果当前的 startNode 节点全部删除完了呢？
+    const newValue = startNode.value!.value.slice(0, startOffset) + textToInsert + endNode.value!.value.slice(endOffset)
+    const canUseDefaultBehavior = tryUseDefaultBehavior && inSameTextCollection && !!newValue
+    if (canUseDefaultBehavior) {
         // 支持使用 defaultBehavior，updateValue 方法被 patch 了，不会触发视图重新计算。
-        startNode.syncValue!(startNode.value!.value.slice(0, startOffset) + textToInsert + endNode.value!.value.slice(endOffset))
+        startNode.syncValue!(newValue)
     } else {
-        if (tryUseDefaultBehavior) console.warn('not in same content collection, can use default behavior')
-        startNode.value!.value = startNode.value!.value.slice(0, startOffset) + textToInsert + endNode.value!.value.slice(endOffset)
+        if (tryUseDefaultBehavior) console.warn('not in same content collection or node empty, cant use default behavior')
+        // 如果没内容了，并且合并后的 content 里面还有内容(startNode 不是头或者 endNode 不是尾巴)，那么就可以删掉自己
+        if (!newValue && (startNode !== startNode.container!.head.next.node || (endNode !== endNode.container!.tail?.node) )) {
+            // 删掉自己
+            startNode.parent!.content?.removeBetween(startNode.container?.getItem(startNode).prev.node, startNode)
+            console.log("delete self", startNode.parent!.content)
+        } else {
+            startNode.value!.value = newValue
+        }
     }
 
     // 处理尾巴
-    if(!inSameTextCollection) {
+    if(startNode !== endNode && !inSameTextCollection) {
         // 把endNode 后面的 content 全部加上。
         // CAUTION endNode 在这里已经是确定不要了，所以直接 move 掉
         endNode.parent!.content!.removeBetween(undefined, endNode)
         startNode.parent!.content!.insertBefore(endNode.parent!.content!.move())
     }
+
+
+
     // 表示是否成功使用了 syncValue
-    return tryUseDefaultBehavior && inSameTextCollection
+    return canUseDefaultBehavior
 }
 
 function updateStartNodeToAncestor(startNode: NodeType, ancestorNode: NodeType) {
@@ -177,24 +194,29 @@ function updateEndNodeToAncestor(endNode: NodeType, ancestorNode: NodeType, ance
 }
 
 // TODO 支持 RangeLike 作为参数
-export function updateRange(range: Range, textToInsert: string, tryUseDefaultBehavior?:boolean) {
-    const startNode = findNodeFromElement(range.startContainer as HTMLElement)
+export function updateRange(inputRange: Range | RangeLike, textToInsert: string, tryUseDefaultBehavior?:boolean) {
+    const range: RangeLike = inputRange instanceof Range ? createRangeLikeFromRange(inputRange) : inputRange
+    const startNode = range.startNode
     let useDefaultBehaviorSuccess = false
 
     if (range.collapsed) {
         useDefaultBehaviorSuccess = insertTextNodeValue(startNode, range.startOffset, textToInsert, tryUseDefaultBehavior)
     } else {
-        const endNode = findNodeFromElement(range.endContainer as HTMLElement)
-        const ancestorNode = findNodeFromElement(range.commonAncestorContainer as HTMLElement)
+        const { endNode, commonAncestorNode: ancestorNode } = range
+
         if (!startNode || !endNode || !ancestorNode) {
             throw new Error('range not valid')
         }
 
+        // 1. 删除 range 之间的所有节点
+        // CAUTION 一定要先处理这个，因为后面处理 mergeContent 的时候，startNode 都是有可能被删除的。
+        const ancestorStartChild = updateStartNodeToAncestor(startNode, ancestorNode)
+
+        // 2. merge 所有的 endNode 里面的内容到 startNode 后面
         useDefaultBehaviorSuccess = mergeContent(startNode, range.startOffset, endNode, range.endOffset, textToInsert, tryUseDefaultBehavior)
 
-        // 删除 range 之间的所有节点
-        const ancestorStartChild = updateStartNodeToAncestor(startNode, ancestorNode)
-        updateEndNodeToAncestor(endNode, ancestorNode, ancestorStartChild!, startNode.parent)
+        // 3. 尾部节点
+        updateEndNodeToAncestor(endNode, ancestorNode, ancestorStartChild!, startNode.parent!)
     }
 
     return {node: startNode, offset: range.startOffset + textToInsert.length, success: useDefaultBehaviorSuccess}
@@ -375,10 +397,12 @@ function forEachNodeInRange(from: NodeType, to: NodeType, handle: (i: NodeType) 
 
 
 export type RangeLike = {
-    startNode?: NodeType
-    endNode?: NodeType
+    startNode: NodeType
+    endNode: NodeType
     startOffset: number
-    endOffset: number
+    endOffset: number,
+    collapsed: boolean,
+    commonAncestorNode: NodeType
 }
 
 export function formatRange(range : RangeLike | Range, format: Object) {
@@ -421,4 +445,68 @@ export function setCursor(node: NodeType, offset: number) {
     selection!.empty()
     selection!.addRange(range)
 }
+
+export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {startNode: NodeType, endNode: NodeType, startOffset: number, endOffset: number}) {
+    let commonAncestorNodeCache:NodeType|undefined
+    return {
+        startNode,
+        startOffset,
+        endNode,
+        endOffset,
+        collapsed: startNode === endNode && startOffset === endOffset,
+        get commonAncestorNode() {
+            if (!commonAncestorNodeCache) {
+                if (startNode === endNode) {
+                    commonAncestorNodeCache = startNode
+                } else {
+                    const visited = new Set()
+                    let pointer:NodeType|undefined = startNode
+                    while(pointer) {
+                        visited.add(pointer)
+                        pointer = pointer.parent
+                    }
+                    pointer = endNode
+                    while(pointer) {
+                        if (visited.has(pointer)) {
+                            commonAncestorNodeCache = pointer
+                            break
+                        } else {
+                            pointer = pointer.parent
+                        }
+                    }
+                }
+            }
+
+            return commonAncestorNodeCache
+        }
+    }
+}
+
+export function createRangeLikeFromRange(range: Range) {
+    let startNodeCache: NodeType, endNodeCache: NodeType, commonAncestorNodeCache: NodeType
+    return {
+        get startNode() {
+            if (!startNodeCache) {
+                startNodeCache = findNodeFromElement(range.startContainer)
+            }
+            return startNodeCache
+        },
+        get endNode() {
+            if (!endNodeCache) {
+                endNodeCache = findNodeFromElement(range.endContainer)
+            }
+            return endNodeCache
+        },
+        startOffset: range.startOffset,
+        endOffset: range.endOffset,
+        collapsed: range.collapsed,
+        get commonAncestorNode() {
+            if (!commonAncestorNodeCache) {
+                commonAncestorNodeCache = findNodeFromElement(range.commonAncestorContainer)
+            }
+            return commonAncestorNodeCache
+        }
+    }
+}
+
 

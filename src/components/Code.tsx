@@ -2,33 +2,27 @@
 import { createElement, useState, useEffect, StrictMode, cloneElement} from "react";
 import ReactDOM from 'react-dom/client'
 import {reactive} from "@ariesate/reactivity";
+import { NodeType } from "../NodeType";
 
-function Table({ value }) {
+function Code({ value, props }) {
     return (
-        <div data-component tabindex="-1">
-            <span></span>
-            <table border={1} contentEditable={true}>
-                <thead>
-                <tr>
-                    <th>head</th>
-                </tr>
-                </thead>
-                <tbody>
-                <tr>
-                    <td>1111111</td>
-                </tr>
-                </tbody>
-            </table>
-            <span></span>
+        <div style={{padding:10, background:'gray'}} contentEditable={false}>
+            <div>
+                <span>lang: </span>
+                <span>{props?.lang}</span>
+            </div>
+            <pre>
+                import xxx from
+            </pre>
         </div>
     )
 }
 
 
-function toReactValue(attachValue) {
-    return (el) => {
+function toReactValue(attachValue: Function) {
+    return (el: HTMLElement) => {
         return cloneElement(el, {
-            ref: (dom) => {
+            ref: (dom: HTMLElement) => {
                 if (dom) {
                     attachValue(dom)
                 }
@@ -38,19 +32,20 @@ function toReactValue(attachValue) {
 }
 
 
-export default class ExportTable {
+export default class ExportCode extends NodeType{
     static isLeaf = true
-    constructor(data, parent) {
-        this.parent = parent
+    constructor(data, container) {
+        super(data, container)
         const { value = '', props = {}} = data
-        this.data = data
+        this.props = reactive(props)
         this.value = reactive({ value })
     }
-    render({ value }) {
+    render() {
         const root = document.createElement('div')
         // const root = document.getElementById('app')
+        console.log(this.props)
         ReactDOM.createRoot(root).render(
-            <Table value={toReactValue(value)}/>
+            <Code value={toReactValue(this.value)} props={this.props}/>
         )
         return root
         // return document.createElement('div')

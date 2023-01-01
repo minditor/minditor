@@ -2,7 +2,7 @@
 import {autorun, autorunForEach} from '@ariesate/reactivity'
 import {viewToNodeMap} from "./editing";
 import { LinkedList } from "./linkedList";
-import {NodeType} from "./nodeTypes";
+import {NodeType} from "./NodeType";
 
 
 export const nodeToElement = new WeakMap()

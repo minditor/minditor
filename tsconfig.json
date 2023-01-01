@@ -15,6 +15,7 @@
     "esModuleInterop": false,
     "removeComments": false,
     "jsx": "preserve",
+    "jsxFactory": "createElement",
     "lib": ["esnext", "dom"],
     "types": ["jest", "node"]
   },

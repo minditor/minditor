@@ -5,7 +5,7 @@ import {buildReactiveView} from "../src/buildReactiveView";
 
 import patchTextEvents from "../src/patchTextEvents";
 import { registerCommands as markdownCommands } from "../src/markdown";
-import { registerCommands as suggestionCommands } from "../src/suggestion";
+// import { registerCommands as suggestionCommands } from "../src/suggestion";
 import { registerCommands } from "../src/command";
 import { on, trigger } from '../src/event'
 

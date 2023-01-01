@@ -1,4 +1,4 @@
-import {findNodeFromElement, formatRange, setCursor, splitTextAsBlock, updateRange} from "./editing";
+import {createRangeLike, findNodeFromElement, formatRange, setCursor, splitTextAsBlock, updateRange} from "./editing";
 import {nodeToElement, waitUpdate} from "./buildReactiveView";
 
 
@@ -85,7 +85,54 @@ export default function patchTextEvents(on, trigger) {
             await waitUpdate()
             setCursor(splitPointNode, 0)
         } else  if (e.key === 'Backspace') {
-            // TODO 退格，破坏性删除怎么处理？
+
+            const range = selection.getRangeAt(0)
+            if (!range.collapsed) {
+                const updateInfo = updateRange(selection.getRangeAt(0), '', true)
+                // TODO 要处理 cursor?
+                if (!updateInfo.success) {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setCursor(updateInfo.node, updateInfo.offset)
+                }
+
+            } else {
+                // TODO 要不要直接修正一下节点位置？？？
+
+                const node = findNodeFromElement(range.startContainer)
+                if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
+
+                if (node === node.container.head.next.node && range.startOffset === 0) {
+                    // TODO 破坏性结构
+
+
+                } else {
+                    // 选中前一个字符 update 就行了
+                    let editingNode = range.startOffset === 0 ? node.previousSibling : node
+                    const editingPrevNode = editingNode.previousSibling
+
+                    let editingStartOffset = range.startOffset === 0 ? editingNode.value.value.length - 1 : range.startOffset - 1
+                    const updateInfo = updateRange(createRangeLike({
+                        startNode: editingNode,
+                        startOffset: editingStartOffset,
+                        endNode: editingNode,
+                        endOffset: editingStartOffset + 1
+                    }), '', true)
+
+                    if (!updateInfo.success) {
+                        console.log(111, updateInfo)
+                        e.preventDefault()
+                        e.stopPropagation()
+                        if (editingStartOffset === 0) {
+                            // 铁定坍缩了
+                            setCursor(editingPrevNode, editingPrevNode.value?.value.length || 0)
+                        } else {
+                            setCursor(updateInfo.node, updateInfo.offset)
+                        }
+                    }
+                }
+            }
+
         }
 
         //2.  TODO 回车/退格/ 不需要响应的功能键
@@ -109,9 +156,9 @@ export default function patchTextEvents(on, trigger) {
         updateRange(range, e.data, true)
     })
 
-    // TODO 如果碰到了 component + 普通节点的组合，要选中整个 component.
+    // 如果碰到了 component + 普通节点的组合，要选中整个 component.
     document.addEventListener('selectionchange', (e) => {
-        // adjustSelection()
+        adjustSelection()
     })
 }
 
@@ -129,13 +176,13 @@ function adjustSelection() {
     }
 
     if(range.collapsed) {
-        // TODO 空字符节点由于插入了' '来站位，应该把光标调整到 offset 0 的位置去。
-        if (!ancestorNode.value?.value && range.startOffset!== 0) {
-            const newRange = range.cloneRange()
-            newRange.setStart(newRange.startContainer, 0)
-            selection.removeAllRanges()
-            selection.addRange(newRange)
-        }
+        // // TODO 空字符节点由于插入了' '来站位，应该把光标调整到 offset 0 的位置去。
+        // if (!ancestorNode.value?.value && range.startOffset!== 0) {
+        //     const newRange = range.cloneRange()
+        //     newRange.setStart(newRange.startContainer, 0)
+        //     selection.removeAllRanges()
+        //     selection.addRange(newRange)
+        // }
 
         return
     }

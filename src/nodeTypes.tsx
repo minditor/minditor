@@ -5,61 +5,33 @@ import {LinkedList} from "./linkedList";
 import {createReactiveAttribute} from "./buildReactiveView";
 // @ts-ignore
 import {patchPoint, reactive} from '@ariesate/reactivity'
-
+import { NodeType, RenderProp } from "./NodeType";
 // @ts-ignore
 import Table from './components/Table'
 // @ts-ignore
-import Code from './components/Code'
+// import Code from './components/Code'
 import {NodeData} from "./editing";
 
-type RenderProp = {content?: Function, children?: Function, value?: Object, props?:any}
 
 
-export class NodeType {
-    constructor(data: NodeData, container?:LinkedList) {
-        this.data = data
-        this.container = container
-    }
-    static createDefaultContent?: Function
-    static hasContent?: Boolean
-    static hasChildren?: Boolean
-    static isLeaf?: Boolean
-    container?: LinkedList
-    // @ts-ignore
-    parent?: NodeType
-    children? : LinkedList
-    content? : LinkedList
-    syncValue? : Function
-    value?: {
-        value: string
-    }
-    props? : any
-    data? :any
-    render?: Function
-}
 
 
-class TextBlock implements NodeType{
+
+
+
+class TextBlock extends NodeType{
     content = new LinkedList(this)
     children = new LinkedList(this)
-    data: NodeData
+    data?: NodeData
     container?: LinkedList
     static hasContent = true
     static hasChildren = true
-    constructor(data: NodeData, container?:LinkedList) {
-        this.data = data
-        this.container = container
-    }
-    // @ts-ignore
-    get parent() {
-        return this.container?.owner
-    }
 }
 
 class Doc extends TextBlock{
     firstLeaf= null
     lastLeaf= null
-    render({ content, children }:RenderProp) {
+    render({ content, children }:RenderProp){
         return (
             <div>
                 <h1>{content}</h1>
@@ -125,21 +97,18 @@ const patchableSyncValue = patchPoint(function (this: NodeType, newValue: string
     this.value!.value = newValue
 })
 
-class Text implements NodeType{
+class Text extends NodeType{
     static readonly isLeaf = true
     static formatToStyle = ([formatName, formatValue]:[string, any]) => {
         if (formatName === 'bold') {
             return ['fontWeight', 'bold']
         }
     }
-    data
     value
     props
-    container
     constructor(data: NodeData, container: LinkedList) {
+        super(data, container)
         const { value = '', props = {}} = data
-        this.data = data
-        this.container = container
         this.value = reactive({ value })
         this.props = reactive(props)
     }
@@ -155,10 +124,6 @@ class Text implements NodeType{
         // @ts-ignore
         return <span _uuid style={style}>{value}</span>
     }
-    // @ts-ignore
-    get parent() {
-        return this.container?.owner
-    }
 }
 
 
@@ -170,5 +135,4 @@ export const nodeTypes: {[key: string]: typeof NodeType} = {
     ListItem,
     Section,
     Table,
-    Code,
 }
