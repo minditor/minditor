@@ -1,5 +1,14 @@
-import {createRangeLike, findNodeFromElement, formatRange, setCursor, splitTextAsBlock, updateRange} from "./editing";
+import {
+    buildModelFromData,
+    createRangeLike,
+    findNodeFromElement,
+    formatRange,
+    setCursor,
+    splitTextAsBlock,
+    updateRange
+} from "./editing";
 import {nodeToElement, waitUpdate} from "./buildReactiveView";
+import {LinkedList} from "./linkedList";
 
 
 function getCurrentRange() {
@@ -97,14 +106,44 @@ export default function patchTextEvents(on, trigger) {
                 }
 
             } else {
-                // TODO 要不要直接修正一下节点位置？？？
 
                 const node = findNodeFromElement(range.startContainer)
+                // TODO 要不要直接修正一下节点位置？？？
                 if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
 
+                // 破坏性结构
                 if (node === node.container.head.next.node && range.startOffset === 0) {
-                    // TODO 破坏性结构
+                    e.preventDefault()
+                    e.stopPropagation()
 
+                    const parent = node.parent
+
+                    if(parent.constructor.unwrap) {
+                        parent.constructor.unwrap(parent)
+                    } else {
+                        // 默认行为？content 合并，children 提升？
+                        const previousSiblingInTree = node.previousSiblingInTree
+                        if (previousSiblingInTree) {
+                            // 合并内容
+
+                            previousSiblingInTree.container.insertBefore(parent.content.move())
+                            // 提升 children
+                            if (parent.children.tail) {
+                                if (previousSiblingInTree.parent.constructor.hasChildren) {
+                                    previousSiblingInTree.parent.children.insertBefore(parent.children.move())
+                                } else {
+                                    previousSiblingInTree.parent.parent.children.insertAfter(parent.children.move(), previousSiblingInTree.parent)
+                                }
+
+                            }
+                            // 最后再删掉，防止页面抖动
+                            parent.remove()
+                        }
+                    }
+
+                    await waitUpdate()
+                    // 一定要重置一下，因为这时候 dom 更新了，可出现 cursor 漂移到上一级 div 上。
+                    setCursor(node, 0)
 
                 } else {
                     // 选中前一个字符 update 就行了
@@ -133,9 +172,27 @@ export default function patchTextEvents(on, trigger) {
                 }
             }
 
+        } else if (e.key === 'Tab') {
+            //2.  TODO tab/shift+tab 向上升一级和向下降一级
+            e.preventDefault()
+            e.stopPropagation()
+            const range = selection.getRangeAt(0)
+            const node = findNodeFromElement(range.startContainer)
+            // TODO 要不要直接修正一下节点位置？？？
+            if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
+            const parent = node.parent
+            if(e.shiftKey) {
+                if(parent.constructor.unwrap) {
+                    parent.constructor.unwrap(parent, createDefaultNode)
+                }
+            } else {
+                if(parent.constructor.wrap) {
+                    parent.constructor.wrap(parent)
+                }
+            }
         }
 
-        //2.  TODO 回车/退格/ 不需要响应的功能键
+
 
     })
 
@@ -170,21 +227,13 @@ function adjustSelection() {
     const range = selection.getRangeAt(0)
     if (!range) return
 
+    if(range.collapsed) {
+        return
+    }
+
     const ancestorNode = findNodeFromElement(range.commonAncestorContainer)
     if (!ancestorNode) {
         console.warn('not in a same document context')
-    }
-
-    if(range.collapsed) {
-        // // TODO 空字符节点由于插入了' '来站位，应该把光标调整到 offset 0 的位置去。
-        // if (!ancestorNode.value?.value && range.startOffset!== 0) {
-        //     const newRange = range.cloneRange()
-        //     newRange.setStart(newRange.startContainer, 0)
-        //     selection.removeAllRanges()
-        //     selection.addRange(newRange)
-        // }
-
-        return
     }
 
     const endNode = findNodeFromElement(range.endContainer)

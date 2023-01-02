@@ -4,6 +4,7 @@ specifiers:
   '@jest/globals': ^29.3.1
   '@testing-library/dom': ^8.19.0
   '@testing-library/jest-dom': ^5.16.5
+  '@testing-library/user-event': ^14.4.3
   '@types/jest': ^29.2.4
   '@types/node': ^18.11.17
   '@vue/runtime-core': ^3.2.45
@@ -29,6 +30,7 @@ devDependencies:
   '@jest/globals': 29.3.1
   '@testing-library/dom': 8.19.0
   '@testing-library/jest-dom': 5.16.5
+  '@testing-library/user-event': 14.4.3_aaq3sbffpfe3jnxzm2zngsddei
   '@types/jest': 29.2.4
   '@types/node': 18.11.17
   '@vue/runtime-core': 3.2.45
@@ -833,6 +835,15 @@ packages:
       dom-accessibility-api: 0.5.14
       lodash: 4.17.21
       redent: 3.0.0
+    dev: true
+
+  /@testing-library/user-event/14.4.3_aaq3sbffpfe3jnxzm2zngsddei:
+    resolution: {integrity: sha512-kCUc5MEwaEMakkO5x7aoD+DLi02ehmEM2QCGWvNqAS1dV/fAvORWEjnjsEIvml59M7Y5kCkWN6fCCyPOe8OL6Q==}
+    engines: {node: '>=12', npm: '>=6'}
+    peerDependencies:
+      '@testing-library/dom': '>=7.21.4'
+    dependencies:
+      '@testing-library/dom': 8.19.0
     dev: true
 
   /@tootallnate/once/2.0.0:

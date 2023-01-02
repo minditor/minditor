@@ -1,7 +1,7 @@
 /**@jsx createElement*/
 // @ts-ignore
 import {createElement} from "./DOM";
-import {LinkedList} from "./linkedList";
+import {LinkedList, LinkedListFragment} from "./linkedList";
 import {createReactiveAttribute} from "./buildReactiveView";
 // @ts-ignore
 import {patchPoint, reactive} from '@ariesate/reactivity'
@@ -10,13 +10,7 @@ import { NodeType, RenderProp } from "./NodeType";
 import Table from './components/Table'
 // @ts-ignore
 // import Code from './components/Code'
-import {NodeData} from "./editing";
-
-
-
-
-
-
+import {createDefaultNode as defaultCreateDefaultNode, NodeData} from "./editing";
 
 
 class TextBlock extends NodeType{
@@ -29,8 +23,6 @@ class TextBlock extends NodeType{
 }
 
 class Doc extends TextBlock{
-    firstLeaf= null
-    lastLeaf= null
     render({ content, children }:RenderProp){
         return (
             <div>
@@ -82,6 +74,63 @@ class List extends TextBlock{
 
 class ListItem extends TextBlock{
     static readonly createSiblingAsDefault = true
+    static unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = defaultCreateDefaultNode) {
+        const parent = node.parent
+        if (parent.constructor === ListItem) {
+
+            // TODO 要不要 waitUpdate?
+            const { removed: removedSiblings } = parent.children.removeBetween(node)
+            // 自己不是一级节点，往上提一级，接管父节点后面的兄弟节点。
+            node.remove()
+
+            // 接管了 父元素的所有兄弟节点。
+            // TODO 要不要 waitUpdate?
+            if (removedSiblings?.from) {
+                node.children!.insertBefore(new LinkedListFragment(removedSiblings!))
+            }
+
+            // 提了一级上来
+            parent.parent.children.insertAfter(node, parent)
+
+        } else if (parent.constructor === List)  {
+            // 1. content 变 para。2. children 提上了，如果没有了，那么整个结构都不要了。 3. 如果自己不是第一个，还要和前面的 List 断开变成两个结构。
+            const previousSibling = node.previousSibling
+
+            // 把自己后面的都移除掉，用来创建新的 List
+            const {removed: removedSiblings} = parent.children.removeBetween(node)
+
+            node.remove()
+            const newNode = createDefaultNode(node.content!.move())
+
+            // 把转化成了普通节点的新节点插入
+            parent.parent.children.insertAfter(newNode, parent)
+            // 把前面的兄弟节点变成新的 list
+            if (removedSiblings?.from || node.children?.tail) {
+                const newList = new List({type: 'List'})
+                if (node.children?.tail) {
+                    newList.children.insertBefore(node.children.move())
+                }
+
+                if (removedSiblings?.from) {
+                    newList.children.insertBefore(new LinkedListFragment(removedSiblings!))
+                }
+
+                parent.parent.children.insertAfter(newList, newNode)
+            }
+
+            // 说明自己是第一个，那么原来这个 List 里面什么也没有了，不要了
+            if (!previousSibling) {
+                parent.remove()
+            }
+
+        } else {
+            throw new Error('invalid listItem, something wrong')
+        }
+    }
+    static wrap(node: NodeType) {
+        // TODO 自己降一级，其他不变
+    }
+
     render({ children, content }:RenderProp) {
         return (
             <div data-type-listitem>

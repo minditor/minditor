@@ -116,10 +116,12 @@ const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: Lin
 })
 // 不包括 start 节点，包括 end 节点。
 const patchableRemoveBetween: (start?: any, end?:any)  => CollectionMutateResult = collectionPatchPoint(function removeBetween(this: LinkedList, start?: any, end?:any) {
+    if (start === this.tail) return { removed: {} }
     // debugger
     const startItem = start ? modelToLinkedReactiveNode.get(start) : this.head
     const endItem = end ? modelToLinkedReactiveNode.get(end) : this.tail
     const removedStart = startItem.next
+
 
     // 原来后面的要接上
     startItem.next = endItem?.next
@@ -168,11 +170,12 @@ export class LinkedList {
     moveFlag = 0
     tail?: LinkedListItem
     owner?: any
+    onMoveCallbacks = new Set<Function>()
     constructor(owner: any) {
         this.owner = owner
     }
 
-    insertBefore(node: any | LinkedList, refNode?: any) {
+    insertBefore(node: any | LinkedList | LinkedListFragment, refNode?: any) {
         // refNode 为空表示插在尾部
         const afterRefNode = refNode ? modelToLinkedReactiveNode.get(refNode).prev.node : this.tail?.node
         return this.insertAfter(node, afterRefNode)
@@ -218,8 +221,15 @@ export class LinkedList {
         return result
     }
 
+    onMove(callback:Function) {
+        this.onMoveCallbacks.add(callback)
+    }
+
     move(flag = 1) {
         this.moveFlag = flag
+        this.onMoveCallbacks.forEach((callback) => {
+            callback()
+        })
         return this
     }
 

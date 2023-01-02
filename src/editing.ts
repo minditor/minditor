@@ -286,13 +286,12 @@ export function splitTextNode(node: NodeType, offset: number, splitAsPrev?: bool
 }
 
 
-function createDefaultContent() {
+export function createDefaultContent() {
     return [{type: 'Text', value: ''}]
 }
 
 
 // 回车行为的主要调用者
-// TODO 如果是在行尾部，应该是建立一个新的 Para 节点
 export async function splitTextAsBlock(inputNode: RangeLike | Range) : Promise<NodeType>{
     const node = inputNode instanceof Range ? findNodeFromElement(inputNode.startContainer) : inputNode
     const offset = inputNode.startOffset
@@ -300,45 +299,50 @@ export async function splitTextAsBlock(inputNode: RangeLike | Range) : Promise<N
 
     const parent = node.parent!
     const isAtContentEnd = node === node.container.tail.node && offset === node.value.value.length
+    const isAtContentHead = node === node.container.head.next.node && offset === 0
     if (!isAtContentEnd) {
         // 往前产生一个 type 相同的
-        // TODO 这里抽象泄漏了！！！！但暂时好像没有其他方法，因为调用了 splitTextNode，里面又调用了 insertBefore，
-        //  但后面又把 insert 进去的全部 removeBetween 了，这个时候原本 insertBefore 拿到的 patchResult 里面的引用 又都变了。
-        //  等到真正去走 patch function 的时候，引用已经变了。
-        // TODO 或者先 remove，再单独处理 fragment ?
-        splitTextNode(node, offset)
-        await waitUpdate()
+        if (isAtContentHead) {
+            const newNode = parent.constructor.createSiblingAsDefault ? parent.cloneEmpty() : createDefaultNode()
+            parent.parent.children.insertBefore(newNode, parent)
+        } else {
+            // TODO 这里抽象泄漏了！！！！但暂时好像没有其他方法，因为调用了 splitTextNode，里面又调用了 insertBefore，
+            //  但后面又把 insert 进去的全部 removeBetween 了，这个时候原本 insertBefore 拿到的 patchResult 里面的引用 又都变了。
+            //  等到真正去走 patch function 的时候，引用已经变了。
+            // TODO 或者先 remove，再单独处理 fragment ?
+            splitTextNode(node, offset)
+            await waitUpdate()
 
-        const { removed } = parent!.content!.removeBetween(undefined, node)
-        const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container)
-        newNode.content!.insertBefore( new LinkedListFragment(removed) )
-        // 插到头部去
-        parent.parent!.children!.insertBefore(newNode, parent)
+            const { removed } = parent!.content!.removeBetween(undefined, node)
+            const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container)
+            newNode.content!.insertBefore( new LinkedListFragment(removed) )
+            // 插到头部去
+            parent.parent!.children!.insertBefore(newNode, parent)
+        }
+
         // 返回断开处的第一个节点，外部可以用来 setCursor
         return parent!.content!.head.next.node
     } else {
         console.log('at end')
+        // TODO 逻辑还要梳理
         // 如果是在一个可以有 children 的 content 的结尾，那么应该是建立这个节点的 children
-        if (parent.constructor.hasChildren && !parent.constructor.createSiblingAsDefault) {
-            // 但这里有个例外，list 这种回车也是建立一个兄弟节点怎么算？Section 是建立 children，但 list 不是？
-            // 创建一个 children 节点，TODO 要制定 Default 类型？
-            const childType = parent.constructor.defaultChildType || 'Para'
-            const { result: newNode } = buildModelFromData({
-                type: childType,
-                content: (nodeTypes[childType]!.createDefaultContent || createDefaultContent)()
-            })
-            parent.children!.insertBefore(newNode)
-            return newNode.content!.head.next.node
-        } else {
-            // 如果是一个不能有 children 的，那么应该是建立一个兄弟节点，例如 Para。
-            // 创建一个 sibling
-            const { result: newNode } = buildModelFromData({
-                type: parent.data.type,
-                content: (parent.constructor.createDefaultContent || createDefaultContent)()
-            })
+        let newNode
+        if(parent.constructor.createSiblingAsDefault) {
+            newNode = parent.cloneEmpty()
             parent.parent!.children!.insertAfter(newNode, parent)
-            return newNode.content!.head.next.node
+        } else {
+            newNode = createDefaultNode()
+            if (parent.constructor.hasChildren) {
+                // 但这里有个例外，list 这种回车也是建立一个兄弟节点怎么算？Section 是建立 children，但 list 不是？
+                // 创建一个 children 节点，TODO 要制定 Default 类型？
+                parent.children!.insertBefore(newNode)
+            } else {
+                // 如果是一个不能有 children 的，那么应该是建立一个兄弟节点，例如 Para。
+                // 创建一个 sibling
+                parent.parent!.children!.insertAfter(newNode, parent)
+            }
         }
+        return newNode.content!.head.next.node
     }
 }
 
@@ -509,4 +513,49 @@ export function createRangeLikeFromRange(range: Range) {
     }
 }
 
+export function findPreviousSiblingInTree(node: NodeType) {
+    if (node.previousSibling) return node.previousSibling
 
+    let pointer = node.parent
+    let found
+    while(pointer) {
+        if (pointer.previousSibling) {
+            break
+        } else if(pointer.parent.content?.tail){
+            found = pointer.parent.content.tail.node
+            break
+        } else {
+            pointer = pointer.parent
+        }
+    }
+
+    if (found) return found
+
+    if (pointer) {
+        return findLastLeafNode(pointer.previousSibling)
+    }
+}
+
+function findLastLeafNode(node: NodeType) {
+    let pointer = node
+    while(pointer.children?.tail) {
+        pointer = pointer.children.tail.node
+    }
+
+    return pointer.content!.tail!.node
+}
+
+
+export function createDefaultNode(content?: LinkedList) {
+    // TODO 变成可以配置的？
+    const data: NodeData = { type: 'Para'}
+    if (!content) {
+        data.content = createDefaultContent()
+    }
+    const { result } = buildModelFromData(data)
+
+    if (content) {
+        result.content!.insertAfter(content)
+    }
+    return result as NodeType
+}

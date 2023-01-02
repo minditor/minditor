@@ -1,4 +1,4 @@
-import {NodeData} from "./editing";
+import {NodeData, findPreviousSiblingInTree, createDefaultContent, buildModelFromData} from "./editing";
 import {LinkedList} from "./linkedList";
 import {createElement} from "./DOM";
 export type RenderProp = {content?: Function, children?: Function, value?: Object, props?:any}
@@ -19,8 +19,28 @@ export class NodeType {
     get previousSibling() {
         return this.container?.getItem(this).prev?.node
     }
+    get previousSiblingInTree() {
+        return findPreviousSiblingInTree(this)
+    }
     get nextSibling() {
         return this.container?.getItem(this).next?.node
+    }
+    cloneEmpty() {
+        const data: NodeData = { type: this.data.type }
+        const Type = this.constructor as typeof NodeType
+        if (Type.hasContent) {
+            data.content = createDefaultContent()
+        }
+
+        if (Type.hasChildren) {
+            data.children = []
+        }
+
+        // CAUTION 这样才会递归建立 content,children
+        return buildModelFromData(data).result
+    }
+    remove() {
+        return this.container?.removeBetween(this.previousSibling, this)
     }
     children? : LinkedList
     content? : LinkedList
@@ -36,14 +56,14 @@ export class NodeType {
     }
     toJSON() {
         const result : { type: string, content?: any[], children? : any[], value?: any } = { type: this.data.type }
-        if (this.content) {
+        if ((this.constructor as typeof NodeType).hasContent) {
             result.content = []
             this.content?.forEach((item:NodeType) => {
                 result.content!.push(item.toJSON())
             })
         }
 
-        if (this.children) {
+        if ((this.constructor as typeof NodeType).hasChildren) {
             result.children = []
             this.children?.forEach((item: NodeType) => {
                 result.children!.push(item.toJSON())

@@ -1,6 +1,8 @@
 
 
-const eventCallbackByEventName = {}
+const eventCallbacksByEventName = {}
+
+const eventToCallbackRef = {}
 
 function createCallback(callbacksRef) {
     return (e) => {
@@ -19,14 +21,23 @@ export function trigger(event) {
 }
 
 export function on(event, handle) {
-    if(!eventCallbackByEventName[event]) {
-        eventCallbackByEventName[event] = new Set()
+    if(!eventCallbacksByEventName[event]) {
+        eventCallbacksByEventName[event] = new Set()
         // TODO document 应该改成 rootElement ?
-        document.addEventListener(event, createCallback(eventCallbackByEventName[event]))
+        eventToCallbackRef[event] = createCallback(eventCallbacksByEventName[event])
+        document.addEventListener(event, eventToCallbackRef[event])
     }
 
-    eventCallbackByEventName[event].add(handle)
+    eventCallbacksByEventName[event].add(handle)
     return function off() {
-        eventCallbackByEventName[event].delete(handle)
+        eventCallbacksByEventName[event].delete(handle)
     }
+}
+
+export function removeAll() {
+    Object.entries(eventToCallbackRef).forEach(([event, callbackRef]) => {
+        document.removeEventListener(event, callbackRef)
+        delete eventToCallbackRef[event]
+        delete eventCallbacksByEventName[event]
+    })
 }

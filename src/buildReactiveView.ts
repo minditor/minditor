@@ -11,7 +11,7 @@ function buildReactiveLinkedList(contentLinkedList: LinkedList) {
     return function attach(dom: HTMLElement) {
         let parentEl: DocumentFragment | HTMLElement = document.createDocumentFragment()
 
-        autorunForEach(contentLinkedList, [contentLinkedList.insertAfter, contentLinkedList.removeBetween],
+        const stopAutorun = autorunForEach(contentLinkedList, [contentLinkedList.insertAfter, contentLinkedList.removeBetween],
             (node: NodeType) => {
                 // 如果一讲有了 element，说明是把别人的 node 移动过来的额，不不用再新建，
                 // CAUTION 这要做更严谨的校验，防止共用 node 引用的情况。
@@ -32,6 +32,7 @@ function buildReactiveLinkedList(contentLinkedList: LinkedList) {
                 if (refElement?.parentElement === parentEl) {
                     parentEl.insertBefore(element, refElement)
                 } else {
+                    console.log(refElement?.parentElement === parentEl, parentEl, element)
                     parentEl.insertBefore(element, null)
                 }
 
@@ -39,10 +40,21 @@ function buildReactiveLinkedList(contentLinkedList: LinkedList) {
             (removedNode: NodeType) => {
                 const element = nodeToElement.get(removedNode)
                 if (!element) debugger
+                console.log('remove element', element)
                 element.remove()
             },
-            scheduleUpdate
+            scheduleUpdate,
+            {
+                onRecompute() {
+                    debugger
+                    throw new Error('should never recomputed')
+                }
+            }
         )
+
+        contentLinkedList.onMove(() => {
+            stopAutorun()
+        })
 
         // 第一次的时候为了节约性能所以用 fragment，后面增量就都直接用 dom 了
         dom.appendChild(parentEl)
