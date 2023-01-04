@@ -265,6 +265,7 @@ export class LinkedList {
         // 不包括 from，包括 end
         let current = start.next
         const that = this
+        if (!current && that.tail) debugger
         return {
             next() {
                 // 如果不是个空链表但是，current 却为空了，说明 end 要么是在 start 前面，要么不属于本 list
@@ -275,6 +276,7 @@ export class LinkedList {
                 // 可能是个空的
                 const value = current?.node
                 current = current?.next
+                if (!done && !current) debugger
                 return { done, value};
             },
             return() {

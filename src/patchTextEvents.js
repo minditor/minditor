@@ -119,7 +119,7 @@ export default function patchTextEvents(on, trigger) {
                     const parent = node.parent
 
                     if(parent.constructor.unwrap) {
-                        parent.constructor.unwrap(parent)
+                        await parent.constructor.unwrap(parent)
                     } else {
                         // 默认行为？content 合并，children 提升？
                         const previousSiblingInTree = node.previousSiblingInTree
@@ -183,7 +183,7 @@ export default function patchTextEvents(on, trigger) {
             const parent = node.parent
             if(e.shiftKey) {
                 if(parent.constructor.unwrap) {
-                    parent.constructor.unwrap(parent, createDefaultNode)
+                    await parent.constructor.unwrap(parent)
                 }
             } else {
                 if(parent.constructor.wrap) {

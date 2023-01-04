@@ -334,8 +334,8 @@ export async function splitTextAsBlock(inputNode: RangeLike | Range) : Promise<N
             newNode = createDefaultNode()
             if (parent.constructor.hasChildren) {
                 // 但这里有个例外，list 这种回车也是建立一个兄弟节点怎么算？Section 是建立 children，但 list 不是？
-                // 创建一个 children 节点，TODO 要制定 Default 类型？
-                parent.children!.insertBefore(newNode)
+                // 创建一个 children 节点在头部
+                parent.children!.insertAfter(newNode)
             } else {
                 // 如果是一个不能有 children 的，那么应该是建立一个兄弟节点，例如 Para。
                 // 创建一个 sibling

@@ -45,7 +45,7 @@ module.exports = {
   testPathIgnorePatterns: process.env.SKIP_E2E
     ? // ignore example tests on netlify builds since they don't contribute
       // to coverage and can cause netlify builds to fail
-      ['/node_modules/', '/examples/__tests__']
+      ['/node_modules/', '/examples/__tests__', 'cypress']
     : ['/node_modules/'],
   moduleNameMapper: {
     '@ariesate/reactivity':'<rootDir>/../reactivity/dist/reactivity.cjs.js'

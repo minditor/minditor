@@ -7,7 +7,7 @@ import {NodeType} from "./NodeType";
 
 export const nodeToElement = new WeakMap()
 
-function buildReactiveLinkedList(contentLinkedList: LinkedList) {
+export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
     return function attach(dom: HTMLElement) {
         let parentEl: DocumentFragment | HTMLElement = document.createDocumentFragment()
 
@@ -20,6 +20,8 @@ function buildReactiveLinkedList(contentLinkedList: LinkedList) {
 
                 const item = contentLinkedList.getItem(node)
                 const refElement = nodeToElement.get(item.next?.node)
+
+                // 到底什么时候会触发这个情况？？？
                 if (parentEl === dom && item.next?.node && !refElement){
                     // parentEl === dom 但是却没有 next 说明是最后一个，或者之前是空的？
                     debugger
@@ -135,7 +137,26 @@ function updateQueue() {
     }
     tokensToUpdate.clear()
 }
+
+// CAUTION 默认使用的是同步的 update，因为我们没有搞定 patch 累加计算的问题
 export function scheduleUpdate(updateMethod: Function) {
+    // if (!scheduleTask) {
+    //     scheduleTask = Promise.resolve().then(() => {
+    //         updateQueue()
+    //         scheduleTask = undefined
+    //     })
+    // }
+    // tokensToUpdate.add(updateMethod)
+    updateMethod()
+}
+export function waitUpdate() {
+    if (!scheduleTask) {
+        console.warn('no async task')
+    }
+    return scheduleTask
+}
+
+export function scheduleBatchUpdate(updateMethod: Function) {
     if (!scheduleTask) {
         scheduleTask = Promise.resolve().then(() => {
             updateQueue()
@@ -143,7 +164,4 @@ export function scheduleUpdate(updateMethod: Function) {
         })
     }
     tokensToUpdate.add(updateMethod)
-}
-export function waitUpdate() {
-    return scheduleTask
 }

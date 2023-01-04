@@ -4,7 +4,12 @@ export const data = {
     children: [{
         type: 'Section',
         content: [{type: 'Text', value: '11'}],
-        children: []
+        children: [{
+            type: 'Para',
+            content: [
+                {type: 'Text', value: '22'},
+            ]
+        }]
     }]
 }
 

@@ -2,7 +2,7 @@
 // @ts-ignore
 import {createElement} from "./DOM";
 import {LinkedList, LinkedListFragment} from "./linkedList";
-import {createReactiveAttribute} from "./buildReactiveView";
+import {createReactiveAttribute, waitUpdate} from "./buildReactiveView";
 // @ts-ignore
 import {patchPoint, reactive} from '@ariesate/reactivity'
 import { NodeType, RenderProp } from "./NodeType";
@@ -10,7 +10,7 @@ import { NodeType, RenderProp } from "./NodeType";
 import Table from './components/Table'
 // @ts-ignore
 // import Code from './components/Code'
-import {createDefaultNode as defaultCreateDefaultNode, NodeData} from "./editing";
+import {buildModelFromData, createDefaultNode as defaultCreateDefaultNode, NodeData} from "./editing";
 
 
 class TextBlock extends NodeType{
@@ -35,11 +35,12 @@ class Doc extends TextBlock{
     }
 }
 
+
 class Para extends TextBlock{
     static readonly hasChildren = false
     render({ content }: RenderProp) {
         return (
-            <p>{content}</p>
+            <p data-type-para>{content}</p>
         )
     }
 }
@@ -49,7 +50,7 @@ class Para extends TextBlock{
 class Section extends TextBlock {
     render({ content, children }:RenderProp) {
         return (
-            <div>
+            <div data-type-section>
                 <h1>{content}</h1>
                 <div>
                     {children}
@@ -65,7 +66,7 @@ class List extends TextBlock{
     static readonly hasContent = false
     render({ children }:RenderProp) {
         return (
-            <div>
+            <div data-type-list>
                 {children}
             </div>
         )
@@ -74,7 +75,7 @@ class List extends TextBlock{
 
 class ListItem extends TextBlock{
     static readonly createSiblingAsDefault = true
-    static unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = defaultCreateDefaultNode) {
+    static async unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = defaultCreateDefaultNode) {
         const parent = node.parent
         if (parent.constructor === ListItem) {
 
@@ -96,30 +97,32 @@ class ListItem extends TextBlock{
             // 1. content 变 para。2. children 提上了，如果没有了，那么整个结构都不要了。 3. 如果自己不是第一个，还要和前面的 List 断开变成两个结构。
             const previousSibling = node.previousSibling
 
-            // 把自己后面的都移除掉，用来创建新的 List
-            const {removed: removedSiblings} = parent.children.removeBetween(node)
-
-            node.remove()
-            const newNode = createDefaultNode(node.content!.move())
-
-            // 把转化成了普通节点的新节点插入
-            parent.parent.children.insertAfter(newNode, parent)
-            // 把前面的兄弟节点变成新的 list
-            if (removedSiblings?.from || node.children?.tail) {
+            if (previousSibling) {
+                // 把前面的都移除，创建一个新的 list
+                const {removed: removedSiblings} = parent.children.removeBetween(undefined, previousSibling)
                 const newList = new List({type: 'List'})
-                if (node.children?.tail) {
-                    newList.children.insertBefore(node.children.move())
-                }
-
-                if (removedSiblings?.from) {
-                    newList.children.insertBefore(new LinkedListFragment(removedSiblings!))
-                }
-
-                parent.parent.children.insertAfter(newList, newNode)
+                newList.children.insertBefore(new LinkedListFragment(removedSiblings!))
+                parent.container!.insertBefore(newList, parent)
             }
 
-            // 说明自己是第一个，那么原来这个 List 里面什么也没有了，不要了
-            if (!previousSibling) {
+
+            // 把自己移除，改成 Para
+            node.remove()
+            const newNode = createDefaultNode(node.content!.move())
+            // const newNode = buildModelFromData({ type: 'Para', content: node.toJSON().content })
+            //
+            // 把转化成了普通节点的新节点插入
+            // CAUTION TODO 到底为什么这里要 waitUpdate ???? 好像还是没有想清楚
+            // await waitUpdate()
+            parent.container!.insertBefore(newNode, parent)
+            //
+            // 把自己的 children 全部提升一级
+            if (node.children!.size()) {
+                parent.children.insertAfter(node.children!.move())
+            }
+
+            // 说明自己是唯一的一个节点，整个 List 都空了，结构也就不要了
+            if (!parent.children.size()) {
                 parent.remove()
             }
 
@@ -171,7 +174,7 @@ class Text extends NodeType{
         })
 
         // @ts-ignore
-        return <span _uuid style={style}>{value}</span>
+        return <span data-type-text _uuid style={style}>{value}</span>
     }
 }
 
