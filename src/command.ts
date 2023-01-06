@@ -31,7 +31,7 @@ function matchChar(str, offset, toMatch, endOffset = toMatch.length - 1) {
 }
 
 
-class CharReader {
+export class CharReader {
     constructor(node, offset) {
         this.node = node
         this.offset = offset

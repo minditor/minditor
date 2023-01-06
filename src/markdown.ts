@@ -54,7 +54,6 @@ function createFormatCommands([startChars, closeChars], key, value = true) {
 
             //3. restore selection 到末尾
             setCursor(node, node.value.value.length)
-
         }
     }
 }
