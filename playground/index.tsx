@@ -5,7 +5,7 @@ import {buildReactiveView} from "../src/buildReactiveView";
 
 import patchTextEvents from "../src/patchTextEvents";
 import { registerCommands as markdownCommands } from "../src/markdown";
-// import { registerCommands as suggestionCommands } from "../src/suggestion";
+import { registerCommands as suggestionCommands } from "../src/suggestion";
 import { registerCommands } from "../src/command";
 import { on, trigger } from '../src/event'
 
@@ -30,7 +30,7 @@ document.getElementById('root').appendChild(docElement)
 
 // CAUTION 这个事件顺序挺重要的，command 需要发生在默认输入行为之前。
 registerCommands(markdownCommands(), on)
-// registerCommands(suggestionCommands(), on)
+registerCommands(suggestionCommands(), on)
 
 patchTextEvents(on, trigger)
 

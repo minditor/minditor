@@ -77,7 +77,7 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
 }
 
 
-function buildReactiveValue(node: NodeType) {
+export function buildReactiveValue(node: NodeType) {
     return function attach(dom: HTMLElement ) {
         if (dom.childNodes.length) throw new Error('reactive value container should have no siblings')
         viewToNodeMap.set(dom, node)
@@ -103,7 +103,6 @@ function buildReactiveValue(node: NodeType) {
             },
             scheduleUpdate
         )
-
         // dom.appendChild(textNode)
     }
 }

@@ -74,6 +74,7 @@ export type CommandInstanceArgv = {
 export type Command = {
     onKey?: string
     onInput?: string
+    allowDefault? : boolean
     createInstance?: (argv: CommandInstanceArgv) => CommandInstance
     run?: (argv: CommandRunArgv) => any
 }
@@ -129,16 +130,24 @@ const rectSizeObserver = (() => {
 // TODO 应该注册一个事件，在回调里面统一准备参数就好了，现在有点浪费。
 //  而且 command 是不是同时只能执行一个？如果是的，那么有一个执行就够了。
 
-const commandsByEvent: {[key: string] : Set<Function>} = {}
+type CommandCallback = Function & {
+    allowDefault? : boolean
+}
 
-function createEventCommandCallback(commandCallbacks: Set<Function>) {
+const commandsByEvent: {[key: string] : Set<CommandCallback>} = {}
+
+function createEventCommandCallback(commandCallbacks: Set<CommandCallback>) {
     return function(e: Event) {
         for(let callback of commandCallbacks) {
             const callbackMatch = callback(e)
             // 只要不是显示 return false，就表示匹配成功了。
             // command test 不匹配的时候也会主动 return false，下面自动处理了
             if (callbackMatch !== false) {
-                e.preventDefault()
+                if (!callback.allowDefault) {
+                    console.log('not allow default ')
+                    e.preventDefault()
+                }
+
                 e.stopPropagation()
                 break
             }
@@ -148,6 +157,7 @@ function createEventCommandCallback(commandCallbacks: Set<Function>) {
 }
 
 
+// TODO activated ? 的变量？
 function registerCommand(command: Command, on: Function) {
     // activate: key/selection/scrollIntoView/hover?
     let event: string
@@ -240,8 +250,9 @@ function registerCommand(command: Command, on: Function) {
 
     if (!commandsByEvent[event!]) {
         commandsByEvent[event!] = new Set()
-        on(event!, createEventCommandCallback(commandsByEvent[event!]))
+        on(event!, createEventCommandCallback(commandsByEvent[event!]) )
     }
 
+    callback.allowDefault = command.allowDefault
     commandsByEvent[event!].add(callback)
 }
