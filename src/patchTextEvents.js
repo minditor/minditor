@@ -3,11 +3,10 @@ import {
     createRangeLike,
     findNodeFromElement,
     formatRange,
-    setCursor,
     splitTextAsBlock,
     updateRange
 } from "./editing";
-import {nodeToElement, waitUpdate} from "./buildReactiveView";
+import {waitUpdate, setCursor, findElementOrFirstChildFromNode} from "./buildReactiveView";
 import {LinkedList} from "./linkedList";
 
 
@@ -36,7 +35,7 @@ let lastKeydownKey
 
 
 
-function handleSelection(selection) {
+function collapseSelection(selection) {
     const range = selection.getRangeAt(0).cloneRange()
     let canUseDefault
     if (!range.collapsed) {
@@ -68,9 +67,17 @@ export default function patchTextEvents(on, trigger) {
 
         //1.  单个字符，其他的 key 的名字都长于 1
         if(e.key.length === 1) {
-            // // 自顶一个事件，怎么看待有 selection 的情况？是把 selection 一起传进去，还是拆成两个事件？
-            handleSelection(selection)
-            console.log("inserting", e.key)
+            const inputEvent = new CustomEvent('userInput',  { detail: {data: e.key}, cancelable: true })
+            trigger(inputEvent)
+
+            if(inputEvent.defaultPrevented) {
+                e.preventDefault()
+                e.stopPropagation()
+                return
+            }
+
+            collapseSelection(selection)
+            console.log("inserting", e.key, selection.getRangeAt(0).startContainer)
             // CAUTION 不能在这里插入字符是因为这个时候并不知道是不是输入法的 keydown
             const updateInfo = updateRange(selection.getRangeAt(0), e.key, true)
             // 如果success ===false，说明使用 defaultBehavior 失败了
@@ -83,7 +90,10 @@ export default function patchTextEvents(on, trigger) {
                 setCursor(updateInfo.node, updateInfo.offset)
             }
 
-            trigger(new CustomEvent('userInput',  { detail: {data: e.key} }))
+
+            // 要监听一下 userInput 的 preventDefault?
+
+
         } else  if (e.key === 'Enter') {
             // 回车
             console.log("enter", e)
@@ -111,13 +121,13 @@ export default function patchTextEvents(on, trigger) {
                 // TODO 要不要直接修正一下节点位置？？？
                 if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
 
-                // 破坏性结构
+                // 在整个结构的头部，这回破坏当前的结构
                 if (node === node.container.head.next.node && range.startOffset === 0) {
                     e.preventDefault()
                     e.stopPropagation()
 
                     const parent = node.parent
-
+                    // 如果节点自己有 unwrap 定义，那么就用它自己的
                     if(parent.constructor.unwrap) {
                         await parent.constructor.unwrap(parent)
                     } else {
@@ -125,10 +135,9 @@ export default function patchTextEvents(on, trigger) {
                         const previousSiblingInTree = node.previousSiblingInTree
                         if (previousSiblingInTree) {
                             // 合并内容
-
                             previousSiblingInTree.container.insertBefore(parent.content.move())
-                            // 提升 children
-                            if (parent.children.tail) {
+                            // 如果有 children， 还要提升 children
+                            if (parent.children?.tail) {
                                 if (previousSiblingInTree.parent.constructor.hasChildren) {
                                     previousSiblingInTree.parent.children.insertBefore(parent.children.move())
                                 } else {
@@ -144,7 +153,6 @@ export default function patchTextEvents(on, trigger) {
                     await waitUpdate()
                     // 一定要重置一下，因为这时候 dom 更新了，可出现 cursor 漂移到上一级 div 上。
                     setCursor(node, 0)
-
                 } else {
                     // 选中前一个字符 update 就行了
                     let editingNode = range.startOffset === 0 ? node.previousSibling : node
@@ -191,9 +199,6 @@ export default function patchTextEvents(on, trigger) {
                 }
             }
         }
-
-
-
     })
 
 
@@ -215,11 +220,26 @@ export default function patchTextEvents(on, trigger) {
 
     // 如果碰到了 component + 普通节点的组合，要选中整个 component.
     document.addEventListener('selectionchange', (e) => {
-        adjustSelection()
+        adjustSelection(e)
+    })
+
+
+
+    on('paste', (e) => {
+        console.log('===========')
+        const domparser = new DOMParser()
+        const result = domparser.parseFromString(e.clipboardData.getData('text/html'), 'text/html')
+        console.log(result)
+
     })
 }
 
-function adjustSelection() {
+
+/**
+ *
+ * 用来处理 selection 的头或者尾部选在了组件里面的文本的情况。
+ */
+function adjustSelection(e) {
 
     const selection = window.getSelection()
     if (!selection.rangeCount) return
@@ -228,6 +248,9 @@ function adjustSelection() {
     if (!range) return
 
     if(range.collapsed) {
+        if (window.afterCommand) debugger
+        console.warn('rrr', e)
+        console.info('cursor move', range.startContainer, range.startOffset)
         return
     }
 
@@ -256,11 +279,12 @@ function adjustSelection() {
     newRange.setStart(startContainer, startOffset)
     newRange.setEnd(endContainer, endOffset)
     if (startIsolateNode) {
-        newRange.setStartBefore(nodeToElement.get(startIsolateNode))
+        // TODO 这里有问题，
+        newRange.setStartBefore(findElementOrFirstChildFromNode(startIsolateNode))
     }
 
     if (endIsolateNode) {
-        newRange.setEndAfter(nodeToElement.get(endIsolateNode))
+        newRange.setEndAfter(findElementOrFirstChildFromNode(endIsolateNode))
     }
 
     selection.removeAllRanges()

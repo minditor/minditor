@@ -3,23 +3,35 @@ import {autorun, autorunForEach} from '@ariesate/reactivity'
 import {viewToNodeMap} from "./editing";
 import { LinkedList } from "./linkedList";
 import {NodeType} from "./NodeType";
+import {ExtendedDocumentFragment} from "./DOM";
 
 
 export const nodeToElement = new WeakMap()
 
 export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
     return function attach(dom: HTMLElement) {
+        if (dom.childNodes.length) throw new Error('reactive list container should have no siblings')
+
         let parentEl: DocumentFragment | HTMLElement = document.createDocumentFragment()
 
         const stopAutorun = autorunForEach(contentLinkedList, [contentLinkedList.insertAfter, contentLinkedList.removeBetween],
             (node: NodeType) => {
                 // 如果一讲有了 element，说明是把别人的 node 移动过来的额，不不用再新建，
                 // CAUTION 这要做更严谨的校验，防止共用 node 引用的情况。
-                const element = nodeToElement.get(node) || buildReactiveView(node)
+                let element = nodeToElement.get(node)
+                if (element) {
+                    if (element instanceof ExtendedDocumentFragment) {
+                        // 说明是复用
+                        element.revoke()
+                    }
+                } else {
+                    element = buildReactiveView(node)
+                }
+
                 nodeToElement.set(node, element)
 
                 const item = contentLinkedList.getItem(node)
-                const refElement = nodeToElement.get(item.next?.node)
+                const refElement = findElementOrFirstChildFromNode(item.next?.node)
 
                 // 到底什么时候会触发这个情况？？？
                 if (parentEl === dom && item.next?.node && !refElement){
@@ -34,7 +46,7 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
                 if (refElement?.parentElement === parentEl) {
                     parentEl.insertBefore(element, refElement)
                 } else {
-                    console.log(refElement?.parentElement === parentEl, parentEl, element)
+                    // console.log(refElement?.parentElement === parentEl, parentEl, element)
                     parentEl.insertBefore(element, null)
                 }
 
@@ -67,6 +79,7 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
 
 function buildReactiveValue(node: NodeType) {
     return function attach(dom: HTMLElement ) {
+        if (dom.childNodes.length) throw new Error('reactive value container should have no siblings')
         viewToNodeMap.set(dom, node)
         // let textNode = document.createTextNode('')
         let isLastTextEmpty = false
@@ -123,6 +136,7 @@ export function buildReactiveView(node: NodeType) {
     // TODO 如果 props 也希望被 reactiveView 化呢？
     // TODO 针对 leaf component 节点需要插入一个空的前节点帮助选中
     const element = node.render!({content:reactiveContent, children: reactiveChildren, value: reactiveValue, props: node.props})
+    // TODO 可以是一个 fragment 吗？如果要支持，那么就必须保持住 fragment 和里面元素的引用关系
     if (!element) throw new Error('must return a element')
     viewToNodeMap.set(element, node)
     return element
@@ -164,4 +178,45 @@ export function scheduleBatchUpdate(updateMethod: Function) {
         })
     }
     tokensToUpdate.add(updateMethod)
+}
+
+export function setCursor(inputNode: NodeType, inputOffset: number) {
+    let node = inputNode
+    let offset = inputOffset
+    if ((inputNode.constructor as typeof NodeType).setCursor) {
+        const result = (inputNode.constructor as typeof NodeType).setCursor!(inputNode, inputOffset)
+        if (result) {
+            [node, offset] = result
+        } else {
+            console.warn('focus failed')
+            return
+        }
+    }
+
+    // TODO 默认就是选择第一个能 focus 的位置
+    const range = document.createRange()
+    range.setStart(findFirstDescendantElementFromNode(node), offset)
+
+    range.collapse(true)
+    const selection = window.getSelection()
+    selection!.removeAllRanges()
+    selection!.addRange(range)
+}
+
+export function findElementOrFirstChildFromNode(node: NodeType) {
+    const el = nodeToElement.get(node)
+    if (el instanceof ExtendedDocumentFragment) {
+        return el.firstChild
+    } else {
+        return el
+    }
+}
+
+export function findFirstDescendantElementFromNode(node: NodeType) {
+    let last = nodeToElement.get(node)
+    let pointer
+    while(pointer = last.firstChild) {
+        last = pointer
+    }
+    return last
 }

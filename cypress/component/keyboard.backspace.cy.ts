@@ -5,7 +5,7 @@ import {screen} from "@testing-library/dom";
 import { on, trigger, removeAll} from '../../src/event'
 import patchTextEvents from '../../src/patchTextEvents'
 
-function setCursor(el: HTMLElement, offset: number) {
+function setCursor(el: HTMLElement | ChildNode, offset: number) {
   const range = document.createRange()
   range.setStart(el, offset)
   range.setEnd(el, offset)
@@ -58,8 +58,8 @@ describe('keyboard Enter actions', () => {
       await user.keyboard('{Backspace}')
       await waitUpdate()
       // 测试数据结构？
-
       expect(doc.children!.size()).to.equal(1)
+
       expect(doc.children!.at(0).content.size()).to.equal(4)
 
       // range 测试
@@ -68,9 +68,9 @@ describe('keyboard Enter actions', () => {
       expect(range.startContainer).to.equal(screen.getByText('44').firstChild)
       expect(range.startOffset).to.equal(0)
       expect(range.collapsed).to.equal(true)
-      //
+
       // // 测试 dom
-      const newPElement = screen.getByText('44').parentElement
+      const newPElement = screen.getByText('44').parentElement!
       expect(newPElement.nodeName).to.equal('P')
       expect(newPElement.childNodes.length).to.equal(4)
       expect(newPElement.childNodes[0]!.textContent).to.equal('11')

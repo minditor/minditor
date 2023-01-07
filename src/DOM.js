@@ -50,6 +50,7 @@ export function setAttribute(node, name, value, isSvg) {
       })
     }
   } else if (name === 'dangerouslySetInnerHTML') {
+    console.warn(value)
     if (value) node.innerHTML = value.__html || ''
   } else if (name[0] === 'o' && name[1] === 'n') {
     const useCapture = name !== (name = name.replace(/Capture$/, ''))
@@ -67,8 +68,13 @@ export function setAttribute(node, name, value, isSvg) {
   } else {
     const ns = isSvg && (name !== (name = name.replace(/^xlink\:?/, '')))
     if (value == null || value === false) {
-      if (ns) node.removeAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase())
-      else node.removeAttribute(name)
+      if (ns) {
+        node.removeAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase())
+      } else if (name.toLowerCase() === 'contenteditable' && value === false){
+        node.setAttribute(name, false)
+      } else {
+        node.removeAttribute(name)
+      }
     } else if (typeof value !== 'function') {
       if (ns) node.setAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase(), value)
       else node.setAttribute(name, value)
@@ -84,7 +90,7 @@ function setAttributes(attributes, element, invoke) {
       } else {
         setAttribute(element, name, attribute)
       }
-    } else if (name === 'style' || (!/^_+/.test(name) && !(typeof attribute === 'object'))) {
+    } else if (name === 'style' || name==='dangerouslySetInnerHTML' || (!/^_+/.test(name) && !(typeof attribute === 'object'))) {
       // 不允许 _ 开头的私有attribute，不允许 attribute 为数组或者对象
       setAttribute(element, name, attribute)
     } else if (name === '_uuid') {
@@ -113,6 +119,10 @@ function handlerChildren(container, children) {
   })
 }
 
+
+
+
+
 export function createElement(type, props, ...children) {
   if (type !== Fragment && typeof type === 'function') {
     // 组件
@@ -122,7 +132,7 @@ export function createElement(type, props, ...children) {
   // TODO 处理 attributes
   let container
   if (type === Fragment) {
-    container = document.createDocumentFragment()
+    container = new ExtendedDocumentFragment()
   } else if (typeof type === 'string') {
     container = document.createElement(type)
   } else {
@@ -139,6 +149,39 @@ export function createElement(type, props, ...children) {
   }
   return container
 }
+
+
+export class ExtendedDocumentFragment extends DocumentFragment {
+  static elToFragment = new WeakMap()
+  constructor() {
+    super();
+    this._head = null
+    this._tail = null
+  }
+  appendChild(node) {
+    super.appendChild(node)
+    if (!this._head) {
+      this._head = node
+    }
+
+    this._tail = node
+    ExtendedDocumentFragment.elToFragment.set(node, this)
+  }
+  remove() {
+    this.revoke()
+  }
+  revoke() {
+    let pointer = this._head
+    while(pointer) {
+      super.appendChild(pointer)
+      pointer = pointer === this._tail ? undefined : pointer?.nextSibling
+    }
+  }
+  get firstChild() {
+    return super.firstChild || this._head
+  }
+}
+
 
 export function Fragment() {}
 

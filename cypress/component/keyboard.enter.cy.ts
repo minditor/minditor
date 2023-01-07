@@ -5,7 +5,7 @@ import {screen} from "@testing-library/dom";
 import { on, trigger, removeAll} from '../../src/event'
 import patchTextEvents from '../../src/patchTextEvents'
 
-function setCursor(el: HTMLElement, offset: number) {
+function setCursor(el: HTMLElement|Node, offset: number) {
   const range = document.createRange()
   range.setStart(el, offset)
   range.setEnd(el, offset)
@@ -84,7 +84,7 @@ describe('keyboard Enter actions', () => {
         content: [{ type: 'Text', value: '00'} ],
         children: [{
           type: 'Section',
-          content: [{type: 'Text', value: '11'}]
+          content: [{type: 'Text', value: '11'}] // <-- 这里
         }]
       })
 
@@ -116,6 +116,7 @@ describe('keyboard Enter actions', () => {
       expect(newPElement.childNodes.length).to.equal(1)
       expect(newPElement.firstChild!.nodeName).to.equal('SPAN')
       expect(newPElement.textContent).to.equal('​')
+      // 后面还有一个 ​ 是因为本来 Section 创建的时候就会创建一个默认的 children
       expect(docElement.textContent).to.equal('00​11')
     })
 
@@ -415,13 +416,14 @@ describe('keyboard Enter actions', () => {
       setCursor(screen.getByText('22').firstChild!, 1)
       expect(window.getSelection()!.rangeCount).to.equal(1)
 
-
       await user.keyboard('{Enter}')
       await waitUpdate()
       // 测试数据结构
+
       expect(doc.children!.size()).to.equal(2)
       expect(doc.children!.at(0).data.type).to.equal('Section')
       expect(doc.children!.at(0).children.size()).to.equal(0)
+
       expect(doc.children!.at(0).content.size()).to.equal(2)
 
       expect(doc.children!.at(1).data.type).to.equal('Section')

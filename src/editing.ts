@@ -1,8 +1,9 @@
-import {nodeToElement, waitUpdate} from "./buildReactiveView";
+import {waitUpdate} from "./buildReactiveView";
 // @ts-ignore
 import {nodeTypes} from "./nodeTypes";
 import {NodeType} from "./NodeType";
 import {LinkedList, LinkedListFragment} from "./linkedList";
+import {ExtendedDocumentFragment} from "./DOM";
 
 
 export const viewToNodeMap = new WeakMap()
@@ -16,7 +17,7 @@ export type NodeData = {
     props?: any
 }
 
-export function buildModelFromData(data: NodeData, container?: LinkedList) {
+export function buildModelFromData(data: NodeData, container?: LinkedList, preventCreateDefaultContent = false, preventCreateDefaultChildren = false) {
     const Type =  nodeTypes[data.type] as typeof NodeType
     const result = new Type(data, container)
     let firstLeaf: NodeType, lastLeaf: NodeType
@@ -25,7 +26,8 @@ export function buildModelFromData(data: NodeData, container?: LinkedList) {
         firstLeaf = lastLeaf = result
     } else {
         // 添加 content
-        data.content?.forEach((contentItem) => {
+        const content = data.content || (preventCreateDefaultContent ? undefined : Type.createDefaultContent && Type.createDefaultContent())
+        content?.forEach((contentItem) => {
             const { result: contentItemResult, firstLeaf: firstContentItemLeaf} = buildModelFromData(contentItem, result.content)
             // debugger
             result.content!.insertBefore(contentItemResult)
@@ -33,7 +35,8 @@ export function buildModelFromData(data: NodeData, container?: LinkedList) {
         })
 
         // 添加 children
-        data.children?.forEach((child) => {
+        const children = data.children || (preventCreateDefaultChildren ? undefined : Type.createDefaultChildren && Type.createDefaultChildren())
+        children?.forEach((child) => {
             const {result: childResult, lastLeaf: lastChildLeaf} = buildModelFromData(child, result.children)
 
             result.children!.insertBefore(childResult)
@@ -49,6 +52,8 @@ export function buildModelFromData(data: NodeData, container?: LinkedList) {
     return { firstLeaf, lastLeaf, result}
 }
 
+
+//
 export function findNodeFromElement(element: HTMLElement | Node) {
     let pointer: HTMLElement | Node | null = element
     while(pointer && pointer !== document.body) {
@@ -56,7 +61,7 @@ export function findNodeFromElement(element: HTMLElement | Node) {
         if (item) {
             return item
         } else {
-            pointer = pointer.parentElement
+            pointer = ExtendedDocumentFragment.elToFragment.get(pointer) || pointer.parentElement
         }
     }
 }
@@ -254,6 +259,7 @@ export function replaceNode(newNodeData: NodeData, refNode: NodeType) {
     const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
     refNode.parent!.children!.insertBefore(newNode, refNode)
     refNode.parent!.children!.removeBetween(newNode, refNode)
+    return newNode
 }
 
 export function insertContentNodeAfter(newNodeData: NodeData , refNode: NodeType ) {
@@ -314,7 +320,7 @@ export async function splitTextAsBlock(inputNode: RangeLike | Range) : Promise<N
             await waitUpdate()
 
             const { removed } = parent!.content!.removeBetween(undefined, node)
-            const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container)
+            const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container, true)
             newNode.content!.insertBefore( new LinkedListFragment(removed) )
             // 插到头部去
             parent.parent!.children!.insertBefore(newNode, parent)
@@ -433,24 +439,10 @@ export function formatRange(range : RangeLike | Range, format: Object) {
     })
 }
 
-// TODO 理论上应该支持任何一种 node 开始 setCursor
-export function setCursor(node: NodeType, offset: number) {
 
-    const element = nodeToElement.get(node)
-    if (!element) {
-        return console.error('cannot find element of node', node, offset)
-    }
 
-    const range = document.createRange()
-    // TODO 这里和 leaf element 的实现耦合了。
-    range.setStart(element.firstChild, offset)
 
-    const selection = window.getSelection()
-    selection!.empty()
-    selection!.addRange(range)
-}
-
-export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {startNode: NodeType, endNode: NodeType, startOffset: number, endOffset: number}) {
+export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {startNode: NodeType, endNode: NodeType, startOffset: number, endOffset: number}) : RangeLike {
     let commonAncestorNodeCache:NodeType|undefined
     return {
         startNode,
@@ -481,7 +473,7 @@ export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {
                 }
             }
 
-            return commonAncestorNodeCache
+            return commonAncestorNodeCache as NodeType
         }
     }
 }
@@ -558,4 +550,8 @@ export function createDefaultNode(content?: LinkedList) {
         result.content!.insertAfter(content)
     }
     return result as NodeType
+}
+
+export function createDefaultTextNode(value = '') {
+    return buildModelFromData({type: 'Text', value}).result
 }

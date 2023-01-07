@@ -1,8 +1,17 @@
 import {findNodeFromElement} from "./editing";
+// @ts-ignore
 import {reactive, shallowRef, ref} from "@ariesate/reactivity";
+import {NodeType} from "./NodeType";
 
+type Ref = {
+    value: any
+}
 
-function matchChar(str, offset, toMatch, endOffset = toMatch.length - 1) {
+type ShallowRef = {
+    value: any
+}
+
+function matchChar(str: string, offset: number, toMatch: string, endOffset = toMatch.length - 1) : false | string[] {
     if (!toMatch) return []
 
     const len = toMatch.length
@@ -31,26 +40,59 @@ function matchChar(str, offset, toMatch, endOffset = toMatch.length - 1) {
 }
 
 
+export type CharPairs = [string, string?]
+
 export class CharReader {
-    constructor(node, offset) {
+    node: NodeType
+    offset: number
+    constructor(node: NodeType, offset: number) {
         this.node = node
         this.offset = offset
     }
-    match([startChars, endChars = '']) {
+    match([startChars, endChars = ''] : CharPairs) {
         let offset = this.offset
-        if (!matchChar(this.node.value.value, offset, endChars, offset-1)) return false
+        // 先判断 endChars 是否 match
+        if (!matchChar(this.node.value!.value, offset, endChars, offset-1)) return false
 
-        const matchStartCharsOffset = matchChar(this.node.value.value, offset-endChars.length, startChars)
+        // 再判断 startChars
+        const matchStartCharsOffset = matchChar(this.node.value!.value, offset-endChars.length, startChars)
 
-        return matchStartCharsOffset && matchStartCharsOffset.join('')
+        return Array.isArray(matchStartCharsOffset) ? matchStartCharsOffset.join('') : matchStartCharsOffset
     }
 }
 
 
-export function registerCommands(commands, on) {
-    commands.forEach(command => registerCommand(command, on))
+export type CommandInstanceArgv = {
+    container: HTMLElement,
+    activateAllReactive: Function,
+    deactivateAllReactive: Function,
+    inputValue: Ref,
+    boundingRect: ShallowRef,
+    on: Function
 }
 
+export type Command = {
+    onKey?: string
+    onInput?: string
+    createInstance?: (argv: CommandInstanceArgv) => CommandInstance
+    run?: (argv: CommandRunArgv) => any
+}
+
+export class CommandInstance {
+    activate(argv: CommandRunArgv) {}
+    deactivate?: Function
+}
+
+export type CommandRunArgv = {
+    node: NodeType,
+    charReader: CharReader
+}
+
+
+
+export function registerCommands(commands: (Command)[], on: Function) {
+    commands.forEach(command => registerCommand(command, on))
+}
 
 
 const rectSizeObserver = (() => {
@@ -65,8 +107,8 @@ const rectSizeObserver = (() => {
         }
     })
     return {
-        observe(inputElement, callback, triggerAtOnce) {
-            const element = (inputElement instanceof HTMLElement) ? inputElement : inputElement.parentElement
+        observe(inputElement: HTMLElement | Node, callback: Function, triggerAtOnce: boolean) {
+            const element = (inputElement instanceof HTMLElement) ? inputElement : inputElement.parentElement!
             rectTargetToCallback.set(element, callback)
             observer.observe(element)
             if (triggerAtOnce) {
@@ -86,36 +128,54 @@ const rectSizeObserver = (() => {
 
 // TODO 应该注册一个事件，在回调里面统一准备参数就好了，现在有点浪费。
 //  而且 command 是不是同时只能执行一个？如果是的，那么有一个执行就够了。
-function registerCommand(command, on) {
+
+const commandsByEvent: {[key: string] : Set<Function>} = {}
+
+function createEventCommandCallback(commandCallbacks: Set<Function>) {
+    return function(e: Event) {
+        for(let callback of commandCallbacks) {
+            const callbackMatch = callback(e)
+            // 只要不是显示 return false，就表示匹配成功了。
+            // command test 不匹配的时候也会主动 return false，下面自动处理了
+            if (callbackMatch !== false) {
+                e.preventDefault()
+                e.stopPropagation()
+                break
+            }
+        }
+    }
+
+}
+
+
+function registerCommand(command: Command, on: Function) {
     // activate: key/selection/scrollIntoView/hover?
-    let event
-    let test
+    let event: string
+    let test : Function
     // 用户的注册的 command 有两种，一种是文字输入
     // 另一种是快捷键组合。
 
     if (command.onInput) {
         event = 'userInput'
-        test = (e) => {
-            console.log(e, command.onInput)
-            if (e.detail.data === command.onInput) return true
+        test = (e: CustomEvent) => {
+            if (e.detail.data! === command.onInput) return true
         }
     } else if (command.onKey){
         event = 'keydown'
-        test = (e) => {
-            console.log(e)
+        test = (e: KeyboardEvent) => {
             if (e.key === command.onKey) return true
         }
     }
 
 
-    let instance
+    let instance: CommandInstance|undefined
     let inputValue
-    let boundingRect
+    let boundingRect: ShallowRef
     let activateAllReactive
     let deactivateAllReactive
     let unobserveInputValue
-    let unobserveBoundingRect
-    let caretContainer
+    let unobserveBoundingRect: Function
+    let caretContainer: Node
 
     if (command.createInstance) {
         const container = document.createElement('div')
@@ -132,8 +192,7 @@ function registerCommand(command, on) {
 
         activateAllReactive = () => {
             // 1. 这里会立刻通知位置变化
-            debugger
-            unobserveBoundingRect = rectSizeObserver.observe(caretContainer, (rect) => {
+            unobserveBoundingRect = rectSizeObserver.observe(caretContainer, (rect: DOMRect) => {
                 console.log('observed', rect)
                 boundingRect.value = rect
             }, true)
@@ -146,8 +205,8 @@ function registerCommand(command, on) {
     }
 
 
-    const callback = (e) => {
-        const selection = window.getSelection()
+    const callback = (e: Event) => {
+        const selection = window.getSelection()!
         // TODO 这里对于是否是作用在 selection 上面的 command 还要判断下。目前没有实现在 selection 上的 command，理论上是有的，例如高亮，加粗，评论。
         if (!selection.rangeCount || !selection.isCollapsed) return
 
@@ -166,20 +225,23 @@ function registerCommand(command, on) {
 
             // instance 的 activate 只是一个通知。至于到底要不要接受值，是它自己决定的。
             caretContainer = startContainer
-            debugger
-            const result = instance ? instance.activate({ charReader, node }) : command.run({ charReader, node })
 
-
-            // 命令成功执行，阻止其他默认行为。
-            if (result !== false) {
-                e.preventDefault()
-                return false
-            }
+            // 如果显式地 return false，表示执行过程中发现不匹配，还是可以让其他命令继续执行。
+            // 如果直接是失败，应该 throw new Error
+            return instance ? instance.activate({ charReader, node }) : command.run!({ charReader, node })
+        } else {
+            // 表示不匹配，一定要显示地表达出来
+            return false
         }
     }
 
 
     // TODO 如果有 instance，要监听 deactivate 事件，调用 deactivate，不然监听的 inputValue 和 boundingRect 都没卸载
 
-    on(event, callback)
+    if (!commandsByEvent[event!]) {
+        commandsByEvent[event!] = new Set()
+        on(event!, createEventCommandCallback(commandsByEvent[event!]))
+    }
+
+    commandsByEvent[event!].add(callback)
 }

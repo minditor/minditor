@@ -7,8 +7,16 @@ export class NodeType {
     constructor(data: NodeData, container?:LinkedList) {
         this.data = data
         this.container = container
+        if ((this.constructor as typeof NodeType).hasContent) {
+            this.content = new LinkedList(this)
+        }
+        if ((this.constructor as typeof NodeType).hasChildren) {
+            this.children = new LinkedList(this)
+        }
     }
-    static createDefaultContent?: Function
+    static createDefaultContent?: () => NodeData[]
+    static createDefaultChildren?: () =>  NodeData[]
+    static setCursor?: (node: NodeType, offset: number) => [NodeType, number] | false
     static hasContent?: Boolean
     static hasChildren?: Boolean
     static isLeaf?: Boolean

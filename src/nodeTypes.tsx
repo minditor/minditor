@@ -1,8 +1,9 @@
 /**@jsx createElement*/
+/**@jsxFrag Fragment*/
 // @ts-ignore
-import {createElement} from "./DOM";
+import {createElement, Fragment} from "./DOM";
 import {LinkedList, LinkedListFragment} from "./linkedList";
-import {createReactiveAttribute, waitUpdate} from "./buildReactiveView";
+import {createReactiveAttribute, setCursor, waitUpdate} from "./buildReactiveView";
 // @ts-ignore
 import {patchPoint, reactive} from '@ariesate/reactivity'
 import { NodeType, RenderProp } from "./NodeType";
@@ -14,8 +15,6 @@ import {buildModelFromData, createDefaultNode as defaultCreateDefaultNode, NodeD
 
 
 class TextBlock extends NodeType{
-    content = new LinkedList(this)
-    children = new LinkedList(this)
     data?: NodeData
     container?: LinkedList
     static hasContent = true
@@ -23,6 +22,7 @@ class TextBlock extends NodeType{
 }
 
 class Doc extends TextBlock{
+    static hasChildren = true
     render({ content, children }:RenderProp){
         return (
             <div>
@@ -38,6 +38,9 @@ class Doc extends TextBlock{
 
 class Para extends TextBlock{
     static readonly hasChildren = false
+    static setCursor(node: NodeType, offset: number) : [NodeType, number] | false {
+        return [node.content!.head.next.node, offset]
+    }
     render({ content }: RenderProp) {
         return (
             <p data-type-para>{content}</p>
@@ -48,14 +51,20 @@ class Para extends TextBlock{
 
 
 class Section extends TextBlock {
+    static setCursor(node: NodeType, offset: number) : [NodeType, number] | false {
+        return [node.content!.head.next.node, offset]
+    }
+    static createDefaultContent() : NodeData[]{
+        return [{ type: 'Text', value: ''}]
+    }
     render({ content, children }:RenderProp) {
         return (
-            <div data-type-section>
+            <section data-type-section>
                 <h1>{content}</h1>
                 <div>
                     {children}
                 </div>
-            </div>
+            </section>
         )
     }
 }
@@ -64,6 +73,12 @@ class Section extends TextBlock {
 
 class List extends TextBlock{
     static readonly hasContent = false
+    static setCursor(node: NodeType, offset: number) : [NodeType, number] | false {
+        return ListItem.setCursor(node.children!.head.next.node, offset)
+    }
+    static createDefaultChildren() : NodeData[] {
+        return [{ type: 'ListItem'}]
+    }
     render({ children }:RenderProp) {
         return (
             <div data-type-list>
@@ -75,12 +90,18 @@ class List extends TextBlock{
 
 class ListItem extends TextBlock{
     static readonly createSiblingAsDefault = true
+    static setCursor(node: NodeType, offset: number) : [NodeType, number] | false {
+        return Para.setCursor(node.content!.head.next.node, offset)
+    }
+    static createDefaultContent() : NodeData[]{
+        return [{ type: 'Para', content: [{ type: 'Text', value: ''}]}]
+    }
     static async unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = defaultCreateDefaultNode) {
         const parent = node.parent
         if (parent.constructor === ListItem) {
 
             // TODO 要不要 waitUpdate?
-            const { removed: removedSiblings } = parent.children.removeBetween(node)
+            const { removed: removedSiblings } = parent.children!.removeBetween(node)
             // 自己不是一级节点，往上提一级，接管父节点后面的兄弟节点。
             node.remove()
 
@@ -99,9 +120,9 @@ class ListItem extends TextBlock{
 
             if (previousSibling) {
                 // 把前面的都移除，创建一个新的 list
-                const {removed: removedSiblings} = parent.children.removeBetween(undefined, previousSibling)
+                const {removed: removedSiblings} = parent.children!.removeBetween(undefined, previousSibling)
                 const newList = new List({type: 'List'})
-                newList.children.insertBefore(new LinkedListFragment(removedSiblings!))
+                newList.children!.insertBefore(new LinkedListFragment(removedSiblings!))
                 parent.container!.insertBefore(newList, parent)
             }
 
@@ -118,11 +139,11 @@ class ListItem extends TextBlock{
             //
             // 把自己的 children 全部提升一级
             if (node.children!.size()) {
-                parent.children.insertAfter(node.children!.move())
+                parent.children!.insertAfter(node.children!.move())
             }
 
             // 说明自己是唯一的一个节点，整个 List 都空了，结构也就不要了
-            if (!parent.children.size()) {
+            if (!parent.children!.size()) {
                 parent.remove()
             }
 
@@ -153,7 +174,20 @@ class Text extends NodeType{
     static readonly isLeaf = true
     static formatToStyle = ([formatName, formatValue]:[string, any]) => {
         if (formatName === 'bold') {
-            return ['fontWeight', 'bold']
+            return {
+                fontWeight: 'bold'
+            }
+        } else if (formatName === 'italic') {
+            return { fontStyle: 'italic'}
+        } else if (formatName === 'underline') {
+            // TODO color?
+            return {
+                textDecorationLine: 'underline'
+            }
+        } else if (formatName === 'lineThrough') {
+            return {
+                textDecorationLine: 'line-through'
+            }
         }
     }
     value
@@ -168,13 +202,15 @@ class Text extends NodeType{
     render({ value, props }: RenderProp) {
         // TODO format to style
         const style = createReactiveAttribute(() => {
-
             // @ts-ignore
-            return Object.fromEntries(Object.entries(props.formats || {}).map(Text.formatToStyle))
+            return Object.assign({}, ...Object.entries(props.formats || {}).map(Text.formatToStyle))
         })
-
         // @ts-ignore
         return <span data-type-text _uuid style={style}>{value}</span>
+        // return <>
+        //     <span data-type-text _uuid style={style}>{value}</span>
+        //     <span contenteditable={false} dangerouslySetInnerHTML={{__html: '&ZeroWidthSpace;'}}></span>
+        // </>
     }
 }
 
