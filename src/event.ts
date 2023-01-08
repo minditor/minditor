@@ -4,6 +4,8 @@ const eventCallbacksByEventName: {[key: string] : Set<Function>} = {}
 
 const eventToCallbackRef: {[key: string] : Function} = {}
 
+
+
 function createCallback(callbacksRef: Set<Function>) {
     return (e: any) => {
         for(let callback of callbacksRef) {
@@ -19,6 +21,8 @@ function createCallback(callbacksRef: Set<Function>) {
 export function trigger(event: Event) {
     document.dispatchEvent(event)
 }
+
+
 
 export function on(event: string, handle: Function) {
     if(!eventCallbacksByEventName[event]) {

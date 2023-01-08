@@ -16,10 +16,11 @@ export class NodeType {
     }
     static createDefaultContent?: () => NodeData[]
     static createDefaultChildren?: () =>  NodeData[]
-    static setCursor?: (node: NodeType, offset: number) => [NodeType, number] | false
+    static setCursor?: (node: NodeType, offset: number, setNativeCursor?: Function) => [NodeType, number] | false | void
     static hasContent?: Boolean
     static hasChildren?: Boolean
     static isLeaf?: Boolean
+    static isComponent?: Boolean
     container?: LinkedList
     get parent() {
         return this.container?.owner

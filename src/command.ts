@@ -62,13 +62,15 @@ export class CharReader {
 }
 
 
+export type RectSizeObserver = {
+    observe: (argv: HTMLElement | Node) => ([Ref, Function])
+}
+
 export type CommandInstanceArgv = {
     container: HTMLElement,
-    activateAllReactive: Function,
-    deactivateAllReactive: Function,
-    inputValue: Ref,
-    boundingRect: ShallowRef,
-    on: Function
+    userSelectionRange: Ref,
+    on: Function,
+    rectSizeObserver : RectSizeObserver
 }
 
 export type Command = {
@@ -85,19 +87,21 @@ export class CommandInstance {
 }
 
 export type CommandRunArgv = {
-    node: NodeType,
+    userSelectionRange: Ref,
     charReader: CharReader
 }
 
 
+type Utils = {on: Function, userSelectionRange: Ref}
 
-export function registerCommands(commands: (Command)[], on: Function) {
-    commands.forEach(command => registerCommand(command, on))
+export function registerCommands(commands: (Command)[], utils: Utils ) {
+    commands.forEach(command => registerCommand(command, utils))
 }
 
-
-const rectSizeObserver = (() => {
+export const rectSizeObserver = (() => {
     const rectTargetToCallback = new WeakMap()
+    const rectTargetToValue = new WeakMap()
+    const rectTargetObserverCount = new WeakMap()
 
     const observer = new ResizeObserver((entries) => {
         for (const entry of entries) {
@@ -107,23 +111,36 @@ const rectSizeObserver = (() => {
             callback(entry.contentRect)
         }
     })
+
     return {
-        observe(inputElement: HTMLElement | Node, callback: Function, triggerAtOnce: boolean) {
+        observe(inputElement: HTMLElement | Node) {
             const element = (inputElement instanceof HTMLElement) ? inputElement : inputElement.parentElement!
-            rectTargetToCallback.set(element, callback)
-            observer.observe(element)
-            if (triggerAtOnce) {
-                Promise.resolve().then(() => {
-                    callback(element.getBoundingClientRect())
-                })
+
+            let value: Ref = rectTargetToValue.get(element)
+            if (!value) {
+                rectTargetToValue.set(element, (value = shallowRef(element.getBoundingClientRect())))
+                rectTargetToCallback.set(element, (newRect: DOMRectReadOnly) => value.value = newRect)
+                rectTargetObserverCount.set(element, (rectTargetObserverCount.get(element) || 0) + 1)
+                observer.observe(element)
             }
 
-            return function unobserve() {
-                observer.unobserve(element)
-                rectTargetToCallback.delete(element)
-            }
+            return [
+                value,
+                function unobserve() {
+                    const count = rectTargetObserverCount.get(element)
+                    if (!(count > 0)) throw new Error('unexpected unobserve called')
+                    const newCount = count -1
+                    if (newCount) {
+                        rectTargetObserverCount.set(element, newCount)
+                    } else {
+                        rectTargetToValue.delete(element)
+                        rectTargetToCallback.delete(element)
+                        rectTargetObserverCount.delete(element)
+                        observer.unobserve(element)
+                    }
+                }]
         }
-    }
+    } as RectSizeObserver
 })()
 
 
@@ -158,10 +175,11 @@ function createEventCommandCallback(commandCallbacks: Set<CommandCallback>) {
 
 
 // TODO activated ? 的变量？
-function registerCommand(command: Command, on: Function) {
+function registerCommand(command: Command, utils: Utils) {
+    const {on, userSelectionRange} = utils
     // activate: key/selection/scrollIntoView/hover?
-    let event: string
-    let test : Function
+    let event: string | undefined
+    let test : Function|undefined
     // 用户的注册的 command 有两种，一种是文字输入
     // 另一种是快捷键组合。
 
@@ -178,81 +196,58 @@ function registerCommand(command: Command, on: Function) {
     }
 
 
-    let instance: CommandInstance|undefined
-    let inputValue
-    let boundingRect: ShallowRef
-    let activateAllReactive
-    let deactivateAllReactive
-    let unobserveInputValue
-    let unobserveBoundingRect: Function
     let caretContainer: Node
 
     if (command.createInstance) {
+        if (event) throw new Error('command with instance should handle event by itself')
         const container = document.createElement('div')
         document.body.appendChild(container)
 
-
-        // 监听并修改在下面的 callback 成功激活后面
-        inputValue = ref('')
-        boundingRect = shallowRef({left: 0, top:0, bottom:0, right:0, width: 0, height: 0})
-        const deactivateAllReactive = () => {
-            // unobserveInputValue()
-            unobserveBoundingRect()
-        }
-
-        activateAllReactive = () => {
-            // 1. 这里会立刻通知位置变化
-            unobserveBoundingRect = rectSizeObserver.observe(caretContainer, (rect: DOMRect) => {
-                console.log('observed', rect)
-                boundingRect.value = rect
-            }, true)
-
-            // 2. TODO inputValue
-        }
-
         // 让 instance 自己决定什么时候开始接受值的变化，什么时候不接受。这样可以设计一直  activate 的 instance.
-        instance = command.createInstance({ container, activateAllReactive, deactivateAllReactive, inputValue, boundingRect, on })
-    }
+        command.createInstance({
+            container,
+            userSelectionRange,
+            on,
+            rectSizeObserver,
+        })
+    } else {
+        const callback = (e: Event) => {
+            const selection = window.getSelection()!
+            // TODO 这里对于是否是作用在 selection 上面的 command 还要判断下。目前没有实现在 selection 上的 command，理论上是有的，例如高亮，加粗，评论。
+            if (!selection.rangeCount || !selection.isCollapsed) return
 
 
-    const callback = (e: Event) => {
-        const selection = window.getSelection()!
-        // TODO 这里对于是否是作用在 selection 上面的 command 还要判断下。目前没有实现在 selection 上的 command，理论上是有的，例如高亮，加粗，评论。
-        if (!selection.rangeCount || !selection.isCollapsed) return
+            if (test && test(e)) {
+                /**
+                 * 准备参数
+                 * charReader ?
+                 */
+                const charReader = new CharReader(userSelectionRange.value.startNode, userSelectionRange.value.startOffset)
+
+                // command 失败或者不匹配需要显示 return false。
+                // 否则认为成功了，我们在这里 return false 给 event handle 表示要阻止默认的输入事件
 
 
-        if (test(e)) {
-            /**
-             * 准备参数
-             * charReader ?
-             */
-            const { startContainer, startOffset } = selection.getRangeAt(0)
-            const node = findNodeFromElement(startContainer)
-            const charReader = new CharReader(node, startOffset)
+                // 如果显式地 return false，表示执行过程中发现不匹配，还是可以让其他命令继续执行。
+                // 如果直接是失败，应该 throw new Error
+                return command.run!({ charReader, userSelectionRange })
+            } else {
+                // 表示不匹配，一定要显示地表达出来
+                return false
+            }
+        }
 
-            // command 失败或者不匹配需要显示 return false。
-            // 否则认为成功了，我们在这里 return false 给 event handle 表示要阻止默认的输入事件
 
-            // instance 的 activate 只是一个通知。至于到底要不要接受值，是它自己决定的。
-            caretContainer = startContainer
+        if (event) {
+            if (!commandsByEvent[event!]) {
+                commandsByEvent[event!] = new Set()
+                on(event!, createEventCommandCallback(commandsByEvent[event!]) )
+            }
 
-            // 如果显式地 return false，表示执行过程中发现不匹配，还是可以让其他命令继续执行。
-            // 如果直接是失败，应该 throw new Error
-            return instance ? instance.activate({ charReader, node }) : command.run!({ charReader, node })
-        } else {
-            // 表示不匹配，一定要显示地表达出来
-            return false
+            commandsByEvent[event!].add(callback)
         }
     }
 
 
-    // TODO 如果有 instance，要监听 deactivate 事件，调用 deactivate，不然监听的 inputValue 和 boundingRect 都没卸载
 
-    if (!commandsByEvent[event!]) {
-        commandsByEvent[event!] = new Set()
-        on(event!, createEventCommandCallback(commandsByEvent[event!]) )
-    }
-
-    callback.allowDefault = command.allowDefault
-    commandsByEvent[event!].add(callback)
 }

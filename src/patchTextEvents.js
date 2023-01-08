@@ -1,6 +1,6 @@
 import {
     buildModelFromData,
-    createRangeLike,
+    createRangeLike, createRangeLikeFromRange,
     findNodeFromElement,
     formatRange,
     splitTextAsBlock,
@@ -8,6 +8,7 @@ import {
 } from "./editing";
 import {waitUpdate, setCursor, findElementOrFirstChildFromNode} from "./buildReactiveView";
 import {LinkedList} from "./linkedList";
+import { shallowRef } from '@ariesate/reactivity'
 
 
 function getCurrentRange() {
@@ -50,9 +51,10 @@ function collapseSelection(selection) {
 
 
 
-
 export default function patchTextEvents(on, trigger) {
     // 一致按着会有很多次 keydown 事件
+
+    const userSelectionRange = shallowRef(null)
 
     on('keydown', async (e) => {
         const selection = window.getSelection()
@@ -89,10 +91,6 @@ export default function patchTextEvents(on, trigger) {
                 await waitUpdate()
                 setCursor(updateInfo.node, updateInfo.offset)
             }
-
-
-            // 要监听一下 userInput 的 preventDefault?
-
 
         } else  if (e.key === 'Enter') {
             // 回车
@@ -221,9 +219,16 @@ export default function patchTextEvents(on, trigger) {
     // 如果碰到了 component + 普通节点的组合，要选中整个 component.
     document.addEventListener('selectionchange', (e) => {
         adjustSelection(e)
+
+        const selection = window.getSelection()
+        const range = selection.rangeCount ? selection.getRangeAt(0) : null
+        // 用户可以通过监听事件的方式来处理自己的逻辑
+        const inputEvent = new CustomEvent('userSelectionChange',  { detail: {data: range}})
+        trigger(inputEvent)
+
+        // 也可以直接使用我们的 useSelectionRange reactive 来构建逻辑
+        userSelectionRange.value = range ? createRangeLikeFromRange(range) : null
     })
-
-
 
     on('paste', (e) => {
         console.log('===========')
@@ -232,6 +237,9 @@ export default function patchTextEvents(on, trigger) {
         console.log(result)
 
     })
+
+
+    return { userSelectionRange }
 }
 
 

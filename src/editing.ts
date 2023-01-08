@@ -257,8 +257,8 @@ function cloneDeep(obj: Object) {
 
 export function replaceNode(newNodeData: NodeData, refNode: NodeType) {
     const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
-    refNode.parent!.children!.insertBefore(newNode, refNode)
-    refNode.parent!.children!.removeBetween(newNode, refNode)
+    refNode.container!.insertBefore(newNode, refNode)
+    refNode.container!.removeBetween(newNode, refNode)
     return newNode
 }
 
@@ -481,6 +481,12 @@ export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {
 export function createRangeLikeFromRange(range: Range) {
     let startNodeCache: NodeType, endNodeCache: NodeType, commonAncestorNodeCache: NodeType
     return {
+        get startContainer() {
+            return range.startContainer
+        },
+        get endContainer() {
+            return range.endContainer
+        },
         get startNode() {
             if (!startNodeCache) {
                 startNodeCache = findNodeFromElement(range.startContainer)
@@ -501,6 +507,9 @@ export function createRangeLikeFromRange(range: Range) {
                 commonAncestorNodeCache = findNodeFromElement(range.commonAncestorContainer)
             }
             return commonAncestorNodeCache
+        },
+        getBoundingClientRect() {
+            return range.getBoundingClientRect()
         }
     }
 }

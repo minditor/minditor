@@ -57,7 +57,7 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
                 console.log('remove element', element)
                 element.remove()
             },
-            scheduleUpdate,
+            scheduleImmediateUpdate,
             {
                 onRecompute() {
                     debugger
@@ -101,7 +101,7 @@ export function buildReactiveValue(node: NodeType) {
                     })
                 }
             },
-            scheduleUpdate
+            scheduleImmediateUpdate
         )
         // dom.appendChild(textNode)
     }
@@ -111,7 +111,7 @@ export function createReactiveAttribute(createAttribute: Function) {
     return function attach(dom : HTMLElement, attributeName: String, setAttribute: Function) {
         autorun(() => {
             setAttribute(dom, attributeName, createAttribute())
-        }, undefined, scheduleUpdate)
+        }, undefined, scheduleImmediateUpdate)
     }
 }
 
@@ -138,6 +138,9 @@ export function buildReactiveView(node: NodeType) {
     // TODO 可以是一个 fragment 吗？如果要支持，那么就必须保持住 fragment 和里面元素的引用关系
     if (!element) throw new Error('must return a element')
     viewToNodeMap.set(element, node)
+
+    // TODO 针对 component 节点要做一些特殊处理？比如拦截事件冒泡？好像没有这么简单，比如组件又想继续使用 inlineTools 什么的应该怎么算？
+
     return element
 }
 
@@ -152,7 +155,7 @@ function updateQueue() {
 }
 
 // CAUTION 默认使用的是同步的 update，因为我们没有搞定 patch 累加计算的问题
-export function scheduleUpdate(updateMethod: Function) {
+export function scheduleImmediateUpdate(updateMethod: Function) {
     // if (!scheduleTask) {
     //     scheduleTask = Promise.resolve().then(() => {
     //         updateQueue()
@@ -179,10 +182,26 @@ export function scheduleBatchUpdate(updateMethod: Function) {
     tokensToUpdate.add(updateMethod)
 }
 
+function setNativeCursor(element: HTMLElement | ChildNode, offset: number) {
+    const range = document.createRange()
+    range.setStart(element, offset)
+
+    range.collapse(true)
+    const selection = window.getSelection()
+    selection!.removeAllRanges()
+    selection!.addRange(range)
+}
+
 export function setCursor(inputNode: NodeType, inputOffset: number) {
     let node = inputNode
     let offset = inputOffset
     if ((inputNode.constructor as typeof NodeType).setCursor) {
+        if((inputNode.constructor as typeof NodeType).isComponent) {
+            // component 自行处理
+            (inputNode.constructor as typeof NodeType).setCursor!(inputNode, inputOffset, setNativeCursor)
+            return
+        }
+
         const result = (inputNode.constructor as typeof NodeType).setCursor!(inputNode, inputOffset)
         if (result) {
             [node, offset] = result
@@ -193,13 +212,7 @@ export function setCursor(inputNode: NodeType, inputOffset: number) {
     }
 
     // TODO 默认就是选择第一个能 focus 的位置
-    const range = document.createRange()
-    range.setStart(findFirstDescendantElementFromNode(node), offset)
-
-    range.collapse(true)
-    const selection = window.getSelection()
-    selection!.removeAllRanges()
-    selection!.addRange(range)
+    setNativeCursor(findFirstDescendantElementFromNode(node), offset)
 }
 
 export function findElementOrFirstChildFromNode(node: NodeType) {

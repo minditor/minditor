@@ -9,6 +9,7 @@ import {patchPoint, reactive} from '@ariesate/reactivity'
 import { NodeType, RenderProp } from "./NodeType";
 // @ts-ignore
 import Table from './components/Table'
+import InsertSuggestion from './components/InsertSuggestion'
 // @ts-ignore
 // import Code from './components/Code'
 import {buildModelFromData, createDefaultNode as defaultCreateDefaultNode, NodeData} from "./editing";
@@ -223,4 +224,5 @@ export const nodeTypes: {[key: string]: typeof NodeType} = {
     ListItem,
     Section,
     Table,
+    InsertSuggestion
 }
