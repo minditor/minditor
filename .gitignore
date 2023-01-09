@@ -29,3 +29,12 @@ coverage
 .next
 package-lock.json
 packages/axii-x6/stats.html
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/test-results/
+/playwright-report/
+/playwright/.cache/
+/test-results/
+/playwright-report/
+/playwright/.cache/

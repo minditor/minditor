@@ -23,6 +23,7 @@ function InsertSuggestion({ value } : RenderProp) {
 export default class ExportInsertSuggestion extends NodeType{
     static isLeaf = true
     static isComponent = true
+    static readonly display = 'inlineBlock'
     dom: HTMLElement|null = null
     constructor(data: any, container: LinkedList) {
         super(data, container)

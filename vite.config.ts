@@ -1,4 +1,5 @@
 import path from 'path'
+import {fileURLToPath, URL } from 'url'
 
 export default {
   esbuild: {
@@ -9,9 +10,9 @@ export default {
     __DEV__: true,
   },
   resolve: {
-    alias: [
-      {find: '@ariesate/reactivity', replacement: path.resolve(__dirname, '../reactivity/dist/reactivity.esm.js')},
-    ]
+    alias: {
+      '@ariesate/reactivity': fileURLToPath(new URL('../reactivity/dist/reactivity.esm.js', import.meta.url))
+    }
   },
   server: {
     fs: {

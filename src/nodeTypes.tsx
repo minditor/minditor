@@ -173,6 +173,7 @@ const patchableSyncValue = patchPoint(function (this: NodeType, newValue: string
 
 class Text extends NodeType{
     static readonly isLeaf = true
+    static readonly display = 'inline'
     static formatToStyle = ([formatName, formatValue]:[string, any]) => {
         if (formatName === 'bold') {
             return {

@@ -7,7 +7,8 @@
     "test": "jest",
     "dev": "vite",
     "build": "vite build",
-    "cypress": "cypress open"
+    "cypress": "cypress open",
+    "test-ct": "playwright test -c playwright-ct.config.ts"
   },
   "repository": {
     "type": "git",
@@ -29,6 +30,8 @@
   },
   "devDependencies": {
     "@jest/globals": "^29.3.1",
+    "@playwright/experimental-ct-react": "^1.29.2",
+    "@playwright/test": "^1.29.2",
     "@testing-library/dom": "^8.19.0",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/user-event": "^14.4.3",
@@ -39,7 +42,6 @@
     "cypress": "^12.2.0",
     "cypress-vite": "^1.3.0",
     "jest-environment-jsdom": "^29.3.1",
-    "playwright-webkit": "^1.29.1",
     "ts-jest": "^29.0.3"
   }
 }

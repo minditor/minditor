@@ -68,10 +68,8 @@ export type RectSizeObserver = {
 
 export type CommandInstanceArgv = {
     container: HTMLElement,
-    userSelectionRange: Ref,
-    on: Function,
     rectSizeObserver : RectSizeObserver
-}
+} & Utils
 
 export type Command = {
     onKey?: string
@@ -92,7 +90,7 @@ export type CommandRunArgv = {
 }
 
 
-type Utils = {on: Function, userSelectionRange: Ref}
+type Utils = {on: Function, userSelectionRange: Ref, visualFocusedBlockNode: Ref}
 
 export function registerCommands(commands: (Command)[], utils: Utils ) {
     commands.forEach(command => registerCommand(command, utils))
@@ -206,9 +204,8 @@ function registerCommand(command: Command, utils: Utils) {
         // 让 instance 自己决定什么时候开始接受值的变化，什么时候不接受。这样可以设计一直  activate 的 instance.
         command.createInstance({
             container,
-            userSelectionRange,
-            on,
             rectSizeObserver,
+            ...utils,
         })
     } else {
         const callback = (e: Event) => {

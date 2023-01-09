@@ -4,11 +4,12 @@ import {viewToNodeMap} from "./editing";
 import { LinkedList } from "./linkedList";
 import {NodeType} from "./NodeType";
 import {ExtendedDocumentFragment} from "./DOM";
+import {EventDelegator} from "./event";
 
 
 export const nodeToElement = new WeakMap()
 
-export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
+export function buildReactiveLinkedList(contentLinkedList: LinkedList, eventDelegator: EventDelegator) {
     return function attach(dom: HTMLElement) {
         if (dom.childNodes.length) throw new Error('reactive list container should have no siblings')
 
@@ -25,10 +26,8 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList) {
                         element.revoke()
                     }
                 } else {
-                    element = buildReactiveView(node)
+                    element = buildReactiveView(node, eventDelegator)
                 }
-
-                nodeToElement.set(node, element)
 
                 const item = contentLinkedList.getItem(node)
                 const refElement = findElementOrFirstChildFromNode(item.next?.node)
@@ -116,16 +115,16 @@ export function createReactiveAttribute(createAttribute: Function) {
 }
 
 
-export function buildReactiveView(node: NodeType) {
+export function buildReactiveView(node: NodeType, blockEventDelegator: EventDelegator) {
     let reactiveContent, reactiveChildren, reactiveValue
     const Type = node.constructor as typeof NodeType
 
     if (Type.hasContent) {
-        reactiveContent = buildReactiveLinkedList(node.content!)
+        reactiveContent = buildReactiveLinkedList(node.content!, blockEventDelegator)
     }
 
     if (Type.hasChildren) {
-        reactiveChildren = buildReactiveLinkedList(node.children!)
+        reactiveChildren = buildReactiveLinkedList(node.children!, blockEventDelegator)
     }
 
     if (Type.isLeaf) {
@@ -135,11 +134,18 @@ export function buildReactiveView(node: NodeType) {
     // TODO 如果 props 也希望被 reactiveView 化呢？
     // TODO 针对 leaf component 节点需要插入一个空的前节点帮助选中
     const element = node.render!({content:reactiveContent, children: reactiveChildren, value: reactiveValue, props: node.props})
-    // TODO 可以是一个 fragment 吗？如果要支持，那么就必须保持住 fragment 和里面元素的引用关系
+    nodeToElement.set(node, element)
+
     if (!element) throw new Error('must return a element')
     viewToNodeMap.set(element, node)
 
     // TODO 针对 component 节点要做一些特殊处理？比如拦截事件冒泡？好像没有这么简单，比如组件又想继续使用 inlineTools 什么的应该怎么算？
+    if (Type.isComponent) {
+
+    } else if (Type.display === 'block') {
+        console.log(Type.display, node.data.type, element)
+        blockEventDelegator.attach(element)
+    }
 
     return element
 }

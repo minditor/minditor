@@ -9,6 +9,7 @@ import {
 import {waitUpdate, setCursor, findElementOrFirstChildFromNode} from "./buildReactiveView";
 import {LinkedList} from "./linkedList";
 import { shallowRef } from '@ariesate/reactivity'
+import {debounce} from "./util";
 
 
 function getCurrentRange() {
@@ -55,6 +56,7 @@ export default function patchTextEvents(on, trigger) {
     // 一致按着会有很多次 keydown 事件
 
     const userSelectionRange = shallowRef(null)
+    const visualFocusedBlockNode = shallowRef(null)
 
     on('keydown', async (e) => {
         const selection = window.getSelection()
@@ -216,8 +218,10 @@ export default function patchTextEvents(on, trigger) {
         updateRange(range, e.data, true)
     })
 
+
+
     // 如果碰到了 component + 普通节点的组合，要选中整个 component.
-    document.addEventListener('selectionchange', (e) => {
+    on('selectionchange', (e) => {
         adjustSelection(e)
 
         const selection = window.getSelection()
@@ -235,11 +239,23 @@ export default function patchTextEvents(on, trigger) {
         const domparser = new DOMParser()
         const result = domparser.parseFromString(e.clipboardData.getData('text/html'), 'text/html')
         console.log(result)
-
     })
 
 
-    return { userSelectionRange }
+    const debouncedUpdateNode = debounce((node) => {
+        visualFocusedBlockNode.value = node
+    }, 100)
+
+    // TODO 有没有性能问题？mouseenter capture 会一路
+    on('block:mouseenter', (e) => {
+        const node = findNodeFromElement(e.target)
+        if (node?.constructor.display === 'block') {
+            debouncedUpdateNode(node)
+        }
+    }, true)
+
+
+    return { userSelectionRange, visualFocusedBlockNode }
 }
 
 
@@ -256,8 +272,6 @@ function adjustSelection(e) {
     if (!range) return
 
     if(range.collapsed) {
-        if (window.afterCommand) debugger
-        console.warn('rrr', e)
         console.info('cursor move', range.startContainer, range.startOffset)
         return
     }

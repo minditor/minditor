@@ -3,11 +3,13 @@
 import {createElement} from "../src/DOM.js";
 import {buildReactiveView} from "../src/buildReactiveView";
 
-import patchTextEvents from "../src/patchTextEvents";
+import patchTextEvents  from "../src/patchTextEvents";
 import { registerCommands as markdownCommands } from "../src/markdown";
-import { registerCommands as suggestionCommands } from "../src/suggestion";
+import { registerCommands as insertSuggestionCommands } from "../src/insertSuggestion";
+import { registerCommands as inlineToolCommands } from "../src/inlineTool";
+import { registerCommands as blockToolCommands } from "../src/blockTool";
 import { registerCommands } from "../src/command";
-import { on, trigger } from '../src/event'
+import { createDelegator} from '../src/event'
 
 import {buildModelFromData} from "../src/editing";
 
@@ -18,23 +20,23 @@ import {buildModelFromData} from "../src/editing";
 // import { data } from './data/nestedList'
 import { data } from './data/multiPara'
 
+const { on, trigger, attach, subDelegators } = createDelegator()
+// CAUTION 这个事件顺序挺重要的，command 需要发生在默认输入行为之前。
+const { userSelectionRange, visualFocusedBlockNode } =  patchTextEvents(on, trigger)
+// TODO 这里还要做哪些只在 document 上的事件的隔离
+attach(document)
+
+const commandUtils = { on, userSelectionRange, visualFocusedBlockNode }
+registerCommands(markdownCommands(), commandUtils)
+registerCommands(inlineToolCommands(), commandUtils)
+registerCommands(blockToolCommands(), commandUtils)
+registerCommands(insertSuggestionCommands(), commandUtils)
 
 
 const { result: doc } = buildModelFromData(data)
-
-// doc.firstLeaf = firstLeaf
-// doc.lastLeaf = lastLeaf
-const docElement = buildReactiveView(doc)
+const docElement = buildReactiveView(doc, subDelegators.block)
 // @ts-ignore
 document.getElementById('root').appendChild(docElement)
-
-// CAUTION 这个事件顺序挺重要的，command 需要发生在默认输入行为之前。
-registerCommands(markdownCommands(), on)
-registerCommands(suggestionCommands(), on)
-
-patchTextEvents(on, trigger)
-
-
 
 // setTimeout(() => {
 //     debugger

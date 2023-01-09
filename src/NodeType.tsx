@@ -21,6 +21,7 @@ export class NodeType {
     static hasChildren?: Boolean
     static isLeaf?: Boolean
     static isComponent?: Boolean
+    static display: 'block' | 'inline' | 'inlineBlock' = 'block'
     container?: LinkedList
     get parent() {
         return this.container?.owner

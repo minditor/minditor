@@ -397,3 +397,18 @@ export function nextJob(fn) {
   Promise.resolve().then(fn)
 }
 
+
+
+export function debounce(fn, delay) {
+  let timeoutHandle = null
+  return (...argv ) => {
+    if (timeoutHandle) {
+      clearTimeout(timeoutHandle)
+      timeoutHandle = null
+    }
+
+    timeoutHandle = setTimeout(() => {
+      fn(...argv)
+    }, delay)
+  }
+}
