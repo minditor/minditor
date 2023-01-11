@@ -412,3 +412,21 @@ export function debounce(fn, delay) {
     }, delay)
   }
 }
+
+export function idleThrottle(fn, timeout) {
+  let hasCallback
+  let lastArgv
+  return (...argv) => {
+    if (!hasCallback) {
+      hasCallback = requestIdleCallback(() => {
+        fn(...lastArgv)
+        hasCallback = null
+      }, {timeout})
+    }
+
+
+    lastArgv = argv
+
+
+  }
+}

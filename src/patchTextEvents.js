@@ -6,10 +6,10 @@ import {
     splitTextAsBlock,
     updateRange
 } from "./editing";
-import {waitUpdate, setCursor, findElementOrFirstChildFromNode} from "./buildReactiveView";
+import {waitUpdate, setCursor, findElementOrFirstChildFromNode, scheduleImmediateUpdate} from "./buildReactiveView";
 import {LinkedList} from "./linkedList";
-import { shallowRef } from '@ariesate/reactivity'
-import {debounce} from "./util";
+import { shallowRef, autorun } from '@ariesate/reactivity'
+import {debounce, idleThrottle} from "./util";
 
 
 function getCurrentRange() {
@@ -241,7 +241,7 @@ export default function patchTextEvents(on, trigger) {
         console.log(result)
     })
 
-
+    // visual focus node
     const debouncedUpdateNode = debounce((node) => {
         visualFocusedBlockNode.value = node
     }, 100)
@@ -254,10 +254,71 @@ export default function patchTextEvents(on, trigger) {
         }
     }, true)
 
+    // mouse position
+    const userMousePosition = shallowRef(null)
+    const debouncedUpdateMousePosition = idleThrottle((e) => {
+        const {clientX, clientY} = e
+        userMousePosition.value = {
+            clientX, clientY
+        }
+    }, 200)
 
-    return { userSelectionRange, visualFocusedBlockNode }
+    on('mousemove', debouncedUpdateMousePosition)
+
+    // user range visibility
+    const rangeVisibility = shallowRef(null)
+
+    // TODO 还是用 intersectionObserver？来先判断 ancestor 的 intersection 情况？得到 ancestor 的可视区域，
+    //  然后用 range rects 的位置信息和 这个交集即可判断 range 的可视情况。
+    //  range rects 和 intersection
+    const updateRangeVisibility = ([ancestorEntry]) => {
+        console.log("----")
+        console.log(ancestorEntry.intersectionRect)
+        // TODO  判断一下 range 的可视区域？是不是只用管高低不用管左右？
+        // 计算出一个 range visible rect ?
+
+    }
+
+    const observer = new IntersectionObserver(updateRangeVisibility, {
+        root: null,
+        rootMargin: "0px",
+        threshold: buildThresholdList()
+    });
+
+    let lastObserved = null
+    autorun(() => {
+        if (lastObserved === userSelectionRange.value?.commonAncestorContainer) {
+            return
+        }
+
+        observer.disconnect()
+        if (userSelectionRange.value && !userSelectionRange.value.collapsed) {
+            const target = userSelectionRange.value.commonAncestorContainer instanceof Element ?
+                userSelectionRange.value.commonAncestorContainer:
+                userSelectionRange.value.commonAncestorContainer.parentElement
+
+            observer.observe(target)
+            lastObserved = target
+        }
+    }, undefined, scheduleImmediateUpdate)
+
+
+    // TODO 什么时候 destroy all ？
+    return { userSelectionRange, visualFocusedBlockNode, userMousePosition, rangeVisibility }
 }
 
+
+function buildThresholdList(numSteps = 100) {
+    let thresholds = [];
+
+    for (let i=1.0; i<=numSteps; i++) {
+        let ratio = i/numSteps;
+        thresholds.push(ratio);
+    }
+
+    thresholds.push(0);
+    return thresholds;
+}
 
 /**
  *

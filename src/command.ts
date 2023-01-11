@@ -90,7 +90,13 @@ export type CommandRunArgv = {
 }
 
 
-type Utils = {on: Function, userSelectionRange: Ref, visualFocusedBlockNode: Ref}
+type Utils = {
+    on: Function,
+    userSelectionRange: Ref,
+    rangeVisibility: Ref,
+    visualFocusedBlockNode: Ref,
+    userMousePosition: Ref,
+}
 
 export function registerCommands(commands: (Command)[], utils: Utils ) {
     commands.forEach(command => registerCommand(command, utils))

@@ -1324,7 +1324,9 @@ type NativeElements = {
 
 declare global {
   namespace JSX {
-    interface Element extends HTMLElement {}
+    interface Element extends HTMLElement {
+      portal: any
+    }
     interface ElementClass {
       $props: {}
     }

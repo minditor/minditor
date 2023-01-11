@@ -1,6 +1,7 @@
 import {NodeType} from "./NodeType";
 import {viewToNodeMap} from "./editing";
 import {scheduleImmediateUpdate} from "./buildReactiveView";
+// @ts-ignore
 import {autorun, autorunForEach} from '@ariesate/reactivity'
 import {ShallowRef, Ref} from "@vue/runtime-core";
 

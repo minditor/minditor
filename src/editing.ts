@@ -1,4 +1,4 @@
-import {waitUpdate} from "./buildReactiveView";
+import {findElementOrFirstChildFromNode, waitUpdate} from "./buildReactiveView";
 // @ts-ignore
 import {nodeTypes} from "./nodeTypes";
 import {NodeType} from "./NodeType";
@@ -200,7 +200,8 @@ function updateEndNodeToAncestor(endNode: NodeType, ancestorNode: NodeType, ance
 
 // TODO 支持 RangeLike 作为参数
 export function updateRange(inputRange: Range | RangeLike, textToInsert: string, tryUseDefaultBehavior?:boolean) {
-    const range: RangeLike = inputRange instanceof Range ? createRangeLikeFromRange(inputRange) : inputRange
+
+    const range: RangeLike = inputRange instanceof Range ? createRangeLikeFromRange(inputRange) : (inputRange as RangeLike)
     const startNode = range.startNode
     let useDefaultBehaviorSuccess = false
 
@@ -409,10 +410,13 @@ function forEachNodeInRange(from: NodeType, to: NodeType, handle: (i: NodeType) 
 export type RangeLike = {
     startNode: NodeType
     endNode: NodeType
-    startOffset: number
-    endOffset: number,
-    collapsed: boolean,
+    startContainer: Range['startContainer'],
+    endContainer: Range['endContainer'],
+    startOffset: Range['startOffset'],
+    endOffset: Range['endOffset'],
+    collapsed: Range['collapsed'],
     commonAncestorNode: NodeType
+    commonAncestorContainer: Range['commonAncestorContainer']
 }
 
 export function formatRange(range : RangeLike | Range, format: Object) {
@@ -440,10 +444,12 @@ export function formatRange(range : RangeLike | Range, format: Object) {
 }
 
 
-
-
+// TODO 补全缺的 element 相关的字段
 export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {startNode: NodeType, endNode: NodeType, startOffset: number, endOffset: number}) : RangeLike {
     let commonAncestorNodeCache:NodeType|undefined
+    let startContainerCache: Node
+    let endContainerCache: Node
+    let commonAncestorContainerCache: Node
     return {
         startNode,
         startOffset,
@@ -474,19 +480,26 @@ export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {
             }
 
             return commonAncestorNodeCache as NodeType
+        },
+        get startContainer() {
+            startContainerCache = findElementOrFirstChildFromNode(startNode)
+            return startContainerCache
+        },
+        get endContainer() {
+            endContainerCache = findElementOrFirstChildFromNode(endNode)
+            return endContainerCache
+        },
+        get commonAncestorContainer() {
+            commonAncestorContainerCache = findElementOrFirstChildFromNode(this.commonAncestorNode)
+            return commonAncestorContainerCache
         }
     }
 }
 
 export function createRangeLikeFromRange(range: Range) {
     let startNodeCache: NodeType, endNodeCache: NodeType, commonAncestorNodeCache: NodeType
-    return {
-        get startContainer() {
-            return range.startContainer
-        },
-        get endContainer() {
-            return range.endContainer
-        },
+
+    const extendProperties = {
         get startNode() {
             if (!startNodeCache) {
                 startNodeCache = findNodeFromElement(range.startContainer)
@@ -499,19 +512,25 @@ export function createRangeLikeFromRange(range: Range) {
             }
             return endNodeCache
         },
-        startOffset: range.startOffset,
-        endOffset: range.endOffset,
-        collapsed: range.collapsed,
         get commonAncestorNode() {
             if (!commonAncestorNodeCache) {
                 commonAncestorNodeCache = findNodeFromElement(range.commonAncestorContainer)
             }
             return commonAncestorNodeCache
-        },
-        getBoundingClientRect() {
-            return range.getBoundingClientRect()
         }
     }
+
+    return new Proxy(range, {
+        get(target, propName) {
+            if (propName in extendProperties) {
+                // @ts-ignore
+                return extendProperties[propName];
+            }
+
+            // @ts-ignore
+            return target[propName];
+        }
+    }) as unknown as RangeLike
 }
 
 export function findPreviousSiblingInTree(node: NodeType) {

@@ -18,25 +18,28 @@ import {buildModelFromData} from "../src/editing";
 // import { data } from './data/singlePara'
 // import { data } from './data/component'
 // import { data } from './data/nestedList'
-import { data } from './data/multiPara'
+// import { data } from './data/multiPara'
+import { data } from './data/playgroundMultiPara'
 
 const { on, trigger, attach, subDelegators } = createDelegator()
 // CAUTION 这个事件顺序挺重要的，command 需要发生在默认输入行为之前。
-const { userSelectionRange, visualFocusedBlockNode } =  patchTextEvents(on, trigger)
+const reactiveState =  patchTextEvents(on, trigger)
 // TODO 这里还要做哪些只在 document 上的事件的隔离
 attach(document)
 
-const commandUtils = { on, userSelectionRange, visualFocusedBlockNode }
+const commandUtils = { on, ...reactiveState }
 registerCommands(markdownCommands(), commandUtils)
 registerCommands(inlineToolCommands(), commandUtils)
-registerCommands(blockToolCommands(), commandUtils)
+// registerCommands(blockToolCommands(), commandUtils)
 registerCommands(insertSuggestionCommands(), commandUtils)
 
 
 const { result: doc } = buildModelFromData(data)
 const docElement = buildReactiveView(doc, subDelegators.block)
 // @ts-ignore
-document.getElementById('root').appendChild(docElement)
+const rootElement = document.getElementById('root')!
+rootElement.appendChild(docElement)
+subDelegators.root && subDelegators.root.attach(rootElement)
 
 // setTimeout(() => {
 //     debugger
