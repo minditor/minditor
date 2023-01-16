@@ -9,34 +9,27 @@ import {CommandInstance, CommandInstanceArgv, CommandRunArgv} from "./command";
 type InlineToolProps = Omit<Omit<CommandInstanceArgv, 'container'>, 'on'>
 
 
-function InlineTool({ userSelectionRange, userMousePosition, rangeVisibility} : InlineToolProps) {
+function InlineTool({ userSelectionRange, userMousePosition, visibleRangeRect, boundaryContainer} : InlineToolProps) {
     const $style = $attr(() => {
 
         // TODO range 看不见了，display 要 none
         // const rangeVisible = computed(() => rangeVisibility.value?.startEntry.isIntersecting && rangeVisibility.value?.endEntry.isIntersecting)
 
+        console.log("111", visibleRangeRect.value?.top)
 
-        if (!userSelectionRange.value || userSelectionRange.value.collapsed) {
+        if (!visibleRangeRect.value) {
             return { display: 'none'}
         } else {
-            // TODO 自身的位置还要考虑 mousePosition 和 container 的边界？
-            // TODO 还要考虑 range 整个大于 container 的情况
-            // TODO 浮层位置算法
-            //  1. 鼠标位置相同方向（上或者下）
-            //  2. 浮层的重点不能超过最近的 rect 的边界（所以还必须知晓浮层的宽度）
-            //  3. 更具 container 的边界信息对浮层位置进行必要的上下翻转？左右位置微调？
-            const rect = userSelectionRange.value.startContainer.getBoundingClientRect ?
-                userSelectionRange.value.startContainer.getBoundingClientRect() :
-                userSelectionRange.value.startContainer.parentElement.getBoundingClientRect()
 
-
+            const rect = boundaryContainer.getBoundingClientRect()
 
             return {
                 display: 'block',
-                position: 'fixed',
-                top: rect.top - 50,
-                left: rect.left,
-                background:'#eee'
+                position: 'absolute', // CAUTION 注意 rangePosition 拿到的是相对于 modal boundary 的，所以我们这里也是相对于 modal boundary 的 absolute
+                top: visibleRangeRect.value.top - rect.top + boundaryContainer.scrollTop -50,
+                left: visibleRangeRect.value.left - rect.left,
+                background:'#eee',
+                transition: 'all'
             }
         }
     })

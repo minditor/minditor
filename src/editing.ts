@@ -416,7 +416,7 @@ export type RangeLike = {
     endOffset: Range['endOffset'],
     collapsed: Range['collapsed'],
     commonAncestorNode: NodeType
-    commonAncestorContainer: Range['commonAncestorContainer']
+    commonAncestorContainer: Range['commonAncestorContainer'],
 }
 
 export function formatRange(range : RangeLike | Range, format: Object) {
@@ -526,6 +526,9 @@ export function createRangeLikeFromRange(range: Range) {
                 // @ts-ignore
                 return extendProperties[propName];
             }
+
+            // @ts-ignore
+            if (typeof target[propName] === 'function') return target[propName].bind(target)
 
             // @ts-ignore
             return target[propName];

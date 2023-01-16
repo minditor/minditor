@@ -17,6 +17,7 @@ type EventCallbackWithCapture = EventListenerOrEventListenerObject & {
 export function createDelegator(namespace = 'global'): EventDelegator {
     const eventCallbacksByEventName: {[key: string] : Set<Function>} = {}
     const eventToCallbackRef: {[key: string] : EventCallbackWithCapture} = {}
+    let attachedEl: HTMLElement|Document
 
     const subDelegators: EventDelegator['subDelegators'] ={}
 
@@ -50,12 +51,19 @@ export function createDelegator(namespace = 'global'): EventDelegator {
 
 
         const event = inputEvent
+
         if(!eventCallbacksByEventName[event]) {
             eventCallbacksByEventName[event] = new Set()
-            eventToCallbackRef[event] = createCallback(eventCallbacksByEventName[event], capture)
+            const callback = createCallback(eventCallbacksByEventName[event], capture)
+            eventToCallbackRef[event] = callback
+            // 已经 attach 过了
+            if (attachedEl) {
+                attachedEl.addEventListener(event, callback, callback.capture)
+            }
         }
 
         eventCallbacksByEventName[event].add(handle)
+
         return function off() {
             eventCallbacksByEventName[event].delete(handle)
         }
@@ -70,6 +78,7 @@ export function createDelegator(namespace = 'global'): EventDelegator {
     }
 
     function attach(el: HTMLElement|Document) {
+        attachedEl = el
         Object.entries(eventToCallbackRef).forEach(([event, callback]) => {
             el.addEventListener(event, callback, callback.capture)
         })

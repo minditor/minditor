@@ -93,9 +93,10 @@ export type CommandRunArgv = {
 type Utils = {
     on: Function,
     userSelectionRange: Ref,
-    rangeVisibility: Ref,
+    visibleRangeRect: Ref,
     visualFocusedBlockNode: Ref,
     userMousePosition: Ref,
+    boundaryContainer: HTMLElement,
 }
 
 export function registerCommands(commands: (Command)[], utils: Utils ) {
@@ -200,12 +201,13 @@ function registerCommand(command: Command, utils: Utils) {
     }
 
 
-    let caretContainer: Node
+
 
     if (command.createInstance) {
         if (event) throw new Error('command with instance should handle event by itself')
+        // TODO 指定 modal boundary？ 默认是 document
         const container = document.createElement('div')
-        document.body.appendChild(container)
+        utils.boundaryContainer.appendChild(container)
 
         // 让 instance 自己决定什么时候开始接受值的变化，什么时候不接受。这样可以设计一直  activate 的 instance.
         command.createInstance({

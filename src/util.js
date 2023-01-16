@@ -413,7 +413,7 @@ export function debounce(fn, delay) {
   }
 }
 
-export function idleThrottle(fn, timeout) {
+export function idleThrottle(fn, timeout = 100) {
   let hasCallback
   let lastArgv
   return (...argv) => {
@@ -423,10 +423,6 @@ export function idleThrottle(fn, timeout) {
         hasCallback = null
       }, {timeout})
     }
-
-
     lastArgv = argv
-
-
   }
 }

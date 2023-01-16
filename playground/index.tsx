@@ -3,7 +3,7 @@
 import {createElement} from "../src/DOM.js";
 import {buildReactiveView} from "../src/buildReactiveView";
 
-import patchTextEvents  from "../src/patchTextEvents";
+import patchTextEvents, {createVisibleRangeRectRef}  from "../src/patchTextEvents";
 import { registerCommands as markdownCommands } from "../src/markdown";
 import { registerCommands as insertSuggestionCommands } from "../src/insertSuggestion";
 import { registerCommands as inlineToolCommands } from "../src/inlineTool";
@@ -27,17 +27,24 @@ const reactiveState =  patchTextEvents(on, trigger)
 // TODO 这里还要做哪些只在 document 上的事件的隔离
 attach(document)
 
-const commandUtils = { on, ...reactiveState }
+const { result: doc } = buildModelFromData(data)
+const docElement = buildReactiveView(doc, subDelegators.block)
+// @ts-ignore
+const rootElement = document.getElementById('root')!
+rootElement.style.position = 'relative'
+// const visibleRangeRect = createVisibleRangeRectRef(on, docElement, rootElement)
+const visibleRangeRect = createVisibleRangeRectRef(on, docElement, document.body)
+
+
+const commandUtils = { on, visibleRangeRect, ...reactiveState, boundaryContainer: rootElement }
 registerCommands(markdownCommands(), commandUtils)
 registerCommands(inlineToolCommands(), commandUtils)
 // registerCommands(blockToolCommands(), commandUtils)
 registerCommands(insertSuggestionCommands(), commandUtils)
 
 
-const { result: doc } = buildModelFromData(data)
-const docElement = buildReactiveView(doc, subDelegators.block)
-// @ts-ignore
-const rootElement = document.getElementById('root')!
+
+
 rootElement.appendChild(docElement)
 subDelegators.root && subDelegators.root.attach(rootElement)
 
