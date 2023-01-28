@@ -2,7 +2,6 @@
 import { createElement } from './DOM'
 
 import {$attr, $value, $map} from "./view";
-import {autorun, autorunForEach, shallowRef, computed} from '@ariesate/reactivity'
 import {CommandInstance, CommandInstanceArgv, CommandRunArgv} from "./command";
 
 

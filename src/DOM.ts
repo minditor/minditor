@@ -5,11 +5,16 @@ function getId() {
   return ++uuid
 }
 
+
+
+
 /** Attempt to set a DOM property to the given value.
  *  IE & FF throw for certain property-value combinations.
  */
-function setProperty(node, name, value) {
+function setProperty(node: HTMLElement, name: string, value: any) {
   try {
+    // FIXME
+    // @ts-ignore
     node[name] = value
   } catch (e) {
     /* eslint-disable no-console */
@@ -18,12 +23,18 @@ function setProperty(node, name, value) {
   }
 }
 
-function eventProxy(e) {
-  const listener = this._listeners[e.type]
+interface ExtendedElement extends HTMLElement {
+  _listeners?: {
+    [k: string]: (e: Event) => any
+  },
+}
+
+function eventProxy(this: ExtendedElement, e: Event) {
+  const listener = this._listeners![e.type]
   return Array.isArray(listener) ? listener.forEach(l => l(e)) : listener(e)
 }
 
-export function setAttribute(node, name, value, isSvg) {
+export function setAttribute(node: ExtendedElement, name: string, value: any, isSvg?: boolean) {
   // 只有事件回调允许是函数，否则的话认为是智能节点，外部需要控制
   if (typeof value === 'function' && !(name[0] === 'o' && name[1] === 'n')) {
     value(node, name, setAttribute)
@@ -43,8 +54,12 @@ export function setAttribute(node, name, value, isSvg) {
     if (value && typeof value === 'object') {
       each(value, (v, k) => {
         if (value[k] === undefined) {
+          // FIXME
+          // @ts-ignore
           node.style[k] = ''
         } else {
+          // FIXME
+          // @ts-ignore
           node.style[k] = typeof v === 'number' ? (`${v}px`) : v
         }
       })
@@ -71,7 +86,7 @@ export function setAttribute(node, name, value, isSvg) {
       if (ns) {
         node.removeAttributeNS('http://www.w3.org/1999/xlink', name.toLowerCase())
       } else if (name.toLowerCase() === 'contenteditable' && value === false){
-        node.setAttribute(name, false)
+        node.setAttribute(name, 'false')
       } else {
         node.removeAttribute(name)
       }
@@ -82,11 +97,15 @@ export function setAttribute(node, name, value, isSvg) {
   }
 }
 
-function setAttributes(attributes, element, invoke) {
+type AttributesArg = {
+  [k: string] : any
+}
+
+function setAttributes(attributes: AttributesArg, element: HTMLElement, invoke?: Function) {
   each(attributes, (attribute, name) => {
     if (/^on[A-Z]/.test(name) && typeof attribute === 'function') {
       if (invoke) {
-        setAttribute(element, name, (...argv) => invoke(attribute, ...argv))
+        setAttribute(element, name, (...argv: any[]) => invoke(attribute, ...argv))
       } else {
         setAttribute(element, name, attribute)
       }
@@ -101,7 +120,9 @@ function setAttributes(attributes, element, invoke) {
   })
 }
 
-function handlerChildren(container, children) {
+type ElementOrFunctionChild = HTMLElement | ((container: HTMLElement | ExtendedDocumentFragment) => any)
+
+function handlerChildren(container: HTMLElement | ExtendedDocumentFragment, children?: ElementOrFunctionChild[]) {
   children && children.forEach((child) => {
     if (child !== undefined && child !== null) {
       if (typeof child === 'string') {
@@ -120,10 +141,10 @@ function handlerChildren(container, children) {
 }
 
 
+type Component = (props: any) => HTMLElement
 
 
-
-export function createElement(type, props, ...children) {
+export function createElement(type: string | typeof Fragment | Component, props: AttributesArg, ...children: HTMLElement[]) {
   if (type !== Fragment && typeof type === 'function') {
     // 组件
     return type({ ...props, children })
@@ -140,7 +161,7 @@ export function createElement(type, props, ...children) {
   }
 
   if (props) {
-    setAttributes(props, container)
+    setAttributes(props, container as HTMLElement)
   }
 
   handlerChildren(container, children)
@@ -153,12 +174,15 @@ export function createElement(type, props, ...children) {
 
 export class ExtendedDocumentFragment extends DocumentFragment {
   static elToFragment = new WeakMap()
+  _head: ChildNode | null
+  _tail: ChildNode | null
   constructor() {
     super();
     this._head = null
     this._tail = null
   }
-  appendChild(node) {
+  // @ts-ignore
+  appendChild(node: ChildNode) {
     super.appendChild(node)
     if (!this._head) {
       this._head = node
@@ -166,6 +190,7 @@ export class ExtendedDocumentFragment extends DocumentFragment {
 
     this._tail = node
     ExtendedDocumentFragment.elToFragment.set(node, this)
+    return node
   }
   remove() {
     this.revoke()
@@ -174,7 +199,7 @@ export class ExtendedDocumentFragment extends DocumentFragment {
     let pointer = this._head
     while(pointer) {
       super.appendChild(pointer)
-      pointer = pointer === this._tail ? undefined : pointer?.nextSibling
+      pointer = pointer === this._tail ? null : pointer?.nextSibling
     }
   }
   get firstChild() {

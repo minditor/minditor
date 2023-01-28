@@ -86,7 +86,8 @@ export class CommandInstance {
 
 export type CommandRunArgv = {
     userSelectionRange: Ref,
-    charReader: CharReader
+    charReader: CharReader,
+    node: NodeType
 }
 
 
@@ -228,6 +229,7 @@ function registerCommand(command: Command, utils: Utils) {
                  * charReader ?
                  */
                 const charReader = new CharReader(userSelectionRange.value.startNode, userSelectionRange.value.startOffset)
+                const node = userSelectionRange.value.startNode
 
                 // command 失败或者不匹配需要显示 return false。
                 // 否则认为成功了，我们在这里 return false 给 event handle 表示要阻止默认的输入事件
@@ -235,7 +237,7 @@ function registerCommand(command: Command, utils: Utils) {
 
                 // 如果显式地 return false，表示执行过程中发现不匹配，还是可以让其他命令继续执行。
                 // 如果直接是失败，应该 throw new Error
-                return command.run!({ charReader, userSelectionRange })
+                return command.run!({ charReader, userSelectionRange, node })
             } else {
                 // 表示不匹配，一定要显示地表达出来
                 return false
