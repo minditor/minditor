@@ -1,14 +1,14 @@
 import { nodeTypes } from './nodeTypes'
 import {NodeType} from "./NodeType";
-import {createDefaultTextNode, createRangeLike, formatRange, replaceNode} from "./editing";
-import {CommandRunArgv} from "./command";
+import {createRangeLike} from "./editing";
+import {PluginRunArgv} from "./plugin";
 import {setCursor} from './buildReactiveView'
 
 
 function createBlockCommands(initialCharacters: string, createBlock: Function, atStart = true) {
     return {
         onInput: ' ',
-        run({ charReader, node } : CommandRunArgv) : false | undefined{
+        run({ charReader, node } : PluginRunArgv) : false | undefined{
             //  1. 只能在 Para 的 content 里面产生
             if (node.parent.constructor !== nodeTypes.Para) return false
             // 2. 只能在头部
@@ -29,7 +29,7 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
 function createFormatCommands([startChars, closeChars]: [string, string], key: string, value = true) {
     return {
         onInput: ' ',
-        run({ charReader, node } : CommandRunArgv): false | undefined  {
+        run({ charReader, node } : PluginRunArgv): false | undefined  {
             // TODO 这里并不支持跨节点的 format，需要改造，应该要支持。
             const innerText = charReader.match([startChars, closeChars])
 
@@ -46,7 +46,7 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
                 node.value!.value.slice(endOffset)
 
             //2. 再执行 format。这时非 innerText 中的内容会独立出去，node 里面只剩下 innerText 的内容了。
-            formatRange(createRangeLike({
+            node.root!.formatRange(createRangeLike({
                 startNode: node,
                 endNode: node,
                 startOffset,
@@ -56,7 +56,7 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
             // CAUTION 因为无法 focus 到 0 这个位置，所以只能先不管什么情况都创造一个零宽节点来处理了。
             //3. restore selection 到下一个节点的头不
             // if (!node.nextSibling) {
-                node.container?.insertAfter(createDefaultTextNode(), node)
+                node.container?.insertAfter(node.root!.createDefaultTextNode(), node)
             // }
             // debugger
             setCursor(node.nextSibling, 0)
@@ -67,7 +67,7 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
 
 
 function createCodeBlock(lang: string, blockNode: NodeType) {
-    return replaceNode({
+    return blockNode.root!.replaceNode({
         type: 'Code',
         props: {
             lang
@@ -76,14 +76,14 @@ function createCodeBlock(lang: string, blockNode: NodeType) {
 }
 
 function createListBlock(lang: string, blockNode: NodeType) {
-    return replaceNode({
+    return blockNode.root!.replaceNode({
         type: 'List',
     }, blockNode)
 }
 
 // TODO level 实现，这个时候要往上插入，删除当前节点。
 function createSectionBlock(title: string, blockNode: NodeType, level: number) {
-    return replaceNode({
+    return blockNode.root!.replaceNode({
         type: 'Section',
         content: [{type: 'Text', value: title}],
     }, blockNode)

@@ -1,12 +1,23 @@
-import {NodeData, findPreviousSiblingInTree, createDefaultContent, buildModelFromData} from "./editing";
+import {NodeData, findPreviousSiblingInTree, createDefaultContent, Doc} from "./editing";
 import {LinkedList} from "./linkedList";
 import {createElement} from "./DOM";
 export type RenderProp = {content?: Function, children?: Function, value?: Object, props?:any}
 
 export class NodeType {
-    constructor(data: NodeData, container?:LinkedList) {
+    children? : LinkedList
+    content? : LinkedList
+    syncValue? : Function
+    value?: {
+        value: string
+    }
+    props? : any
+    data? :any
+    root?: Doc
+    constructor(data: NodeData, container?:LinkedList, root?: Doc) {
         this.data = data
         this.container = container
+        this.root = root
+
         if ((this.constructor as typeof NodeType).hasContent) {
             this.content = new LinkedList(this)
         }
@@ -46,20 +57,13 @@ export class NodeType {
             data.children = []
         }
 
-        // CAUTION 这样才会递归建立 content,children
-        return buildModelFromData(data).result
+        // FIXME CAUTION 这样才会递归建立 content,children
+        return this.root!.buildModelFromData(data).result
     }
     remove() {
         return this.container?.removeBetween(this.previousSibling, this)
     }
-    children? : LinkedList
-    content? : LinkedList
-    syncValue? : Function
-    value?: {
-        value: string
-    }
-    props? : any
-    data? :any
+
     render(prop: RenderProp): HTMLElement {
         // @ts-ignore
         return <div>define your own render</div>

@@ -2,14 +2,14 @@
 import { createElement } from './DOM'
 
 import {$attr, $value, $map} from "./view";
-import {CommandInstance, CommandInstanceArgv, CommandRunArgv} from "./command";
+import {CommandInstance, PluginInstanceArgv, PluginRunArgv} from "./plugin";
 import {replaceNode} from "./editing";
 import {setCursor} from "./buildReactiveView";
 
 export function registerCommands() {
     const insertSuggestion = {
         onKey: '/',
-        run({ userSelectionRange }:CommandRunArgv) {
+        run({ userSelectionRange }:PluginRunArgv) {
             const node = userSelectionRange.value.startNode
             if (node.previousSibling || node.value!.value.length !==1 ) {
                 console.log(node.value!.value)

@@ -1,7 +1,7 @@
 import {buildReactiveView, waitUpdate} from "../src/buildReactiveView";
 // @ts-ignore
 import {buildModelFromData, formatRange, insertContentNodeAfter, splitTextAsBlock, updateRange} from "../src/editing";
-import patchTextEvents from '../src/patchTextEvents'
+import patchRichTextEvents from '../src/patchRichTextEvents'
 import { on, trigger, removeAll} from '../src/event'
 import { screen } from "@testing-library/dom";
 import {expect} from "@jest/globals";
@@ -46,7 +46,7 @@ describe('keyboard Enter actions', () => {
 
             const docElement = buildReactiveView(doc)
             document.body.appendChild(docElement)
-            patchTextEvents(on, trigger)
+            patchRichTextEvents(on, trigger)
 
             const firstElement = screen.getByText('11')
             setCursor(firstElement, 0)
@@ -92,7 +92,7 @@ describe('keyboard Enter actions', () => {
 
             const docElement = buildReactiveView(doc)
             document.body.appendChild(docElement)
-            patchTextEvents(on, trigger)
+            patchRichTextEvents(on, trigger)
             const firstElement = screen.getByText('11')
             setCursor(firstElement, 0)
             expect(window.getSelection()!.rangeCount).toBe(1)

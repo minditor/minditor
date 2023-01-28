@@ -1,10 +1,13 @@
-import {findElementOrFirstChildFromNode, waitUpdate} from "./buildReactiveView";
+import {buildReactiveView, findElementOrFirstChildFromNode, waitUpdate} from "./buildReactiveView";
 // @ts-ignore
-import {nodeTypes} from "./nodeTypes";
+import {nodeTypes as defaultNodeTypes} from "./nodeTypes";
 import {NodeType} from "./NodeType";
 import {LinkedList, LinkedListFragment} from "./linkedList";
 import {ExtendedDocumentFragment} from "./DOM";
-
+import {createDelegator, EventDelegator} from "./event";
+import patchRichTextEvents from "./patchRichTextEvents";
+import {Plugin, registerPlugins} from "./plugin";
+import {createDocReactiveState} from "./createDocReactiveState";
 
 export const viewToNodeMap = new WeakMap()
 
@@ -17,43 +20,207 @@ export type NodeData = {
     props?: any
 }
 
-export function buildModelFromData(data: NodeData, container?: LinkedList, preventCreateDefaultContent = false, preventCreateDefaultChildren = false) {
-    const Type =  nodeTypes[data.type] as typeof NodeType
-    const result = new Type(data, container)
-    let firstLeaf: NodeType, lastLeaf: NodeType
+type NodeTypes = {
+    [k: string]: typeof NodeType
+}
 
-    if (Type.isLeaf) {
-        firstLeaf = lastLeaf = result
-    } else {
-        // 添加 content
-        const content = data.content || (preventCreateDefaultContent ? undefined : Type.createDefaultContent && Type.createDefaultContent())
-        content?.forEach((contentItem) => {
-            const { result: contentItemResult, firstLeaf: firstContentItemLeaf} = buildModelFromData(contentItem, result.content)
-            // debugger
-            result.content!.insertBefore(contentItemResult)
-            if (!firstLeaf) firstLeaf = firstContentItemLeaf
-        })
+export class Doc {
+    root: NodeType
+    eventDelegator: EventDelegator
+    constructor(
+        readonly data: NodeData,
+        readonly docContainer: HTMLElement,
+        readonly plugins: Plugin[] = [],
+        readonly nodeTypes:NodeTypes = defaultNodeTypes,
+        readonly boundaryContainer = document.body
+    ) {
 
-        // 添加 children
-        const children = data.children || (preventCreateDefaultChildren ? undefined : Type.createDefaultChildren && Type.createDefaultChildren())
-        children?.forEach((child) => {
-            const {result: childResult, lastLeaf: lastChildLeaf} = buildModelFromData(child, result.children)
+        const { result: doc } = this.buildModelFromData(data)
+        this.root = doc
 
-            result.children!.insertBefore(childResult)
-            if(lastChildLeaf) {
-                lastLeaf = lastChildLeaf
-            }
-        })
+        this.eventDelegator = createDelegator()
+        patchRichTextEvents(this.eventDelegator, this, boundaryContainer)
+        const reactiveState = createDocReactiveState(this.eventDelegator, boundaryContainer)
 
-        // 好像不把自己的 content 和 children 连接上也没关系，往上面找就行了。
+        // TODO 把这个移到 patchRichTextEvents 里面 处理一下 element
+        const commandUtils = { on: this.eventDelegator.on, ...reactiveState, boundaryContainer: this.boundaryContainer }
+
+        registerPlugins(this.plugins, commandUtils)
+
+        // TODO 应该只要 attach doc 就行了，其他细节隐藏掉
+    }
+    render() {
+        const docElement = buildReactiveView(this.root, this.eventDelegator.subDelegators.block)
+        docElement.setAttribute('contenteditable', 'true')
+        this.docContainer.appendChild(docElement)
+        this.eventDelegator.attach(docElement)
+        this.eventDelegator.subDelegators.root && this.eventDelegator.subDelegators.root.attach(this.docContainer)
+    }
+    destroy() {
+
     }
 
-    // @ts-ignore
-    return { firstLeaf, lastLeaf, result}
+    buildModelFromData(data: NodeData, container?: LinkedList, preventCreateDefaultContent = false, preventCreateDefaultChildren = false) {
+        const Type =  this.nodeTypes[data.type] as typeof NodeType
+        const result = new Type(data, container, this)
+        let firstLeaf: NodeType, lastLeaf: NodeType
+
+        if (Type.isLeaf) {
+            firstLeaf = lastLeaf = result
+        } else {
+            // 添加 content
+            const content = data.content || (preventCreateDefaultContent ? undefined : Type.createDefaultContent && Type.createDefaultContent())
+            content?.forEach((contentItem) => {
+                const { result: contentItemResult, firstLeaf: firstContentItemLeaf} = this.buildModelFromData(contentItem, result.content)
+                // debugger
+                result.content!.insertBefore(contentItemResult)
+                if (!firstLeaf) firstLeaf = firstContentItemLeaf
+            })
+
+            // 添加 children
+            const children = data.children || (preventCreateDefaultChildren ? undefined : Type.createDefaultChildren && Type.createDefaultChildren())
+            children?.forEach((child) => {
+                const {result: childResult, lastLeaf: lastChildLeaf} = this.buildModelFromData(child, result.children)
+
+                result.children!.insertBefore(childResult)
+                if(lastChildLeaf) {
+                    lastLeaf = lastChildLeaf
+                }
+            })
+
+            // 好像不把自己的 content 和 children 连接上也没关系，往上面找就行了。
+        }
+
+        // @ts-ignore
+        return { firstLeaf, lastLeaf, result}
+    }
+    replaceNode(newNodeData: NodeData, refNode: NodeType) {
+        const { result: newNode } = this.buildModelFromData(newNodeData, refNode.container)
+        refNode.container!.insertBefore(newNode, refNode)
+        refNode.container!.removeBetween(newNode, refNode)
+        return newNode
+    }
+    insertContentNodeAfter(newNodeData: NodeData , refNode: NodeType ) {
+        const { result: newNode } = this.buildModelFromData(newNodeData, refNode.container)
+        refNode.parent!.content!.insertAfter(newNode, refNode)
+    }
+    insertChildNodeAfter(newNodeData: NodeData , refNode: NodeType ) {
+        const { result: newNode } = this.buildModelFromData(newNodeData, refNode.container)
+        refNode.parent!.children!.insertAfter(newNode, refNode)
+    }
+    splitTextNode(node: NodeType, offset: number, splitAsPrev?: boolean) {
+        if (offset === 0 && splitAsPrev) return
+        if (offset === node.value!.value.length && (!splitAsPrev)) return
+        const newNodeData = cloneDeep(node.data)
+        newNodeData.value = splitAsPrev ? node.value!.value.slice(0, offset) : node.value!.value.slice(offset)
+        const { result: newNode } = this.buildModelFromData(newNodeData, node.container)
+        const insertMethod =  splitAsPrev ?
+            node.parent!.content!.insertBefore :
+            node.parent!.content!.insertAfter
+
+        insertMethod.call(node.parent!.content, newNode, node)
+
+        // 更新自己
+        console.log(node.value!.value, offset, splitAsPrev ? node.value!.value.slice(offset) : node.value!.value.slice(0, offset))
+        node.value!.value = splitAsPrev ? node.value!.value.slice(offset) : node.value!.value.slice(0, offset)
+    }
+    async splitTextAsBlock(inputNode: RangeLike | Range) : Promise<NodeType>{
+        const node = inputNode instanceof Range ? findNodeFromElement(inputNode.startContainer) : inputNode
+        const offset = inputNode.startOffset
+        if(!(node.constructor as typeof NodeType).isLeaf) throw new Error('split as block can only start from text leaf')
+
+        const parent = node.parent!
+        const isAtContentEnd = node === node.container.tail.node && offset === node.value.value.length
+        const isAtContentHead = node === node.container.head.next.node && offset === 0
+        if (!isAtContentEnd) {
+            // 往前产生一个 type 相同的
+            if (isAtContentHead) {
+                const newNode = parent.constructor.createSiblingAsDefault ? parent.cloneEmpty() : this.createDefaultNode()
+                parent.parent.children.insertBefore(newNode, parent)
+            } else {
+                // TODO 这里抽象泄漏了！！！！但暂时好像没有其他方法，因为调用了 splitTextNode，里面又调用了 insertBefore，
+                //  但后面又把 insert 进去的全部 removeBetween 了，这个时候原本 insertBefore 拿到的 patchResult 里面的引用 又都变了。
+                //  等到真正去走 patch function 的时候，引用已经变了。
+                // TODO 或者先 remove，再单独处理 fragment ?
+                this.splitTextNode(node, offset)
+                await waitUpdate()
+
+                const { removed } = parent!.content!.removeBetween(undefined, node)
+                const { result: newNode } = this.buildModelFromData({ type: parent.data.type }, parent.container, true)
+                newNode.content!.insertBefore( new LinkedListFragment(removed) )
+                // 插到头部去
+                parent.parent!.children!.insertBefore(newNode, parent)
+            }
+
+            // 返回断开处的第一个节点，外部可以用来 setCursor
+            return parent!.content!.head.next.node
+        } else {
+            console.log('at end')
+            // TODO 逻辑还要梳理
+            // 如果是在一个可以有 children 的 content 的结尾，那么应该是建立这个节点的 children
+            let newNode
+            if(parent.constructor.createSiblingAsDefault) {
+                newNode = parent.cloneEmpty()
+                parent.parent!.children!.insertAfter(newNode, parent)
+            } else {
+                newNode = this.createDefaultNode()
+                if (parent.constructor.hasChildren) {
+                    // 但这里有个例外，list 这种回车也是建立一个兄弟节点怎么算？Section 是建立 children，但 list 不是？
+                    // 创建一个 children 节点在头部
+                    parent.children!.insertAfter(newNode)
+                } else {
+                    // 如果是一个不能有 children 的，那么应该是建立一个兄弟节点，例如 Para。
+                    // 创建一个 sibling
+                    parent.parent!.children!.insertAfter(newNode, parent)
+                }
+            }
+            return newNode.content!.head.next.node
+        }
+    }
+    formatRange(range : RangeLike | Range, format: Object) {
+        // CAUTION 伪造的 range 对象直接提供 node，节约性能
+        const startNode = (range as RangeLike).startNode || findNodeFromElement((range as Range).startContainer)
+        const endNode = (range as RangeLike).endNode || findNodeFromElement((range as Range).endContainer)
+        // 要先拿出来，不然后面 splitTextNode 的时候如果 from === to， range 里面的值可能变，
+        const { startOffset, endOffset } = range
+
+        this.splitTextNode(startNode, startOffset, true)
+        // 同一个 node 的情况，处理完 startNode 以后节点的 value 变了，当然 offset 也不一样了。
+        this.splitTextNode(
+            endNode,
+            startNode === endNode ? (endOffset - startOffset): endOffset
+        )
+        // 递归阅读并且 format
+        forEachNodeInRange(startNode, endNode, (node) => {
+            if (!node.props.formats) {
+                node.props.formats = format
+            } else {
+                Object.assign(node.props.formats, format)
+            }
+
+        })
+    }
+    createDefaultNode(content?: LinkedList) {
+        // TODO 变成可以配置的？
+        const data: NodeData = { type: 'Para'}
+        if (!content) {
+            data.content = createDefaultContent()
+        }
+        const { result } = this.buildModelFromData(data)
+
+        if (content) {
+            result.content!.insertAfter(content)
+        }
+        return result as NodeType
+    }
+    createDefaultTextNode(value = '') {
+        return this.buildModelFromData({type: 'Text', value}).result
+    }
 }
 
 
-//
+
+
 export function findNodeFromElement(element: HTMLElement | Node) {
     let pointer: HTMLElement | Node | null = element
     while(pointer && pointer !== document.body) {
@@ -256,41 +423,6 @@ function cloneDeep(obj: Object) {
 }
 
 
-export function replaceNode(newNodeData: NodeData, refNode: NodeType) {
-    const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
-    refNode.container!.insertBefore(newNode, refNode)
-    refNode.container!.removeBetween(newNode, refNode)
-    return newNode
-}
-
-export function insertContentNodeAfter(newNodeData: NodeData , refNode: NodeType ) {
-    const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
-    refNode.parent!.content!.insertAfter(newNode, refNode)
-}
-
-
-export function insertChildNodeAfter(newNodeData: NodeData , refNode: NodeType ) {
-    const { result: newNode } = buildModelFromData(newNodeData, refNode.container)
-    refNode.parent!.children!.insertAfter(newNode, refNode)
-}
-
-
-export function splitTextNode(node: NodeType, offset: number, splitAsPrev?: boolean) {
-    if (offset === 0 && splitAsPrev) return
-    if (offset === node.value!.value.length && (!splitAsPrev)) return
-    const newNodeData = cloneDeep(node.data)
-    newNodeData.value = splitAsPrev ? node.value!.value.slice(0, offset) : node.value!.value.slice(offset)
-    const { result: newNode } = buildModelFromData(newNodeData, node.container)
-    const insertMethod =  splitAsPrev ?
-        node.parent!.content!.insertBefore :
-        node.parent!.content!.insertAfter
-
-    insertMethod.call(node.parent!.content, newNode, node)
-
-    // 更新自己
-    console.log(node.value!.value, offset, splitAsPrev ? node.value!.value.slice(offset) : node.value!.value.slice(0, offset))
-    node.value!.value = splitAsPrev ? node.value!.value.slice(offset) : node.value!.value.slice(0, offset)
-}
 
 
 export function createDefaultContent() {
@@ -299,59 +431,7 @@ export function createDefaultContent() {
 
 
 // 回车行为的主要调用者
-export async function splitTextAsBlock(inputNode: RangeLike | Range) : Promise<NodeType>{
-    const node = inputNode instanceof Range ? findNodeFromElement(inputNode.startContainer) : inputNode
-    const offset = inputNode.startOffset
-    if(!(node.constructor as typeof NodeType).isLeaf) throw new Error('split as block can only start from text leaf')
 
-    const parent = node.parent!
-    const isAtContentEnd = node === node.container.tail.node && offset === node.value.value.length
-    const isAtContentHead = node === node.container.head.next.node && offset === 0
-    if (!isAtContentEnd) {
-        // 往前产生一个 type 相同的
-        if (isAtContentHead) {
-            const newNode = parent.constructor.createSiblingAsDefault ? parent.cloneEmpty() : createDefaultNode()
-            parent.parent.children.insertBefore(newNode, parent)
-        } else {
-            // TODO 这里抽象泄漏了！！！！但暂时好像没有其他方法，因为调用了 splitTextNode，里面又调用了 insertBefore，
-            //  但后面又把 insert 进去的全部 removeBetween 了，这个时候原本 insertBefore 拿到的 patchResult 里面的引用 又都变了。
-            //  等到真正去走 patch function 的时候，引用已经变了。
-            // TODO 或者先 remove，再单独处理 fragment ?
-            splitTextNode(node, offset)
-            await waitUpdate()
-
-            const { removed } = parent!.content!.removeBetween(undefined, node)
-            const { result: newNode } = buildModelFromData({ type: parent.data.type }, parent.container, true)
-            newNode.content!.insertBefore( new LinkedListFragment(removed) )
-            // 插到头部去
-            parent.parent!.children!.insertBefore(newNode, parent)
-        }
-
-        // 返回断开处的第一个节点，外部可以用来 setCursor
-        return parent!.content!.head.next.node
-    } else {
-        console.log('at end')
-        // TODO 逻辑还要梳理
-        // 如果是在一个可以有 children 的 content 的结尾，那么应该是建立这个节点的 children
-        let newNode
-        if(parent.constructor.createSiblingAsDefault) {
-            newNode = parent.cloneEmpty()
-            parent.parent!.children!.insertAfter(newNode, parent)
-        } else {
-            newNode = createDefaultNode()
-            if (parent.constructor.hasChildren) {
-                // 但这里有个例外，list 这种回车也是建立一个兄弟节点怎么算？Section 是建立 children，但 list 不是？
-                // 创建一个 children 节点在头部
-                parent.children!.insertAfter(newNode)
-            } else {
-                // 如果是一个不能有 children 的，那么应该是建立一个兄弟节点，例如 Para。
-                // 创建一个 sibling
-                parent.parent!.children!.insertAfter(newNode, parent)
-            }
-        }
-        return newNode.content!.head.next.node
-    }
-}
 
 
 function forEachNodeInRange(from: NodeType, to: NodeType, handle: (i: NodeType) => void) {
@@ -419,29 +499,7 @@ export type RangeLike = {
     commonAncestorContainer: Range['commonAncestorContainer'],
 }
 
-export function formatRange(range : RangeLike | Range, format: Object) {
-    // CAUTION 伪造的 range 对象直接提供 node，节约性能
-    const startNode = (range as RangeLike).startNode || findNodeFromElement((range as Range).startContainer)
-    const endNode = (range as RangeLike).endNode || findNodeFromElement((range as Range).endContainer)
-    // 要先拿出来，不然后面 splitTextNode 的时候如果 from === to， range 里面的值可能变，
-    const { startOffset, endOffset } = range
 
-    splitTextNode(startNode, startOffset, true)
-    // 同一个 node 的情况，处理完 startNode 以后节点的 value 变了，当然 offset 也不一样了。
-    splitTextNode(
-        endNode,
-        startNode === endNode ? (endOffset - startOffset): endOffset
-    )
-    // 递归阅读并且 format
-    forEachNodeInRange(startNode, endNode, (node) => {
-        if (!node.props.formats) {
-            node.props.formats = format
-        } else {
-            Object.assign(node.props.formats, format)
-        }
-
-    })
-}
 
 
 // TODO 补全缺的 element 相关的字段
@@ -569,20 +627,3 @@ function findLastLeafNode(node: NodeType) {
 }
 
 
-export function createDefaultNode(content?: LinkedList) {
-    // TODO 变成可以配置的？
-    const data: NodeData = { type: 'Para'}
-    if (!content) {
-        data.content = createDefaultContent()
-    }
-    const { result } = buildModelFromData(data)
-
-    if (content) {
-        result.content!.insertAfter(content)
-    }
-    return result as NodeType
-}
-
-export function createDefaultTextNode(value = '') {
-    return buildModelFromData({type: 'Text', value}).result
-}

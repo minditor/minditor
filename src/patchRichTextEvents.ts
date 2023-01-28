@@ -1,43 +1,15 @@
 import {
-    buildModelFromData,
-    createRangeLike, createRangeLikeFromRange,
+    createRangeLike, createRangeLikeFromRange, Doc,
     findNodeFromElement,
-    formatRange,
-    splitTextAsBlock,
+    // splitTextAsBlock,
     updateRange
 } from "./editing";
 import {waitUpdate, setCursor, findElementOrFirstChildFromNode, scheduleImmediateUpdate} from "./buildReactiveView";
-import {LinkedList} from "./linkedList";
-import { shallowRef, autorun, computed } from '@ariesate/reactivity'
-import {debounce, idleThrottle, nextJob} from "./util";
+import {EventDelegator} from "./event";
+import {NodeType} from "./NodeType";
 
 
-function getCurrentRange() {
-    const selection = window.getSelection()
-    return selection.getRangeAt(0).cloneRange()
-}
-
-
-let keydownRange
-function setKeydownRange(range) {
-    keydownRange = range && range.cloneRange()
-}
-
-function getKeydownRange() {
-    return keydownRange.cloneRange()
-}
-
-function clearKeydownRange() {
-    keydownRange = undefined
-}
-
-let lastKeydownKey
-
-
-
-
-
-function collapseSelection(selection) {
+function collapseSelection(selection:Selection) {
     const range = selection.getRangeAt(0).cloneRange()
     let canUseDefault
     if (!range.collapsed) {
@@ -49,42 +21,93 @@ function collapseSelection(selection) {
     return canUseDefault
 }
 
+export const globalKMState = (function() {
+    let isMouseDown = false
+    let hasCursor = false
+    let currentSelection:Selection|null
+    let rangeBeforeComposition:Range|null
+    let selectionRange: Range|null
+
+    document.addEventListener('mousedown', () => {
+        isMouseDown = true
+    })
+
+    document.addEventListener('mouseup', (e: MouseEvent) => {
+        if (!e.buttons) isMouseDown = false
+    })
+    
+    document.addEventListener('selectionchange', () => {
+        currentSelection = window.getSelection()
+        hasCursor = Boolean(currentSelection?.rangeCount)
+        selectionRange = hasCursor ? currentSelection?.getRangeAt(0)! : null
+    })
+
+    document.addEventListener('keydown', (e) => {
+        if (hasCursor) {
+            // TODO selection change 发生在 keydown 之前吗？？？
+            if (e.isComposing || e.keyCode === 229) {
+                return
+            }
+            rangeBeforeComposition = currentSelection!.getRangeAt(0)
+        }
+    })
 
 
+    return {
+        get isMouseDown() {
+            return isMouseDown
+        },
+        get hasCursor() {
+            return hasCursor
+        },
+        get selection() {
+            return currentSelection
+        },
+        get selectionRange() {
+            return selectionRange
+        },
+        get rangeBeforeComposition() {
+            return rangeBeforeComposition
+        }
+    }
 
-export default function patchTextEvents(on, trigger) {
-    // 一致按着会有很多次 keydown 事件
+})()
 
-    const userSelectionRange = shallowRef(null)
-    const visualFocusedBlockNode = shallowRef(null)
 
-    on('keydown', async (e) => {
-        const selection = window.getSelection()
-        if (!selection.rangeCount) return
+export default function patchRichTextEvents({ on, trigger } : EventDelegator, doc: Doc, boundaryContainer: HTMLElement) {
+    // 一直按着会有很多次 keydown 事件
+    on('keydown', async (e: KeyboardEvent) => {
 
-        lastKeydownKey = e.key
         console.log('keydown', e, e.key, e.code)
-        if (e.isComposing) return
+        // -1 没有 cursor 的情况不管
+        if (!globalKMState.hasCursor) return
 
-        // 记录一下 range，后面 keyup 要用。
-        setKeydownRange(selection.getRangeAt(0))
+        // -2 输入法中的  Keydown 不管。
+        // 这里有关于 keydown 和输入法的问题的例子。虽然 keydown 发生在 compositionstart 前，但 keyCode === 229 能表示这个  keydown 是输入法的一部分。
+        // https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event
+        if (e.isComposing || e.keyCode === 229) {
+            return;
+        }
 
         //1.  单个字符，其他的 key 的名字都长于 1
         if(e.key.length === 1) {
+            // 首先触发自定义事件，供插件等响应，如果插件要求阻止默认行为，后面就不处理了。
             const inputEvent = new CustomEvent('userInput',  { detail: {data: e.key}, cancelable: true })
             trigger(inputEvent)
-
             if(inputEvent.defaultPrevented) {
                 e.preventDefault()
                 e.stopPropagation()
                 return
             }
 
-            collapseSelection(selection)
-            console.log("inserting", e.key, selection.getRangeAt(0).startContainer)
-            // CAUTION 不能在这里插入字符是因为这个时候并不知道是不是输入法的 keydown
-            const updateInfo = updateRange(selection.getRangeAt(0), e.key, true)
-            // 如果success ===false，说明使用 defaultBehavior 失败了
+            // 没有阻止，那么开始使用新字符更新 range。
+            // 1. 手动收拢 selection。
+            collapseSelection(globalKMState.selection!)
+            console.log("inserting", e.key, globalKMState.selectionRange!.startContainer)
+            // CAUTION 不能在这里插入字符是因为这个时候并不知道是不是输入法 compositionstart 的 keydown
+            // 2. 修改字符
+            const updateInfo = updateRange(globalKMState.selectionRange!, e.key, true)
+            // 如果success === false，说明使用 defaultBehavior 失败了
             console.log(updateInfo)
             if (!updateInfo.success) {
                 console.log('use default failed')
@@ -99,24 +122,22 @@ export default function patchTextEvents(on, trigger) {
             console.log("enter", e)
             e.preventDefault()
             e.stopPropagation()
-            const splitPointNode = await splitTextAsBlock(selection.getRangeAt(0))
+            const splitPointNode = await doc.splitTextAsBlock(globalKMState.selectionRange!)
             // restore cursor
             await waitUpdate()
             setCursor(splitPointNode, 0)
         } else  if (e.key === 'Backspace') {
 
-            const range = selection.getRangeAt(0)
+            const range = globalKMState.selectionRange!
             if (!range.collapsed) {
-                const updateInfo = updateRange(selection.getRangeAt(0), '', true)
-                // TODO 要处理 cursor?
+                const updateInfo = updateRange(range, '', true)
                 if (!updateInfo.success) {
                     e.preventDefault()
                     e.stopPropagation()
                     setCursor(updateInfo.node, updateInfo.offset)
                 }
-
             } else {
-
+                // 要考虑破坏结构的情况了
                 const node = findNodeFromElement(range.startContainer)
                 // TODO 要不要直接修正一下节点位置？？？
                 if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
@@ -184,7 +205,7 @@ export default function patchTextEvents(on, trigger) {
             //2.  TODO tab/shift+tab 向上升一级和向下降一级
             e.preventDefault()
             e.stopPropagation()
-            const range = selection.getRangeAt(0)
+            const range = globalKMState.selectionRange!
             const node = findNodeFromElement(range.startContainer)
             // TODO 要不要直接修正一下节点位置？？？
             if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
@@ -202,196 +223,39 @@ export default function patchTextEvents(on, trigger) {
     })
 
 
-    on('compositionstart', (e) => {
-        // TODO 往前删除一个字符？因为是输入法的开始？好像输入法自身也是这样
-        const range = getKeydownRange()
-        range.collapse(true)
-        range.setEnd(range.startContainer, range.startOffset + 1)
-        updateRange(range, '', true)
-        console.log('compositionstart', e)
-    })
-
-    on('compositionend', (e) => {
+    on('compositionend', (e: CompositionEvent) => {
         console.log('compositionend', e)
-        const range = getKeydownRange()
+        const range = globalKMState.rangeBeforeComposition!
         range.collapse(true)
+
         updateRange(range, e.data, true)
     })
 
 
-
     // 如果碰到了 component + 普通节点的组合，要选中整个 component.
-    on('selectionchange', (e) => {
-        adjustSelection(e)
-
-        const selection = window.getSelection()
-        const range = selection.rangeCount ? selection.getRangeAt(0) : null
-        // 用户可以通过监听事件的方式来处理自己的逻辑
-        const inputEvent = new CustomEvent('userSelectionChange',  { detail: {data: range}})
-        trigger(inputEvent)
-
-        // 也可以直接使用我们的 useSelectionRange reactive 来构建逻辑
-        userSelectionRange.value = range ? createRangeLikeFromRange(range) : null
+    on('selectionchange', () => {
+        adjustSelection()
     })
 
-    on('paste', (e) => {
+    on('paste', (e: ClipboardEvent) => {
         console.log('===========')
         const domparser = new DOMParser()
-        const result = domparser.parseFromString(e.clipboardData.getData('text/html'), 'text/html')
+        const result = domparser.parseFromString(e.clipboardData!.getData('text/html'), 'text/html')
         console.log(result)
     })
-
-    // visual focus node
-    const debouncedUpdateNode = debounce((node) => {
-        visualFocusedBlockNode.value = node
-    }, 100)
-
-    // TODO 有没有性能问题？mouseenter capture 会一路
-    on('block:mouseenter', (e) => {
-        const node = findNodeFromElement(e.target)
-        if (node?.constructor.display === 'block') {
-            debouncedUpdateNode(node)
-        }
-    }, true)
-
-    // mouse position
-    const userMousePosition = shallowRef(null)
-    const debouncedUpdateMousePosition = idleThrottle((e) => {
-        const {clientX, clientY} = e
-        userMousePosition.value = {
-            clientX, clientY
-        }
-    }, 200)
-
-    on('mousemove', debouncedUpdateMousePosition)
-
-
-    // TODO 什么时候 destroy all ？
-    return { userSelectionRange, visualFocusedBlockNode, userMousePosition }
 }
 
 
-// CAUTION 默认range 头和尾一定是在同一个 scroll container 中，不存在 头有 scroll，尾却没有的情况
-export function createVisibleRangeRectRef(on, docElement, modalBoundaryElement = document.body) {
-    const rangeClientRect = shallowRef(undefined)
-    let updateRangeClientRectCallback
-    let stopListenSelectionChange
 
-
-    // doc 本身的显隐藏回调
-    const observer = new IntersectionObserver(([docEntry]) => {
-        if (stopListenSelectionChange) stopListenSelectionChange()
-        if (updateRangeClientRectCallback) modalBoundaryElement.removeEventListener('scroll', updateRangeClientRectCallback)
-
-        if(!docEntry.isIntersecting) {
-            rangeClientRect.value = undefined
-        } else {
-            stopListenSelectionChange = on('selectionchange', () => {
-                if (updateRangeClientRectCallback) modalBoundaryElement.removeEventListener('scroll', updateRangeClientRectCallback)
-
-                const selection = window.getSelection()
-                if (selection.rangeCount === 0) return
-                const range = selection.getRangeAt(0)
-                if (range.collapsed) return
-
-                // 有 range 才监听 scroll
-                updateRangeClientRectCallback = idleThrottle(function () {
-                    rangeClientRect.value = getRangeRectsIntersecting(range.getClientRects(), docEntry.intersectionRect)
-                }, 100)
-
-                // 存在 scroll 要就监听 scroll
-                if (isPathHasScroll(findClosestElement(range.startContainer), modalBoundaryElement)) {
-                    modalBoundaryElement.addEventListener('scroll', updateRangeClientRectCallback, true)
-                }
-                // 立刻更新一下。一定要 nextJob，不然当前无限循环了
-                nextJob(updateRangeClientRectCallback)
-            })
-        }
-    }, {
-        root: null,
-        rootMargin: "0px",
-        threshold: buildThresholdList()
-    });
-
-    observer.observe(docElement)
-
-    return rangeClientRect
-}
-
-function getRelativeRect(src, target) {
-    return {
-        top: src.top - target.top,
-        left: src.left - target.left,
-        bottom: src.bottom - target.bottom,
-        right: src.right - target.right,
-        width: src.width,
-        height: src.height
-    }
-}
-
-function isPathHasScroll(start, ancestor) {
-    let pointer = start
-    let result = false
-    while(pointer && pointer !== ancestor) {
-        if (pointer.scrollHeight > pointer.clientHeight || pointer.scrollWidth > pointer.clientWidth) {
-            result = true
-            break
-        } else {
-            pointer = pointer.parentElement
-        }
-    }
-    return result
-}
-
-function getRectIntersecting(rectA, rectB) {
-    const rect = {
-        left : Math.max(rectA.left, rectB.left),
-        top:Math.max(rectA.top, rectB.top),
-        right: Math.min(rectA.right, rectB.right),
-        bottom: Math.min(rectA.bottom, rectB.bottom)
-    }
-
-    if (rect.left <= rect.right && rect.top <= rect.bottom) {
-        return rect
-    }
-}
-
-
-function getRangeRectsIntersecting(rects, targetRect) {
-    // CAUTION 这里为了简化计算，所以直接算出一个 combinedRect
-    const head = rects[0]
-    const tail = rects[rects.length -1]
-    const combinedRect = {
-        top: head.top,
-        left: tail.left,
-        right: head.right,
-        bottom: tail.bottom,
-    }
-
-
-    return getRectIntersecting(combinedRect, targetRect)
-}
-
-
-function buildThresholdList(numSteps = 100) {
-    let thresholds = [];
-
-    for (let i=1.0; i<=numSteps; i++) {
-        let ratio = i/numSteps;
-        thresholds.push(ratio);
-    }
-
-    thresholds.push(0);
-    return thresholds;
-}
 
 /**
  *
  * 用来处理 selection 的头或者尾部选在了组件里面的文本的情况。
+ * TODO 这里有问题，文本节点的 leaf 也被调整了
  */
-function adjustSelection(e) {
+function adjustSelection() {
 
-    const selection = window.getSelection()
+    const selection = window.getSelection()!
     if (!selection.rangeCount) return
 
     const range = selection.getRangeAt(0)
@@ -440,10 +304,11 @@ function adjustSelection(e) {
 }
 
 
-function findFarthestIsolateNode(startNode, endAncestorNode) {
+function findFarthestIsolateNode(startNode: NodeType, endAncestorNode: NodeType) {
     let pointer = startNode
     let foundNode
     while(pointer && pointer !== endAncestorNode) {
+        // @ts-ignore
         if (pointer.constructor.isLeaf) {
             foundNode = pointer
         }
@@ -455,10 +320,6 @@ function findFarthestIsolateNode(startNode, endAncestorNode) {
 }
 
 
-function findClosestElement(target) {
-    return target instanceof Element ? target : target.parentElement
-}
-
-
+// @ts-ignore
 window.findNodeFromElement = findNodeFromElement
 

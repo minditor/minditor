@@ -2,10 +2,10 @@
 import { createElement } from './DOM'
 
 import {$attr, $value, $map} from "./view";
-import {CommandInstance, CommandInstanceArgv, CommandRunArgv} from "./command";
+import {CommandInstance, PluginInstanceArgv, PluginRunArgv} from "./plugin";
 
 
-type InlineToolProps = Omit<Omit<CommandInstanceArgv, 'container'>, 'on'>
+type InlineToolProps = Omit<Omit<PluginInstanceArgv, 'container'>, 'on'>
 
 
 function InlineTool({ userSelectionRange, userMousePosition, visibleRangeRect, boundaryContainer} : InlineToolProps) {
@@ -45,12 +45,12 @@ function InlineTool({ userSelectionRange, userMousePosition, visibleRangeRect, b
 export function registerCommands() {
     const inlineTool = {
         allowDefault: true,
-        createInstance({ container, on, ...props} : CommandInstanceArgv) : CommandInstance {
+        createInstance({ container, on, ...props} : PluginInstanceArgv) : CommandInstance {
 
             container.appendChild(InlineTool(props))
 
             return {
-                activate( argv :CommandRunArgv) {
+                activate( argv :PluginRunArgv) {
                     console.log("activate suggestion")
                 }
             }

@@ -2,7 +2,7 @@
 import { createElement } from './DOM'
 
 import {$attr, $value, $map} from "./view";
-import {CommandInstance, CommandInstanceArgv, CommandRunArgv} from "./command";
+import {CommandInstance, PluginInstanceArgv, PluginRunArgv} from "./plugin";
 import { findElementOrFirstChildFromNode } from "./buildReactiveView";
 
 type Ref = {
@@ -43,11 +43,11 @@ function BlockTool({ visualFocusedBlockNode} : InlineToolProps) {
 
 export function registerCommands() {
     const blockTool = {
-        createInstance({ container, visualFocusedBlockNode } : CommandInstanceArgv) : CommandInstance {
+        createInstance({ container, visualFocusedBlockNode } : PluginInstanceArgv) : CommandInstance {
             container.appendChild(BlockTool({ visualFocusedBlockNode }))
 
             return {
-                activate( argv :CommandRunArgv) {
+                activate( argv :PluginRunArgv) {
                     console.log("activate suggestion")
                 }
             }

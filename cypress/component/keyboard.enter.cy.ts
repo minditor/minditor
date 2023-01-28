@@ -3,7 +3,7 @@ import {buildModelFromData} from "../../src/editing";
 import {buildReactiveView, waitUpdate} from "../../src/buildReactiveView";
 import {screen} from "@testing-library/dom";
 import { on, trigger, removeAll} from '../../src/event'
-import patchTextEvents from '../../src/patchTextEvents'
+import patchRichTextEvents from '../../src/patchRichTextEvents'
 
 function setCursor(el: HTMLElement|Node, offset: number) {
   const range = document.createRange()
@@ -44,7 +44,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
 
       const firstElement = screen.getByText('11')
       setCursor(firstElement, 0)
@@ -90,7 +90,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
       const firstElement = screen.getByText('11')
       setCursor(firstElement, 0)
       expect(window.getSelection()!.rangeCount).to.equal(1)
@@ -142,7 +142,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
       const firstElement = screen.getByText('11')
       setCursor(firstElement, 0)
       expect(window.getSelection()!.rangeCount).to.equal(1)
@@ -196,7 +196,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
 
       const firstElement = screen.getByText('33')
       setCursor(firstElement.firstChild, 2)
@@ -245,7 +245,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
       setCursor(screen.getByText('11').firstChild, 2)
       expect(window.getSelection()!.rangeCount).to.equal(1)
 
@@ -295,7 +295,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
       setCursor(screen.getByText('22')!.firstChild!, 2)
       expect(window.getSelection()!.rangeCount).to.equal(1)
 
@@ -346,7 +346,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
 
       const firstElement = screen.getByText('22')
       setCursor(firstElement.firstChild, 1)
@@ -412,7 +412,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
       setCursor(screen.getByText('22').firstChild!, 1)
       expect(window.getSelection()!.rangeCount).to.equal(1)
 
@@ -475,7 +475,7 @@ describe('keyboard Enter actions', () => {
 
       const docElement = buildReactiveView(doc)
       document.body.appendChild(docElement)
-      patchTextEvents(on, trigger)
+      patchRichTextEvents(on, trigger)
       setCursor(screen.getByText('22').firstChild, 1)
       expect(window.getSelection()!.rangeCount).to.equal(1)
 

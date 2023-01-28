@@ -2,10 +2,11 @@
 
 
 export type EventDelegator = {
-    on: (inputEvent: string, handle: Function, capture?: boolean) => void,
+    on: (inputEvent: string, handle: Function, capture?: boolean) => () => any,
     removeAll: Function,
     trigger: (event:Event) => void,
-    attach: (el: HTMLElement|Document) => void
+    attach: (el: HTMLElement) => void
+    detach: (el: HTMLElement) => void
     subDelegators: {[key: string]: EventDelegator}
 }
 
@@ -14,10 +15,15 @@ type EventCallbackWithCapture = EventListenerOrEventListenerObject & {
     capture: boolean
 }
 
+
+const documentEvents = ['selectionchange']
+
+
 export function createDelegator(namespace = 'global'): EventDelegator {
     const eventCallbacksByEventName: {[key: string] : Set<Function>} = {}
     const eventToCallbackRef: {[key: string] : EventCallbackWithCapture} = {}
-    let attachedEl: HTMLElement|Document
+    const attachedElements = new Set<HTMLElement>()
+
 
     const subDelegators: EventDelegator['subDelegators'] ={}
 
@@ -35,8 +41,15 @@ export function createDelegator(namespace = 'global'): EventDelegator {
     }
 
 
-    function trigger(event: Event) {
-        document.dispatchEvent(event)
+    function trigger(event: Event, element?: HTMLElement) {
+        // CAUTION 手动  trigger 永远在  element 上
+        if (element) {
+            console.log("dispatch", event, element)
+            element.dispatchEvent(event)
+        } else {
+            attachedElements.forEach(el => el.dispatchEvent(event))
+        }
+
     }
 
     function on(inputEvent: string, handle: Function, capture = false) {
@@ -45,8 +58,7 @@ export function createDelegator(namespace = 'global'): EventDelegator {
             if (!subDelegators[namespace]) {
                 subDelegators[namespace] = createDelegator(namespace)
             }
-            subDelegators[namespace].on(eventName, handle, capture)
-            return
+            return subDelegators[namespace].on(eventName, handle, capture)
         }
 
 
@@ -56,9 +68,9 @@ export function createDelegator(namespace = 'global'): EventDelegator {
             eventCallbacksByEventName[event] = new Set()
             const callback = createCallback(eventCallbacksByEventName[event], capture)
             eventToCallbackRef[event] = callback
-            // 已经 attach 过了
-            if (attachedEl) {
-                attachedEl.addEventListener(event, callback, callback.capture)
+            // 已经 attach 过了，但是还没有监听该 event
+            if (attachedElements.size) {
+                attachedElements.forEach(attachedEl => attachedEl.addEventListener(event, callback, callback.capture))
             }
         }
 
@@ -70,18 +82,56 @@ export function createDelegator(namespace = 'global'): EventDelegator {
     }
 
     function removeAll() {
-        Object.entries(eventToCallbackRef).forEach(([event, callbackRef]) => {
-            document.removeEventListener(event, callbackRef)
-            delete eventToCallbackRef[event]
-            delete eventCallbacksByEventName[event]
+        attachedElements.forEach(attachedEl => {
+            Object.entries(eventToCallbackRef).forEach(([event, callbackRef]) => {
+                if (documentEvents.includes(event)) {
+                    document.removeEventListener(event, callbackRef)
+                } else {
+                    attachedEl!.removeEventListener(event, callbackRef)
+                }
+                delete eventToCallbackRef[event]
+                delete eventCallbacksByEventName[event]
+            })
         })
     }
 
-    function attach(el: HTMLElement|Document) {
-        attachedEl = el
+    function attach(element: HTMLElement) {
+
+        if (attachedElements.has(element)) throw new Error('event delegator already attached to this element')
+
+        attachedElements.add(element)
+
+
         Object.entries(eventToCallbackRef).forEach(([event, callback]) => {
-            el.addEventListener(event, callback, callback.capture)
+            if (documentEvents.includes(event)) {
+                // TODO 是不是要改造一下 event？改到 element 上？
+                document.addEventListener(event, callback, callback.capture)
+            } else {
+                element.addEventListener(event, callback, callback.capture)
+            }
         })
+
+        trigger(new CustomEvent('attach', { detail: { element } }), element)
+
+        return function detachElement() {
+            detach(element)
+        }
+    }
+
+    function detach(element: HTMLElement) {
+        if( !attachedElements.has(element)) throw new Error('this element is not attached')
+
+        Object.entries(eventToCallbackRef).forEach(([event, callbackRef]) => {
+            if (documentEvents.includes(event)) {
+                document.removeEventListener(event, callbackRef)
+            } else {
+                element!.removeEventListener(event, callbackRef)
+            }
+            delete eventToCallbackRef[event]
+            delete eventCallbacksByEventName[event]
+        })
+
+        attachedElements.delete(element)
     }
 
     return {
@@ -89,6 +139,7 @@ export function createDelegator(namespace = 'global'): EventDelegator {
         trigger,
         removeAll,
         attach,
+        detach,
         subDelegators
     }
 }

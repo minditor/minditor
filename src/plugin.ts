@@ -66,25 +66,25 @@ export type RectSizeObserver = {
     observe: (argv: HTMLElement | Node) => ([Ref, Function])
 }
 
-export type CommandInstanceArgv = {
+export type PluginInstanceArgv = {
     container: HTMLElement,
     rectSizeObserver : RectSizeObserver
 } & Utils
 
-export type Command = {
+export type Plugin = {
     onKey?: string
     onInput?: string
     allowDefault? : boolean
-    createInstance?: (argv: CommandInstanceArgv) => CommandInstance
-    run?: (argv: CommandRunArgv) => any
+    createInstance?: (argv: PluginInstanceArgv) => CommandInstance
+    run?: (argv: PluginRunArgv) => any
 }
 
 export class CommandInstance {
-    activate(argv: CommandRunArgv) {}
+    activate(argv: PluginRunArgv) {}
     deactivate?: Function
 }
 
-export type CommandRunArgv = {
+export type PluginRunArgv = {
     userSelectionRange: Ref,
     charReader: CharReader,
     node: NodeType
@@ -100,8 +100,8 @@ type Utils = {
     boundaryContainer: HTMLElement,
 }
 
-export function registerCommands(commands: (Command)[], utils: Utils ) {
-    commands.forEach(command => registerCommand(command, utils))
+export function registerPlugins(plugins: (Plugin)[], utils: Utils ) {
+    plugins.forEach(command => registerPlugin(command, utils))
 }
 
 export const rectSizeObserver = (() => {
@@ -181,7 +181,7 @@ function createEventCommandCallback(commandCallbacks: Set<CommandCallback>) {
 
 
 // TODO activated ? 的变量？
-function registerCommand(command: Command, utils: Utils) {
+function registerPlugin(plugin: Plugin, utils: Utils) {
     const {on, userSelectionRange} = utils
     // activate: key/selection/scrollIntoView/hover?
     let event: string | undefined
@@ -189,29 +189,29 @@ function registerCommand(command: Command, utils: Utils) {
     // 用户的注册的 command 有两种，一种是文字输入
     // 另一种是快捷键组合。
 
-    if (command.onInput) {
+    if (plugin.onInput) {
         event = 'userInput'
         test = (e: CustomEvent) => {
-            if (e.detail.data! === command.onInput) return true
+            if (e.detail.data! === plugin.onInput) return true
         }
-    } else if (command.onKey){
+    } else if (plugin.onKey){
         event = 'keydown'
         test = (e: KeyboardEvent) => {
-            if (e.key === command.onKey) return true
+            if (e.key === plugin.onKey) return true
         }
     }
 
 
 
 
-    if (command.createInstance) {
+    if (plugin.createInstance) {
         if (event) throw new Error('command with instance should handle event by itself')
         // TODO 指定 modal boundary？ 默认是 document
         const container = document.createElement('div')
         utils.boundaryContainer.appendChild(container)
 
         // 让 instance 自己决定什么时候开始接受值的变化，什么时候不接受。这样可以设计一直  activate 的 instance.
-        command.createInstance({
+        plugin.createInstance({
             container,
             rectSizeObserver,
             ...utils,
@@ -237,7 +237,7 @@ function registerCommand(command: Command, utils: Utils) {
 
                 // 如果显式地 return false，表示执行过程中发现不匹配，还是可以让其他命令继续执行。
                 // 如果直接是失败，应该 throw new Error
-                return command.run!({ charReader, userSelectionRange, node })
+                return plugin.run!({ charReader, userSelectionRange, node })
             } else {
                 // 表示不匹配，一定要显示地表达出来
                 return false

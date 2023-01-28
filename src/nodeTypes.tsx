@@ -12,7 +12,7 @@ import Table from './components/Table'
 import InsertSuggestion from './components/InsertSuggestion'
 // @ts-ignore
 // import Code from './components/Code'
-import {buildModelFromData, createDefaultNode as defaultCreateDefaultNode, NodeData} from "./editing";
+import {NodeData} from "./editing";
 
 
 class TextBlock extends NodeType{
@@ -97,7 +97,7 @@ class ListItem extends TextBlock{
     static createDefaultContent() : NodeData[]{
         return [{ type: 'Para', content: [{ type: 'Text', value: ''}]}]
     }
-    static async unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = defaultCreateDefaultNode) {
+    static async unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = node.root!.createDefaultNode) {
         const parent = node.parent
         if (parent.constructor === ListItem) {
 

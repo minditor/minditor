@@ -3,10 +3,10 @@
 import {createElement} from "../src/DOM.js";
 import {buildReactiveView} from "../src/buildReactiveView";
 import userEvent from '@testing-library/user-event'
-import patchTextEvents from "../src/patchTextEvents";
+import patchRichTextEvents from "../src/patchRichTextEvents";
 import { registerCommands as markdownCommands } from "../src/markdown";
 // import { registerCommands as suggestionCommands } from "../src/suggestion";
-import { registerCommands } from "../src/command";
+import { registerPlugins } from "../src/plugin";
 import { on, trigger } from '../src/event'
 
 import {buildModelFromData} from "../src/editing";
