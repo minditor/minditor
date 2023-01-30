@@ -251,34 +251,22 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
 /**
  *
  * 用来处理 selection 的头或者尾部选在了组件里面的文本的情况。
- * TODO 这里有问题，文本节点的 leaf 也被调整了
+ * 这个时候需要把在所在的组件整个选上。如果选中的是组件中的组件，那么需要把组高层的组件选上。
  */
 function adjustSelection() {
+    if (!globalKMState.selectionRange || globalKMState.selectionRange.collapsed) return
 
-    const selection = window.getSelection()!
-    if (!selection.rangeCount) return
+    // 选区不在  doc 或者不在同一个  doc 里，不用管
+    const range = createRangeLikeFromRange(globalKMState.selectionRange)
+    if (!range.isInDoc) return
 
-    const range = selection.getRangeAt(0)
-    if (!range) return
-
-    if(range.collapsed) {
-        console.info('cursor move', range.startContainer, range.startOffset)
-        return
-    }
-
-    const ancestorNode = findNodeFromElement(range.commonAncestorContainer)
-    if (!ancestorNode) {
-        console.warn('not in a same document context')
-    }
-
-    const endNode = findNodeFromElement(range.endContainer)
-    const startNode = findNodeFromElement(range.startContainer)
+    const { endNode, startNode, commonAncestorNode } = range
 
     // 1. 找到到 ancestor 路径还是那个最后一个 isolate component 节点
-    const endIsolateNode = findFarthestIsolateNode(endNode, ancestorNode)
-    const startIsolateNode = findFarthestIsolateNode(startNode, ancestorNode)
+    const endIsolateNode = findFarthestIsolateNode(endNode, commonAncestorNode)
+    const startIsolateNode = findFarthestIsolateNode(startNode, commonAncestorNode)
 
-    // 说明在同一个 context 下，都没有跨越 isolate component
+    // 如果都没有被隔离，说明头尾都在同一个 context 下，不用处理。
     if (!endIsolateNode && !startIsolateNode) return
 
     let startContainer = range.startContainer
@@ -286,7 +274,7 @@ function adjustSelection() {
     let endContainer = range.endContainer
     let endOffset = range.endOffset
 
-
+    // 2. 开始处理头部
     const newRange = document.createRange()
     newRange.setStart(startContainer, startOffset)
     newRange.setEnd(endContainer, endOffset)
@@ -295,12 +283,13 @@ function adjustSelection() {
         newRange.setStartBefore(findElementOrFirstChildFromNode(startIsolateNode))
     }
 
+    // 3. 开始处理尾部
     if (endIsolateNode) {
         newRange.setEndAfter(findElementOrFirstChildFromNode(endIsolateNode))
     }
 
-    selection.removeAllRanges()
-    selection.addRange(newRange)
+    globalKMState.selection!.removeAllRanges()
+    globalKMState.selection!.addRange(newRange)
 }
 
 
@@ -309,7 +298,7 @@ function findFarthestIsolateNode(startNode: NodeType, endAncestorNode: NodeType)
     let foundNode
     while(pointer && pointer !== endAncestorNode) {
         // @ts-ignore
-        if (pointer.constructor.isLeaf) {
+        if (pointer.constructor.isolated) {
             foundNode = pointer
         }
         pointer = pointer.parent

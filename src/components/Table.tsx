@@ -7,6 +7,7 @@ import ReactDOM from 'react-dom/client'
 import {reactive} from "@ariesate/reactivity";
 import {NodeType, RenderProp} from "../NodeType";
 import {LinkedList} from "../linkedList";
+import './Table.css'
 
 function Table({ value } : {value: any}) {
     return (
@@ -45,6 +46,7 @@ function toReactValue(attachValue: Function) {
 
 export default class ExportTable extends NodeType{
     static isLeaf = true
+    static isolated = true
     constructor(data: any, container: LinkedList) {
         super(data, container)
         const { value = ''} = data

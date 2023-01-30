@@ -3,6 +3,8 @@ import { createElement, useState, useEffect, StrictMode, cloneElement} from "rea
 import ReactDOM from 'react-dom/client'
 import {reactive} from "@ariesate/reactivity";
 import { NodeType } from "../NodeType";
+import {NodeData} from "../editing";
+import {LinkedList} from "../linkedList";
 
 function Code({ value, props }) {
     return (
@@ -34,7 +36,8 @@ function toReactValue(attachValue: Function) {
 
 export default class ExportCode extends NodeType{
     static isLeaf = true
-    constructor(data, container) {
+    static isolated = true
+    constructor(data: NodeData, container: LinkedList) {
         super(data, container)
         const { value = '', props = {}} = data
         this.props = reactive(props)

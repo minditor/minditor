@@ -27,9 +27,10 @@ type NodeTypes = {
 export class Doc {
     root: NodeType
     eventDelegator: EventDelegator
+    element?: HTMLElement
     constructor(
         readonly data: NodeData,
-        readonly docContainer: HTMLElement,
+        readonly docContainer: HTMLElement = document.createElement('div'),
         readonly plugins: Plugin[] = [],
         readonly nodeTypes:NodeTypes = defaultNodeTypes,
         readonly boundaryContainer = document.body
@@ -50,14 +51,16 @@ export class Doc {
         // TODO 应该只要 attach doc 就行了，其他细节隐藏掉
     }
     render() {
-        const docElement = buildReactiveView(this.root, this.eventDelegator.subDelegators.block)
-        docElement.setAttribute('contenteditable', 'true')
-        this.docContainer.appendChild(docElement)
-        this.eventDelegator.attach(docElement)
+        // TODO 这里处理了 rootContainer 有点奇怪，用户有可能只是拿来测试，没有 rootContainer
+        this.element = buildReactiveView(this.root, this.eventDelegator.subDelegators.block)
+        this.element.setAttribute('contenteditable', 'true')
+        this.docContainer.appendChild(this.element)
+        this.eventDelegator.attach(this.element)
         this.eventDelegator.subDelegators.root && this.eventDelegator.subDelegators.root.attach(this.docContainer)
+
     }
     destroy() {
-
+        // 主要是事件相关的问题
     }
 
     buildModelFromData(data: NodeData, container?: LinkedList, preventCreateDefaultContent = false, preventCreateDefaultChildren = false) {
@@ -497,6 +500,7 @@ export type RangeLike = {
     collapsed: Range['collapsed'],
     commonAncestorNode: NodeType
     commonAncestorContainer: Range['commonAncestorContainer'],
+    isInDoc: boolean,
 }
 
 
@@ -550,6 +554,11 @@ export function createRangeLike({ startNode, startOffset, endNode, endOffset}: {
         get commonAncestorContainer() {
             commonAncestorContainerCache = findElementOrFirstChildFromNode(this.commonAncestorNode)
             return commonAncestorContainerCache
+        },
+        get isInDoc() {
+            return this.startNode
+                && this.endNode
+                && this.startNode.root === this.endNode.root
         }
     }
 }
@@ -575,6 +584,11 @@ export function createRangeLikeFromRange(range: Range) {
                 commonAncestorNodeCache = findNodeFromElement(range.commonAncestorContainer)
             }
             return commonAncestorNodeCache
+        },
+        get isInDoc() {
+            return this.startNode
+                && this.endNode
+                && this.startNode.root === this.endNode.root
         }
     }
 
