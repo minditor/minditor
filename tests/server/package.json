@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "vite --port 5179"
+    "dev": "vite"
   },
   "author": "",
   "license": "ISC",

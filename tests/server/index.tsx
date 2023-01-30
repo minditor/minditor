@@ -19,9 +19,7 @@ import { Doc } from "../../src";
 // import { data } from './data/playgroundMultiPara'
 
 
-
-/* @vite-ignore */
-// @ts-ignore
+// @ts-ignore @vite-ignore
 const { data } = await import(`./data/${searchObj.data || 'singleSection'}`)
 const rootElement = document.getElementById('root')!
 rootElement.style.position = 'relative'

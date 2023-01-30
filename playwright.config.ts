@@ -98,11 +98,11 @@ const config: PlaywrightTestConfig = {
   // outputDir: 'test-results/',
 
   /* Run your local dev server before starting the tests */
-  // webServer: {
-    // command: 'npm run test:sever',
-    // port 在 test:server script 里面写死了 5179
-    // port: 3000,
-  // },
+  webServer: {
+    command: 'npm run test:server --port=5179',
+    //  CAUTION 这里要和 command 中的数字 match
+    port: 5179,
+  },
 };
 
 export default config;

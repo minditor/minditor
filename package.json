@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "test:server": "cd tests/server && npm run dev",
+    "test:server": "npm run dev --prefix tests/server -- --port $npm_config_port",
     "dev": "vite",
     "build": "vite build",
     "cypress": "cypress open",
