@@ -50,10 +50,15 @@ export class Doc {
 
         // TODO 应该只要 attach doc 就行了，其他细节隐藏掉
     }
-    render() {
+    render(attrs = {}) {
         // TODO 这里处理了 rootContainer 有点奇怪，用户有可能只是拿来测试，没有 rootContainer
         this.element = buildReactiveView(this.root, this.eventDelegator.subDelegators.block)
         this.element.setAttribute('contenteditable', 'true')
+        Object.entries(attrs).forEach(([k, v]) => {
+            /*@ts-ignore*/
+            this.element!.setAttribute(k, v)
+        })
+
         this.docContainer.appendChild(this.element)
         this.eventDelegator.attach(this.element)
         this.eventDelegator.subDelegators.root && this.eventDelegator.subDelegators.root.attach(this.docContainer)

@@ -22,8 +22,8 @@
     "allowSyntheticDefaultImports": true
   },
   "include": [
-    "global.d.ts",
     "src",
     "jsx.d.ts",
+    "tests"
   ]
 }

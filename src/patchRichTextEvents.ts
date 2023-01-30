@@ -7,7 +7,7 @@ import {
 import {waitUpdate, setCursor, findElementOrFirstChildFromNode, scheduleImmediateUpdate} from "./buildReactiveView";
 import {EventDelegator} from "./event";
 import {NodeType} from "./NodeType";
-
+import { state as globalKM, actions } from "./globals";
 
 function collapseSelection(selection:Selection) {
     const range = selection.getRangeAt(0).cloneRange()
@@ -21,57 +21,7 @@ function collapseSelection(selection:Selection) {
     return canUseDefault
 }
 
-export const globalKMState = (function() {
-    let isMouseDown = false
-    let hasCursor = false
-    let currentSelection:Selection|null
-    let rangeBeforeComposition:Range|null
-    let selectionRange: Range|null
 
-    document.addEventListener('mousedown', () => {
-        isMouseDown = true
-    })
-
-    document.addEventListener('mouseup', (e: MouseEvent) => {
-        if (!e.buttons) isMouseDown = false
-    })
-    
-    document.addEventListener('selectionchange', () => {
-        currentSelection = window.getSelection()
-        hasCursor = Boolean(currentSelection?.rangeCount)
-        selectionRange = hasCursor ? currentSelection?.getRangeAt(0)! : null
-    })
-
-    document.addEventListener('keydown', (e) => {
-        if (hasCursor) {
-            // TODO selection change 发生在 keydown 之前吗？？？
-            if (e.isComposing || e.keyCode === 229) {
-                return
-            }
-            rangeBeforeComposition = currentSelection!.getRangeAt(0)
-        }
-    })
-
-
-    return {
-        get isMouseDown() {
-            return isMouseDown
-        },
-        get hasCursor() {
-            return hasCursor
-        },
-        get selection() {
-            return currentSelection
-        },
-        get selectionRange() {
-            return selectionRange
-        },
-        get rangeBeforeComposition() {
-            return rangeBeforeComposition
-        }
-    }
-
-})()
 
 
 export default function patchRichTextEvents({ on, trigger } : EventDelegator, doc: Doc, boundaryContainer: HTMLElement) {
@@ -80,7 +30,7 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
 
         console.log('keydown', e, e.key, e.code)
         // -1 没有 cursor 的情况不管
-        if (!globalKMState.hasCursor) return
+        if (!globalKM.hasCursor) return
 
         // -2 输入法中的  Keydown 不管。
         // 这里有关于 keydown 和输入法的问题的例子。虽然 keydown 发生在 compositionstart 前，但 keyCode === 229 能表示这个  keydown 是输入法的一部分。
@@ -102,11 +52,11 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
 
             // 没有阻止，那么开始使用新字符更新 range。
             // 1. 手动收拢 selection。
-            collapseSelection(globalKMState.selection!)
-            console.log("inserting", e.key, globalKMState.selectionRange!.startContainer)
+            collapseSelection(globalKM.selection!)
+            console.log("inserting", e.key, globalKM.selectionRange!.startContainer)
             // CAUTION 不能在这里插入字符是因为这个时候并不知道是不是输入法 compositionstart 的 keydown
             // 2. 修改字符
-            const updateInfo = updateRange(globalKMState.selectionRange!, e.key, true)
+            const updateInfo = updateRange(globalKM.selectionRange!, e.key, true)
             // 如果success === false，说明使用 defaultBehavior 失败了
             console.log(updateInfo)
             if (!updateInfo.success) {
@@ -122,13 +72,13 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
             console.log("enter", e)
             e.preventDefault()
             e.stopPropagation()
-            const splitPointNode = await doc.splitTextAsBlock(globalKMState.selectionRange!)
+            const splitPointNode = await doc.splitTextAsBlock(globalKM.selectionRange!)
             // restore cursor
             await waitUpdate()
             setCursor(splitPointNode, 0)
         } else  if (e.key === 'Backspace') {
 
-            const range = globalKMState.selectionRange!
+            const range = globalKM.selectionRange!
             if (!range.collapsed) {
                 const updateInfo = updateRange(range, '', true)
                 if (!updateInfo.success) {
@@ -205,7 +155,7 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
             //2.  TODO tab/shift+tab 向上升一级和向下降一级
             e.preventDefault()
             e.stopPropagation()
-            const range = globalKMState.selectionRange!
+            const range = globalKM.selectionRange!
             const node = findNodeFromElement(range.startContainer)
             // TODO 要不要直接修正一下节点位置？？？
             if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
@@ -225,7 +175,7 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
 
     on('compositionend', (e: CompositionEvent) => {
         console.log('compositionend', e)
-        const range = globalKMState.rangeBeforeComposition!
+        const range = globalKM.rangeBeforeComposition!
         range.collapse(true)
 
         updateRange(range, e.data, true)
@@ -254,10 +204,10 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
  * 这个时候需要把在所在的组件整个选上。如果选中的是组件中的组件，那么需要把组高层的组件选上。
  */
 function adjustSelection() {
-    if (!globalKMState.selectionRange || globalKMState.selectionRange.collapsed) return
+    if (!globalKM.selectionRange || globalKM.selectionRange.collapsed) return
 
     // 选区不在  doc 或者不在同一个  doc 里，不用管
-    const range = createRangeLikeFromRange(globalKMState.selectionRange)
+    const range = createRangeLikeFromRange(globalKM.selectionRange)
     if (!range.isInDoc) return
 
     const { endNode, startNode, commonAncestorNode } = range
@@ -288,8 +238,8 @@ function adjustSelection() {
         newRange.setEndAfter(findElementOrFirstChildFromNode(endIsolateNode))
     }
 
-    globalKMState.selection!.removeAllRanges()
-    globalKMState.selection!.addRange(newRange)
+    globalKM.selection!.removeAllRanges()
+    globalKM.selection!.addRange(newRange)
 }
 
 

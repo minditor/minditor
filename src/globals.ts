@@ -1,0 +1,75 @@
+export type GlobalState = {
+    readonly isMouseDown: boolean,
+    readonly hasCursor: boolean,
+    readonly selection: Selection|null,
+    readonly selectionRange: Range| null,
+    readonly rangeBeforeComposition:Range|null
+}
+
+export const state:GlobalState = (function() {
+    let isMouseDown = false
+    let hasCursor = false
+    let currentSelection:Selection|null = window.getSelection()
+    let rangeBeforeComposition:Range|null
+    let selectionRange: Range|null
+
+    document.addEventListener('mousedown', () => {
+        isMouseDown = true
+    })
+
+    document.addEventListener('mouseup', (e: MouseEvent) => {
+        if (!e.buttons) isMouseDown = false
+    })
+
+    document.addEventListener('selectionchange', () => {
+        currentSelection = window.getSelection()
+        hasCursor = Boolean(currentSelection?.rangeCount)
+        selectionRange = hasCursor ? currentSelection?.getRangeAt(0)! : null
+    })
+
+    document.addEventListener('keydown', (e) => {
+        if (hasCursor) {
+            // TODO selection change 发生在 keydown 之前吗？？？
+            if (e.isComposing || e.keyCode === 229) {
+                return
+            }
+            rangeBeforeComposition = currentSelection!.getRangeAt(0)
+        }
+    })
+
+
+    return {
+        get isMouseDown() {
+            return isMouseDown
+        },
+        get hasCursor() {
+            return hasCursor
+        },
+        get selection() {
+            return currentSelection
+        },
+        get selectionRange() {
+            return selectionRange
+        },
+        get rangeBeforeComposition() {
+            return rangeBeforeComposition
+        },
+
+    }
+})()
+
+export type GlobalActions = {
+    setSelection: (startContainer: Node, startOffset: number, endContainer?: Node, endOffset?: number) => void,
+
+}
+
+export const actions: GlobalActions = {
+    setSelection(startContainer: Node, startOffset: number, endContainer: Node = startContainer, endOffset: number = startOffset) {
+        const newRange = document.createRange()
+        newRange.setStart(startContainer, startOffset)
+        newRange.setEnd(endContainer, endOffset)
+        state.selection!.removeAllRanges()
+        state.selection!.addRange(newRange)
+    }
+}
+
