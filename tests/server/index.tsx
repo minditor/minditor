@@ -1,6 +1,8 @@
 /**@jsx createElement*/
+import {createElement, deepMatch, partialMatch, expect} from "./util";
 import {screen} from "@testing-library/dom";
 import { state, actions } from '../../src/globals'
+import '../test-extend.ts'
 
 const searchObj = Object.fromEntries(
     window.location.search.slice(1).split('&').map(pair => pair.split('='))
@@ -32,17 +34,24 @@ const doc = new Doc(
 
 )
 
-window.pw = {
-    get doc() {
-        return doc.root
+
+Object.assign(window, {
+    pw: {
+        get doc() {
+            return doc.root
+        },
+        get docElement() {
+            return doc.element
+        },
+        screen,
+        state,
+        actions,
+        partialMatch,
+        deepMatch,
+        expect
     },
-    get docElement() {
-        return doc.element
-    },
-    screen,
-    state,
-    actions
-}
+    createElement,
+})
 // 一定要放最后，这个时候才触发 test case
 doc.render()
 

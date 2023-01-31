@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "baseUrl": "./",
+    "outDir": "../tests",
+    "sourceMap": false,
+    "target": "es2016",
+    "newLine": "LF",
+    "useDefineForClassFields": false,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "allowJs": true,
+    "strict": true,
+    "noUnusedLocals": false,
+    "experimentalDecorators": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "removeComments": false,
+    "jsx": "react",
+    "jsxFactory": "window.createElement",
+    "lib": ["esnext", "dom"],
+    "types": ["jest", "node"],
+    "allowSyntheticDefaultImports": true
+  },
+  "include": [
+    "../global.d.ts",
+    "../src",
+    "../jsx.d.ts",
+    "test-extend.ts"
+  ]
+}

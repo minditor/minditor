@@ -3,7 +3,7 @@ import {buildReactiveView, findElementOrFirstChildFromNode, waitUpdate} from "./
 import {nodeTypes as defaultNodeTypes} from "./nodeTypes";
 import {NodeType} from "./NodeType";
 import {LinkedList, LinkedListFragment} from "./linkedList";
-import {ExtendedDocumentFragment} from "./DOM";
+import {AttributesArg, ExtendedDocumentFragment} from "./DOM";
 import {createDelegator, EventDelegator} from "./event";
 import patchRichTextEvents from "./patchRichTextEvents";
 import {Plugin, registerPlugins} from "./plugin";
@@ -50,14 +50,16 @@ export class Doc {
 
         // TODO 应该只要 attach doc 就行了，其他细节隐藏掉
     }
-    render(attrs = {}) {
+    render(attrs?: AttributesArg) {
         // TODO 这里处理了 rootContainer 有点奇怪，用户有可能只是拿来测试，没有 rootContainer
-        this.element = buildReactiveView(this.root, this.eventDelegator.subDelegators.block)
-        this.element.setAttribute('contenteditable', 'true')
-        Object.entries(attrs).forEach(([k, v]) => {
-            /*@ts-ignore*/
-            this.element!.setAttribute(k, v)
-        })
+        this.element = buildReactiveView(
+            this.root,
+            this.eventDelegator.subDelegators.block,
+            {
+                ...attrs,
+                contenteditable: true
+            }
+        )
 
         this.docContainer.appendChild(this.element)
         this.eventDelegator.attach(this.element)

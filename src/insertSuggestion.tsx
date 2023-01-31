@@ -3,7 +3,6 @@ import { createElement } from './DOM'
 
 import {$attr, $value, $map} from "./view";
 import {CommandInstance, PluginInstanceArgv, PluginRunArgv} from "./plugin";
-import {replaceNode} from "./editing";
 import {setCursor} from "./buildReactiveView";
 
 export function registerCommands() {
@@ -16,7 +15,7 @@ export function registerCommands() {
                 return false
             }
 
-            const newNode = replaceNode({type: 'InsertSuggestion'}, node)
+            const newNode = node.root.replaceNode({type: 'InsertSuggestion'}, node)
             // TODO 现在这里有点问题， replaceNode 没有 patchPoint, 所以现在又用了 Promise.resolve().then() 来更新。reactivity 里面，再给一下。
             setTimeout(() => {
                 setCursor(newNode, 0)

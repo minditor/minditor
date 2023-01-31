@@ -1,0 +1,29 @@
+import {Screen} from "@testing-library/dom";
+import { Page } from '@playwright/test';
+
+export {};
+
+declare global {
+    // 用来扩展 server/index.tsx 中的 pw 对象
+    interface Window {
+        readonly docRoot: any,
+        readonly docElement: HTMLElement|undefined,
+        readonly page: Screen,
+        readonly state: any,
+        readonly actions: any,
+        readonly partialMatch: any,
+        readonly deepMatch: any,
+        readonly expect: any,
+        readonly createElement: any,
+    }
+}
+
+
+
+declare module "@playwright/test" {
+    interface Page {
+        expect?: any
+        expectAll?: any,
+        load?: any
+    }
+}

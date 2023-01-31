@@ -1,17 +1,19 @@
 /**@jsx createElement*/
+/* @ts-ignore */
 import { createElement, useState, useEffect, StrictMode, cloneElement} from "react";
+/* @ts-ignore */
 import ReactDOM from 'react-dom/client'
+/* @ts-ignore */
 import {reactive} from "@ariesate/reactivity";
 import { NodeType } from "../NodeType";
 import {NodeData} from "../editing";
 import {LinkedList} from "../linkedList";
 
-function Code({ value, props }) {
+function Code() {
     return (
-        <div style={{padding:10, background:'gray'}} contentEditable={false}>
+        <div style={{padding:10, background:'gray'}} contenteditable={false}>
             <div>
                 <span>lang: </span>
-                <span>{props?.lang}</span>
             </div>
             <pre>
                 import xxx from
@@ -48,7 +50,7 @@ export default class ExportCode extends NodeType{
         // const root = document.getElementById('app')
         console.log(this.props)
         ReactDOM.createRoot(root).render(
-            <Code value={toReactValue(this.value)} props={this.props}/>
+            <Code />
         )
         return root
         // return document.createElement('div')

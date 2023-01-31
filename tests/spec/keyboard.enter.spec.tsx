@@ -1,5 +1,7 @@
-import { test, expect, type Page } from '@playwright/test';
-import './global.d.ts'
+/**@jsx createElement*/
+import {createElement} from './mock'
+import { test, expect } from '@playwright/test';
+import { default as config } from '../playwright.config'
 import { data as singleSectionData } from './server/data/singleSection'
 // import { data } from './data/multiSection'
 import { data as singleParaData } from './server/data/singlePara'
@@ -7,73 +9,80 @@ import { data as singleParaData } from './server/data/singlePara'
 // import { data } from './data/nestedList'
 // import { data } from './data/multiPara'
 // import { data } from './data/playgroundMultiPara'
+import './test-extend'
 
 
-interface ExtendedPage extends Page {
-  expect?: any
-  expectAll?: any,
-  load?: any
-}
+const ZWSP = '​'
 
-
-test.beforeEach(async ({ page }: {page: ExtendedPage}) => {
+test.beforeEach(async ({ page }) => {
   // TODO 变成 global setup
   page.load = async (dataName: string = 'singlePara') => {
-    await page.goto(`http://localhost:5179?data=${dataName}`);
+    //@ts-ignore
+    await page.goto(`http://localhost:${config.webServer.port}?data=${dataName}`);
     await expect(page.getByTestId('root')).not.toBeEmpty()
   }
 
 
-  page.expect = async (pageFn: (...arg:any[]) => any, args?:any) => {
-    return expect(await page.evaluate(pageFn, args)).toBeTruthy()
+  page.expect = async (pageFn: (...arg:any[]) => any, args?:any, message?: string) => {
+    return expect(await page.evaluate(pageFn, args), message).toBeTruthy()
   }
 
-  page.expectAll = async (pageFn: (...arg:any[]) => any, args?:any) => {
-    return expect((await page.evaluate(pageFn, args)).every((item: any) => !!item)).toBeTruthy()
+  page.expectAll = async (pageFn: (...arg:any[]) => any, args?:any, message?: string) => {
+    return expect((await page.evaluate(pageFn, args)).every((item: any) => !!item), message).toBeTruthy()
   }
 
 });
-
-
 
 
 test.describe('keyboard Enter actions', () => {
 
   test.describe('at head of content', () => {
 
-    test('Para content', async ({page} : {page: ExtendedPage}) => {
+    test('Para content', async ({page}) => {
       await page.load('singlePara')
       const data = singleParaData
       const firstText = data.children[0].content[0].value
       const allText = data.children[0].content.map(i => i.value).join('')
       // 1.1 设置焦点
-      await page.evaluate((firstText) => {
+      await page.evaluate((firstText: string) => {
         window.pw.actions.setSelection(window.pw.screen.getByText(firstText), 0)
       }, firstText)
 
       await page.expect(() => window.getSelection()!.rangeCount === 1)
 
-      const rootHandle = page.getByTestId('root')
-
       // 1.2 执行动作
+      const rootHandle = page.getByTestId('root')
       await rootHandle.press('Enter')
-
+      debugger
       // 2.1 测试数据结构
-      await page.expect(() => window.pw.doc.children!.size() === 2)
-      await page.expect(() =>window.pw.doc.children!.at(0).data.type === 'Para')
+      const dataToCompare = structuredClone(data)
+      // TODO 还要对比和 API 创造出来的是否一样？
+      // dataToCompare.children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
+      // expect(await page.evaluate(() => window.pw.doc.toJSON())).toMatchObject(dataToCompare)
+
 
       // 2.2 测试 dom
-      await page.expectAll(([firstText, allText]: [t: string, a: string]) => {
+      await page.expectAll(([firstText, allText, ZWSP]: [t: string, a: string, c: string]) => {
         const focusPElement = window.pw.screen.getByText(firstText).parentElement
         const newPElement = focusPElement!.previousSibling!
+        debugger
         return [
-          newPElement.nodeName === 'P',
-          newPElement.childNodes.length === 1,
-          newPElement.firstChild!.nodeName === 'SPAN',
-          newPElement.textContent === '​',
-          window.pw.docElement!.textContent === `​${allText}`
+          window.pw.partialMatch(newPElement, <p><span>{ZWSP}</span></p>),
+          window.pw.expect(window.pw.docElement!.textContent).toEqual(`${ZWSP}${allText}`)
         ]
-      }, [firstText, allText])
+      }, [firstText, allText, ZWSP], 'match dom')
+
+      // await page.expectAll(([firstText, allText]: [t: string, a: string]) => {
+      //   const focusPElement = window.pw.screen.getByText(firstText).parentElement
+      //   const newPElement = focusPElement!.previousSibling!
+      //   return [
+      //     newPElement.nodeName === 'P',
+      //     newPElement.childNodes.length === 1,
+      //     newPElement.firstChild!.nodeName === 'SPAN',
+      //     newPElement.textContent === '',
+      //     window.pw.docElement!.textContent === `​${allText}`
+      //   ]
+      // }, [firstText, allText])
 
       // 2.3 range 测试
       await page.expectAll(([firstText, allText]: [t: string, a: string]) => {

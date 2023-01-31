@@ -3,7 +3,7 @@ import {autorun, autorunForEach} from '@ariesate/reactivity'
 import {viewToNodeMap} from "./editing";
 import { LinkedList } from "./linkedList";
 import {NodeType} from "./NodeType";
-import {ExtendedDocumentFragment} from "./DOM";
+import {AttributesArg, ExtendedDocumentFragment, setAttributes} from "./DOM";
 import {EventDelegator} from "./event";
 
 
@@ -115,7 +115,7 @@ export function createReactiveAttribute(createAttribute: Function) {
 }
 
 
-export function buildReactiveView(node: NodeType, blockEventDelegator: EventDelegator) {
+export function buildReactiveView(node: NodeType, blockEventDelegator: EventDelegator, extraAttrs?: AttributesArg ) {
     let reactiveContent, reactiveChildren, reactiveValue
     const Type = node.constructor as typeof NodeType
 
@@ -134,6 +134,7 @@ export function buildReactiveView(node: NodeType, blockEventDelegator: EventDele
     // TODO 如果 props 也希望被 reactiveView 化呢？
     // TODO 针对 leaf component 节点需要插入一个空的前节点帮助选中
     const element = node.render!({content:reactiveContent, children: reactiveChildren, value: reactiveValue, props: node.props})
+    if (extraAttrs) setAttributes(extraAttrs, element)
     nodeToElement.set(node, element)
 
     if (!element) throw new Error('must return a element')

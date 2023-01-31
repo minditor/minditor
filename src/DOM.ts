@@ -97,11 +97,11 @@ export function setAttribute(node: ExtendedElement, name: string, value: any, is
   }
 }
 
-type AttributesArg = {
+export type AttributesArg = {
   [k: string] : any
 }
 
-function setAttributes(attributes: AttributesArg, element: HTMLElement, invoke?: Function) {
+export function setAttributes(attributes: AttributesArg, element: HTMLElement, invoke?: Function) {
   each(attributes, (attribute, name) => {
     if (/^on[A-Z]/.test(name) && typeof attribute === 'function') {
       if (invoke) {
@@ -143,8 +143,10 @@ function handlerChildren(container: HTMLElement | ExtendedDocumentFragment, chil
 
 type Component = (props: any) => HTMLElement
 
+export type JSXElementType =  string | typeof Fragment | Component
 
-export function createElement(type: string | typeof Fragment | Component, props: AttributesArg, ...children: HTMLElement[]) {
+
+export function createElement(type: JSXElementType, props: AttributesArg, ...children: HTMLElement[]) {
   if (type !== Fragment && typeof type === 'function') {
     // 组件
     return type({ ...props, children })
