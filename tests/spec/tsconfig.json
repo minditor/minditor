@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
-    "outDir": "../tests",
+    "baseUrl": "../../",
+    "outDir": "../spec-out",
     "sourceMap": false,
     "target": "es2016",
     "newLine": "LF",
@@ -19,12 +19,14 @@
     "jsxFactory": "window.createElement",
     "lib": ["esnext", "dom"],
     "types": ["jest", "node"],
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
   },
   "include": [
-    "../global.d.ts",
-    "../src",
-    "../jsx.d.ts",
-    "test-extend.ts"
+    "../../global.d.ts",
+    "../../jsx.d.ts",
+    "../test-extend.ts"
+  ],
+  "files": [
+    "keyboard.enter.spec.tsx"
   ]
 }

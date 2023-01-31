@@ -6,8 +6,7 @@ export {};
 declare global {
     // 用来扩展 server/index.tsx 中的 pw 对象
     interface Window {
-        readonly docRoot: any,
-        readonly docElement: HTMLElement|undefined,
+        readonly doc: any,
         readonly page: Screen,
         readonly state: any,
         readonly actions: any,
@@ -24,6 +23,8 @@ declare module "@playwright/test" {
     interface Page {
         expect?: any
         expectAll?: any,
-        load?: any
+        load?: any,
+        doc?: any,
+        selection?:any
     }
 }

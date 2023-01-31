@@ -19,12 +19,12 @@
     "jsxFactory": "createElement",
     "lib": ["esnext", "dom"],
     "types": ["jest", "node"],
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "declaration": true,
   },
   "include": [
     "global.d.ts",
     "src",
-    "jsx.d.ts",
-    "tests"
+    "jsx.d.ts"
   ]
 }

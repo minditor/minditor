@@ -22,7 +22,7 @@ import { Doc } from "../../src";
 
 
 // @ts-ignore @vite-ignore
-const { data } = await import(`./data/${searchObj.data || 'singleSection'}`)
+const { data } = await import(`./data/${searchObj.data || 'singlePara'}`)
 const rootElement = document.getElementById('root')!
 rootElement.style.position = 'relative'
 
@@ -36,24 +36,19 @@ const doc = new Doc(
 
 
 Object.assign(window, {
-    pw: {
-        get doc() {
-            return doc.root
-        },
-        get docElement() {
-            return doc.element
-        },
-        screen,
-        state,
-        actions,
-        partialMatch,
-        deepMatch,
-        expect
+    get doc() {
+        return doc
     },
+    page: screen,
+    state,
+    actions,
+    partialMatch,
+    deepMatch,
+    expect,
     createElement,
 })
 // 一定要放最后，这个时候才触发 test case
-doc.render()
+doc.render({ 'data-testid': 'app'})
 
 
 

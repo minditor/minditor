@@ -5,11 +5,12 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
+    "test:compile": "tsc --incremental -p ./tests/spec/tsconfig.json",
     "test:server": "npm run dev --prefix tests/server -- --port $npm_config_port",
     "dev": "vite",
     "build": "vite build",
     "cypress": "cypress open",
-    "pw": "playwright test"
+    "pw": "npm run test:compile && playwright test"
   },
   "repository": {
     "type": "git",
@@ -24,6 +25,7 @@
   "dependencies": {
     "csstype": "^3.1.1",
     "jest": "^29.3.1",
+    "npm-run-all": "^4.1.5",
     "playwright-webkit": "^1.30.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

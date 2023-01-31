@@ -1,24 +1,36 @@
 /**@jsx createElement*/
 import {createElement} from './mock'
 import { test, expect } from '@playwright/test';
-import { default as config } from '../playwright.config'
-import { data as singleSectionData } from './server/data/singleSection'
+import { data as singleSectionData } from '../server/data/singleSection'
 // import { data } from './data/multiSection'
-import { data as singleParaData } from './server/data/singlePara'
+import { data as singleParaData } from '../server/data/singlePara'
 // import { data } from './data/component'
 // import { data } from './data/nestedList'
 // import { data } from './data/multiPara'
 // import { data } from './data/playgroundMultiPara'
-import './test-extend'
+import '../test-extend'
+import {ElementHandle} from "playwright-webkit";
 
-
+const PORT = 5179
 const ZWSP = '​'
+
+
+
+function $(elementHandle: ElementHandle) {
+    return {
+      async parentElement() {
+        return (await elementHandle.evaluateHandle((el: HTMLElement) => el.parentElement)).asElement()
+      }
+    }
+}
+
+
 
 test.beforeEach(async ({ page }) => {
   // TODO 变成 global setup
   page.load = async (dataName: string = 'singlePara') => {
     //@ts-ignore
-    await page.goto(`http://localhost:${config.webServer.port}?data=${dataName}`);
+    await page.goto(`http://localhost:${PORT}?data=${dataName}`);
     await expect(page.getByTestId('root')).not.toBeEmpty()
   }
 
@@ -31,6 +43,24 @@ test.beforeEach(async ({ page }) => {
     return expect((await page.evaluate(pageFn, args)).every((item: any) => !!item), message).toBeTruthy()
   }
 
+  page.doc = {
+    root: {
+      toJSON: () => page.evaluate(() => window.doc.root.toJSON())
+    },
+    get element() {
+      return new Proxy({}, {
+        get(target, method: keyof ElementHandle) {
+          return async function(...argv: any[]) {
+            // @ts-ignore
+            return (await page.evaluateHandle('window.doc.element')).asElement()![method](...argv)
+          }
+        }
+      }) as ElementHandle
+    }
+  }
+
+  // TODO 再搞一个 selection 方便读写
+
 });
 
 
@@ -38,56 +68,57 @@ test.describe('keyboard Enter actions', () => {
 
   test.describe('at head of content', () => {
 
-    test('Para content', async ({page}) => {
+    test.only('Para content. Should create new Para before this.', async ({page}) => {
       await page.load('singlePara')
       const data = singleParaData
       const firstText = data.children[0].content[0].value
       const allText = data.children[0].content.map(i => i.value).join('')
+
+      const firstTextEl = page.getByText(firstText)
+
       // 1.1 设置焦点
-      await page.evaluate((firstText: string) => {
-        window.pw.actions.setSelection(window.pw.screen.getByText(firstText), 0)
-      }, firstText)
+      await firstTextEl.evaluate((firstTextEl) => {
+        window.actions.setSelection(firstTextEl, 0)
+      })
 
       await page.expect(() => window.getSelection()!.rangeCount === 1)
 
       // 1.2 执行动作
-      const rootHandle = page.getByTestId('root')
-      await rootHandle.press('Enter')
-      debugger
+      await page.doc.element.press('Enter')
+
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
-      // dataToCompare.children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
-      // expect(await page.evaluate(() => window.pw.doc.toJSON())).toMatchObject(dataToCompare)
+      dataToCompare.children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
 
 
       // 2.2 测试 dom
       await page.expectAll(([firstText, allText, ZWSP]: [t: string, a: string, c: string]) => {
-        const focusPElement = window.pw.screen.getByText(firstText).parentElement
-        const newPElement = focusPElement!.previousSibling!
-        debugger
+        const originPara = window.page.getByText(firstText).parentElement!
+        const contentContainer = originPara.parentElement
         return [
-          window.pw.partialMatch(newPElement, <p><span>{ZWSP}</span></p>),
-          window.pw.expect(window.pw.docElement!.textContent).toEqual(`${ZWSP}${allText}`)
+          window.partialMatch(contentContainer,
+              <any>
+                <p><span>{ZWSP}</span></p>
+                {originPara.cloneNode(true)}
+              </any>),
+          window.expect(window.doc.element!.textContent).toEqual(`${ZWSP}${allText}`)
         ]
       }, [firstText, allText, ZWSP], 'match dom')
 
-      // await page.expectAll(([firstText, allText]: [t: string, a: string]) => {
-      //   const focusPElement = window.pw.screen.getByText(firstText).parentElement
-      //   const newPElement = focusPElement!.previousSibling!
-      //   return [
-      //     newPElement.nodeName === 'P',
-      //     newPElement.childNodes.length === 1,
-      //     newPElement.firstChild!.nodeName === 'SPAN',
-      //     newPElement.textContent === '',
-      //     window.pw.docElement!.textContent === `​${allText}`
-      //   ]
-      // }, [firstText, allText])
+      // const contentContainer = (await firstTextEl.evaluateHandle((el: HTMLElement) => el.parentElement)).asElement()
+      // const originPara = $(firstTextEl).parentElement()
+      // const contentContainer = $(originPara).parentElement()
+      // await expect(contentContainer).partialMatch(<any>
+      //   //           <p><span>{ZWSP}</span></p>
+      //   //           {originPara.cloneNode(true)}
+      //   //         </any>)
 
       // 2.3 range 测试
       await page.expectAll(([firstText, allText]: [t: string, a: string]) => {
-        const range = window.pw.state.selectionRange
-        const currentElement = window.pw.screen.getByText(firstText)
+        const range = window.state.selectionRange
+        const currentElement = window.page.getByText(firstText)
         return [
           range!.startContainer === currentElement.firstChild,
           range!.startOffset === 0,
@@ -96,49 +127,53 @@ test.describe('keyboard Enter actions', () => {
       }, [firstText, allText])
 
     })
-    //
-    // test('Section content', async () => {
-    //   const user = userEvent.setup({ document })
-    //   const { result: doc } = buildModelFromData({
-    //     type: 'Doc',
-    //     content: [{ type: 'Text', value: '00'} ],
-    //     children: [{
-    //       type: 'Section',
-    //       content: [{type: 'Text', value: '11'}] // <-- 这里
-    //     }]
-    //   })
-    //
-    //   const docElement = buildReactiveView(doc)
-    //   document.body.appendChild(docElement)
-    //   patchRichTextEvents(on, trigger)
-    //   const firstElement = page.getByText('11')
-    //   setCursor(firstElement, 0)
-    //   await page.expect(() =>window.getSelection()!.rangeCount).to.equal(1)
-    //
-    //
-    //   await user.keyboard('{Enter}')
-    //   await waitUpdate()
-    //   // 测试数据结构？
-    //   await page.expect(() =>window.pw.doc.children!.size()).to.equal(2)
-    //   await page.expect(() =>window.pw.doc.children!.at(0).data.type).to.equal('Para')
-    //
-    //   // range 测试
-    //   const range = getCursorRange()
-    //
-    //   await page.expect(() =>range.startContainer).to.equal(page.getByText('11').firstChild)
-    //   await page.expect(() =>range.startOffset).to.equal(0)
-    //   await page.expect(() =>range.collapsed).to.equal(true)
-    //
-    //   // 测试 dom
-    //   const focusPElement = page.getByText('11').parentElement!.parentElement
-    //   const newPElement = focusPElement!.previousSibling!
-    //   await page.expect(() =>newPElement.nodeName).to.equal('P')
-    //   await page.expect(() =>newPElement.childNodes.length).to.equal(1)
-    //   await page.expect(() =>newPElement.firstChild!.nodeName).to.equal('SPAN')
-    //   await page.expect(() =>newPElement.textContent).to.equal('​')
-    //   // 后面还有一个 ​ 是因为本来 Section 创建的时候就会创建一个默认的 children
-    //   await page.expect(() =>docElement.textContent).to.equal('00​11')
-    // })
+
+
+    test('Section content. Should create new Para before this.', async ({page}) => {
+      await page.load('singleSection')
+      const data = singleSectionData
+      const firstText = data.children[0].content[0].value
+      const allText = data.children[0].content.map(i => i.value).join('')
+      // 1.1 设置焦点
+      await page.evaluate((firstText: string) => {
+        window.actions.setSelection(window.page.getByText(firstText), 0)
+      }, firstText)
+
+      // 1.2 执行动作
+      const rootHandle = page.getByTestId('app')
+      await rootHandle.press('Enter')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      // TODO 还要对比和 API 创造出来的是否一样？
+      // @ts-ignore
+      dataToCompare.children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
+      await expect(await page.evaluate(() => window.doc.root.toJSON())).toMatchObject(dataToCompare)
+
+      // 2.2 测试 dom
+      await page.expectAll(([firstText, data, ZWSP]: [t: string, a: any, c: string]) => {
+        const focusPElement = window.page.getByText(firstText).parentElement!.parentElement
+        const newPElement = focusPElement!.previousSibling!
+        return [
+          window.partialMatch(newPElement, <p><span>{ZWSP}</span></p>),
+          // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
+          window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}1122`)
+        ]
+      }, [firstText, data, ZWSP], 'match dom')
+
+      // 2.3 range 测试
+      await page.expectAll(([firstText]: [t: string, a: string]) => {
+        const range = window.state.selectionRange
+        const currentElement = window.page.getByText(firstText)
+        return [
+          range!.startContainer === currentElement.firstChild,
+          range!.startOffset === 0,
+          range!.collapsed
+        ]
+      }, [firstText])
+
+    })
+
     //
     // test('Listitem content', async () => {
     //   const user = userEvent.setup({ document })
@@ -170,9 +205,9 @@ test.describe('keyboard Enter actions', () => {
     //   await user.keyboard('{Enter}')
     //   await waitUpdate()
     //   // 测试数据结构？
-    //   await page.expect(() =>window.pw.doc.children!.size()).to.equal(1)
-    //   await page.expect(() =>window.pw.doc.children!.at(0).children.size()).to.equal(4)
-    //   await page.expect(() =>window.pw.doc.children!.at(0).children.at(0).data.type).to.equal('ListItem')
+    //   await page.expect(() =>window.doc.root.children!.size()).to.equal(1)
+    //   await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(4)
+    //   await page.expect(() =>window.doc.root.children!.at(0).children.at(0).data.type).to.equal('ListItem')
     //
     //   // range 测试
     //   const range = getCursorRange()
@@ -227,8 +262,8 @@ test.describe('keyboard Enter actions', () => {
   //     await waitUpdate()
   //     // 测试数据结构？
   //
-  //     await page.expect(() =>window.pw.doc.children!.size()).to.equal(2)
-  //     await page.expect(() =>window.pw.doc.children!.at(1).data.type).to.equal('Para')
+  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(1).data.type).to.equal('Para')
   //
   //     // range 测试
   //     const range = getCursorRange()
@@ -273,9 +308,9 @@ test.describe('keyboard Enter actions', () => {
   //     await user.keyboard('{Enter}')
   //     await waitUpdate()
   //     // 测试数据结构
-  //     await page.expect(() =>window.pw.doc.children!.size()).to.equal(1)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.size()).to.equal(2)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(0).data.type).to.equal('Para')
+  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(1)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(0).data.type).to.equal('Para')
   //
   //     // range 测试
   //     const range = getCursorRange()
@@ -322,9 +357,9 @@ test.describe('keyboard Enter actions', () => {
   //     await user.keyboard('{Enter}')
   //     await waitUpdate()
   //     // 测试数据结构？
-  //     await page.expect(() =>window.pw.doc.children!.size()).to.equal(1)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.size()).to.equal(4)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(0).data.type).to.equal('ListItem')
+  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(1)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(4)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(0).data.type).to.equal('ListItem')
   //
   //     // range 测试
   //     const range = getCursorRange()
@@ -376,15 +411,15 @@ test.describe('keyboard Enter actions', () => {
   //     await user.keyboard('{Enter}')
   //     await waitUpdate()
   //     // 测试数据结构？
-  //     await page.expect(() =>window.pw.doc.children!.size()).to.equal(2)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).data.type).to.equal('Para')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).content.size()).to.equal(2)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).content.at(0).value.value).to.equal('11')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).content.at(1).value.value).to.equal('2')
-  //     await page.expect(() =>window.pw.doc.children!.at(1).data.type).to.equal('Para')
-  //     await page.expect(() =>window.pw.doc.children!.at(1).content.size()).to.equal(2)
-  //     await page.expect(() =>window.pw.doc.children!.at(1).content.at(0).value.value).to.equal('2')
-  //     await page.expect(() =>window.pw.doc.children!.at(1).content.at(1).value.value).to.equal('33')
+  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(0).data.type).to.equal('Para')
+  //     await page.expect(() =>window.doc.root.children!.at(0).content.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(0).content.at(0).value.value).to.equal('11')
+  //     await page.expect(() =>window.doc.root.children!.at(0).content.at(1).value.value).to.equal('2')
+  //     await page.expect(() =>window.doc.root.children!.at(1).data.type).to.equal('Para')
+  //     await page.expect(() =>window.doc.root.children!.at(1).content.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(1).content.at(0).value.value).to.equal('2')
+  //     await page.expect(() =>window.doc.root.children!.at(1).content.at(1).value.value).to.equal('33')
   //
   //
   //     // range 测试
@@ -440,15 +475,15 @@ test.describe('keyboard Enter actions', () => {
   //     await waitUpdate()
   //     // 测试数据结构
   //
-  //     await page.expect(() =>window.pw.doc.children!.size()).to.equal(2)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).data.type).to.equal('Section')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.size()).to.equal(0)
+  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(0).data.type).to.equal('Section')
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(0)
   //
-  //     await page.expect(() =>window.pw.doc.children!.at(0).content.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(0).content.size()).to.equal(2)
   //
-  //     await page.expect(() =>window.pw.doc.children!.at(1).data.type).to.equal('Section')
-  //     await page.expect(() =>window.pw.doc.children!.at(1).content.size()).to.equal(2)
-  //     await page.expect(() =>window.pw.doc.children!.at(1).children.size()).to.equal(1)
+  //     await page.expect(() =>window.doc.root.children!.at(1).data.type).to.equal('Section')
+  //     await page.expect(() =>window.doc.root.children!.at(1).content.size()).to.equal(2)
+  //     await page.expect(() =>window.doc.root.children!.at(1).children.size()).to.equal(1)
   //     //
   //     // range 测试
   //     const range = getCursorRange()
@@ -502,16 +537,16 @@ test.describe('keyboard Enter actions', () => {
   //     await user.keyboard('{Enter}')
   //     await waitUpdate()
   //     // 测试数据结构？
-  //     await page.expect(() =>window.pw.doc.children!.size()).to.equal(1)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.size()).to.equal(4)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(0).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(1).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(2).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(3).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(1).content.size()).to.equal(1)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(1).content.at(0).value.value).to.equal('2')
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(2).content.size()).to.equal(1)
-  //     await page.expect(() =>window.pw.doc.children!.at(0).children.at(2).content.at(0).value.value).to.equal('2')
+  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(1)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(4)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(0).data.type).to.equal('ListItem')
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(1).data.type).to.equal('ListItem')
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(2).data.type).to.equal('ListItem')
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(3).data.type).to.equal('ListItem')
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(1).content.size()).to.equal(1)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(1).content.at(0).value.value).to.equal('2')
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(2).content.size()).to.equal(1)
+  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(2).content.at(0).value.value).to.equal('2')
   //
   //     // range 测试
   //     const range = getCursorRange()
