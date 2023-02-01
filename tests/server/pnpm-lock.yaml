@@ -1,10 +1,14 @@
 lockfileVersion: 5.4
 
 specifiers:
+  html-prettify: ^1.0.7
   vite: ^4.0.2
+  xml-formatter: ^3.2.0
 
 dependencies:
+  html-prettify: 1.0.7
   vite: 4.0.4
+  xml-formatter: 3.2.0
 
 packages:
 
@@ -255,6 +259,10 @@ packages:
       function-bind: 1.1.1
     dev: false
 
+  /html-prettify/1.0.7:
+    resolution: {integrity: sha512-99pRsP2PV2DyWnrVibNyad7gNmzCP7AANO8jw7Z9yanWyXH9dPdqdMXGefySplroqCNdk95u7j5TLxfyJ1Cbbg==}
+    dev: false
+
   /is-core-module/2.11.0:
     resolution: {integrity: sha512-RRjxlvLDkD1YJwDbroBHMb+cukurkDWNyHx7D3oNB5x9rb5ogcksMC5wHCadcXoo67gVr/+3GFySh3134zi6rw==}
     dependencies:
@@ -342,4 +350,16 @@ packages:
       rollup: 3.12.0
     optionalDependencies:
       fsevents: 2.3.2
+    dev: false
+
+  /xml-formatter/3.2.0:
+    resolution: {integrity: sha512-PYROODIUDHz1SDFePg2VThajPOuSmvo/PrYRKARcSc9xxKKs62EN9uar60IIxxknzmOSNDAxlylpw34bQp0g/Q==}
+    engines: {node: '>= 14'}
+    dependencies:
+      xml-parser-xo: 4.0.1
+    dev: false
+
+  /xml-parser-xo/4.0.1:
+    resolution: {integrity: sha512-wJmRjzVZr7D+kYSajd3zqT7tt+y9L2vVWp+s7ARxzPMtk/gZcTY0KB14B801QX2D2wqIQ1d3bV/LgcnwlpKyyg==}
+    engines: {node: '>= 14'}
     dev: false

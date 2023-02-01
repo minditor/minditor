@@ -27,6 +27,7 @@
     "../test-extend.ts"
   ],
   "files": [
-    "keyboard.enter.spec.tsx"
+    "keyboard.enter.spec.tsx",
+    "keyboard.input.spec.tsx",
   ]
 }

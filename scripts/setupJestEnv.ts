@@ -64,29 +64,20 @@ expect.extend({
 })
 
 let warn: jest.SpyInstance
-const asserted: Set<string> = new Set()
+const asserted: Set<string> = new Set();
 
-// beforeEach(() => {
-//   asserted.clear()
-//   warn = jest.spyOn(console, 'warn')
-//   warn.mockImplementation(() => {})
-// })
+(global as any).ResizeObserver = class ResizeObserver {
+  constructor(ls?: (rect: any) => void) {
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
 
-// afterEach(() => {
-//   const assertedArray = Array.from(asserted)
-//   const nonAssertedWarnings = warn.mock.calls
-//     .map(args => args[0])
-//     .filter(received => {
-//       return !assertedArray.some(assertedMsg => {
-//         return received.includes(assertedMsg)
-//       })
-//     })
-//   warn.mockRestore()
-//   if (nonAssertedWarnings.length) {
-//     throw new Error(
-//       `test case threw unexpected warnings:\n - ${nonAssertedWarnings.join(
-//         '\n - '
-//       )}`
-//     )
-//   }
-// })
+(global as any).IntersectionObserver = class ResizeObserver {
+  constructor(ls?: (rect: any) => void) {
+  }
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};

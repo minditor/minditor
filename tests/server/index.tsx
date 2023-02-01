@@ -1,5 +1,5 @@
 /**@jsx createElement*/
-import {createElement, deepMatch, partialMatch, expect} from "./util";
+import {createElement, expectDeepMatch, expectDOMMatch, expect, expectSelectionMatch} from "./util";
 import {screen} from "@testing-library/dom";
 import { state, actions } from '../../src/globals'
 import '../test-extend.ts'
@@ -42,8 +42,9 @@ Object.assign(window, {
     page: screen,
     state,
     actions,
-    partialMatch,
-    deepMatch,
+    expectDOMMatch,
+    expectDeepMatch,
+    expectSelectionMatch,
     expect,
     createElement,
 })

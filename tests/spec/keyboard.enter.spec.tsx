@@ -1,66 +1,24 @@
 /**@jsx createElement*/
 import {createElement} from './mock'
-import { test, expect } from '@playwright/test';
+import {test, expect, Locator} from '@playwright/test';
+
+import { data as singleParaData } from '../server/data/singlePara'
+import { data as singleListData } from '../server/data/singleList'
 import { data as singleSectionData } from '../server/data/singleSection'
 // import { data } from './data/multiSection'
-import { data as singleParaData } from '../server/data/singlePara'
 // import { data } from './data/component'
 // import { data } from './data/nestedList'
 // import { data } from './data/multiPara'
 // import { data } from './data/playgroundMultiPara'
 import '../test-extend'
 import {ElementHandle} from "playwright-webkit";
+import { extend } from './extend'
 
-const PORT = 5179
 const ZWSP = '​'
-
-
-
-function $(elementHandle: ElementHandle) {
-    return {
-      async parentElement() {
-        return (await elementHandle.evaluateHandle((el: HTMLElement) => el.parentElement)).asElement()
-      }
-    }
-}
-
-
 
 test.beforeEach(async ({ page }) => {
   // TODO 变成 global setup
-  page.load = async (dataName: string = 'singlePara') => {
-    //@ts-ignore
-    await page.goto(`http://localhost:${PORT}?data=${dataName}`);
-    await expect(page.getByTestId('root')).not.toBeEmpty()
-  }
-
-
-  page.expect = async (pageFn: (...arg:any[]) => any, args?:any, message?: string) => {
-    return expect(await page.evaluate(pageFn, args), message).toBeTruthy()
-  }
-
-  page.expectAll = async (pageFn: (...arg:any[]) => any, args?:any, message?: string) => {
-    return expect((await page.evaluate(pageFn, args)).every((item: any) => !!item), message).toBeTruthy()
-  }
-
-  page.doc = {
-    root: {
-      toJSON: () => page.evaluate(() => window.doc.root.toJSON())
-    },
-    get element() {
-      return new Proxy({}, {
-        get(target, method: keyof ElementHandle) {
-          return async function(...argv: any[]) {
-            // @ts-ignore
-            return (await page.evaluateHandle('window.doc.element')).asElement()![method](...argv)
-          }
-        }
-      }) as ElementHandle
-    }
-  }
-
-  // TODO 再搞一个 selection 方便读写
-
+  extend(page)
 });
 
 
@@ -68,7 +26,7 @@ test.describe('keyboard Enter actions', () => {
 
   test.describe('at head of content', () => {
 
-    test.only('Para content. Should create new Para before this.', async ({page}) => {
+    test('Para content. Should create new Para before this.', async ({page}) => {
       await page.load('singlePara')
       const data = singleParaData
       const firstText = data.children[0].content[0].value
@@ -77,10 +35,7 @@ test.describe('keyboard Enter actions', () => {
       const firstTextEl = page.getByText(firstText)
 
       // 1.1 设置焦点
-      await firstTextEl.evaluate((firstTextEl) => {
-        window.actions.setSelection(firstTextEl, 0)
-      })
-
+      await page.setSelection(firstTextEl, 0)
       await page.expect(() => window.getSelection()!.rangeCount === 1)
 
       // 1.2 执行动作
@@ -94,37 +49,28 @@ test.describe('keyboard Enter actions', () => {
 
 
       // 2.2 测试 dom
-      await page.expectAll(([firstText, allText, ZWSP]: [t: string, a: string, c: string]) => {
-        const originPara = window.page.getByText(firstText).parentElement!
+      await page.expectAll(([firstTextEl, allText, ZWSP]: [t: HTMLElement, a: string, c: string]) => {
+        const originPara = firstTextEl.parentElement!
         const contentContainer = originPara.parentElement
         return [
-          window.partialMatch(contentContainer,
+          window.expectDOMMatch(contentContainer,
               <any>
                 <p><span>{ZWSP}</span></p>
                 {originPara.cloneNode(true)}
               </any>),
           window.expect(window.doc.element!.textContent).toEqual(`${ZWSP}${allText}`)
         ]
-      }, [firstText, allText, ZWSP], 'match dom')
+      }, [await firstTextEl.elementHandle(), allText, ZWSP], 'match dom')
 
-      // const contentContainer = (await firstTextEl.evaluateHandle((el: HTMLElement) => el.parentElement)).asElement()
-      // const originPara = $(firstTextEl).parentElement()
-      // const contentContainer = $(originPara).parentElement()
-      // await expect(contentContainer).partialMatch(<any>
-      //   //           <p><span>{ZWSP}</span></p>
-      //   //           {originPara.cloneNode(true)}
-      //   //         </any>)
 
       // 2.3 range 测试
-      await page.expectAll(([firstText, allText]: [t: string, a: string]) => {
-        const range = window.state.selectionRange
-        const currentElement = window.page.getByText(firstText)
-        return [
-          range!.startContainer === currentElement.firstChild,
-          range!.startOffset === 0,
-          range!.collapsed
-        ]
-      }, [firstText, allText])
+      await page.evaluate(([firstTextEl]) => {
+        window.expectSelectionMatch({
+          startContainer: firstTextEl!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [await firstTextEl.elementHandle()])
 
     })
 
@@ -133,98 +79,92 @@ test.describe('keyboard Enter actions', () => {
       await page.load('singleSection')
       const data = singleSectionData
       const firstText = data.children[0].content[0].value
+      const firstTextEl = page.getByText(firstText)
       const allText = data.children[0].content.map(i => i.value).join('')
       // 1.1 设置焦点
-      await page.evaluate((firstText: string) => {
-        window.actions.setSelection(window.page.getByText(firstText), 0)
-      }, firstText)
+      await page.setSelection(firstTextEl, 0)
 
       // 1.2 执行动作
-      const rootHandle = page.getByTestId('app')
-      await rootHandle.press('Enter')
+      await page.doc.element.press('Enter')
 
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
       // @ts-ignore
       dataToCompare.children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
-      await expect(await page.evaluate(() => window.doc.root.toJSON())).toMatchObject(dataToCompare)
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
 
       // 2.2 测试 dom
-      await page.expectAll(([firstText, data, ZWSP]: [t: string, a: any, c: string]) => {
-        const focusPElement = window.page.getByText(firstText).parentElement!.parentElement
+      await page.evaluate(([firstTextEl, ZWSP]) => {
+        const focusPElement = (firstTextEl as Node)!.parentElement!.parentElement
         const newPElement = focusPElement!.previousSibling!
         return [
-          window.partialMatch(newPElement, <p><span>{ZWSP}</span></p>),
+          window.expectDOMMatch(newPElement, <p><span>{ZWSP}</span></p>),
           // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-          window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}1122`)
+          window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}1122`, 'whole text not match')
         ]
-      }, [firstText, data, ZWSP], 'match dom')
+      }, [await firstTextEl.elementHandle(), ZWSP])
 
       // 2.3 range 测试
-      await page.expectAll(([firstText]: [t: string, a: string]) => {
-        const range = window.state.selectionRange
-        const currentElement = window.page.getByText(firstText)
-        return [
-          range!.startContainer === currentElement.firstChild,
-          range!.startOffset === 0,
-          range!.collapsed
-        ]
-      }, [firstText])
+      await page.evaluate(([firstTextEl]) => {
+        window.expectSelectionMatch({
+          startContainer: firstTextEl!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [await firstTextEl.elementHandle()])
+    })
+
+
+    test('List content. Should create new List item before this.', async ({page}) => {
+      await page.load('singleList')
+      const data = singleListData
+      const firstText = data.children[0].children[0].content[0].value
+      const firstTextEl = page.getByText(firstText)
+      // 1.1 设置焦点
+      await page.setSelection(firstTextEl, 0)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Enter')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      // TODO 还要对比和 API 创造出来的是否一样？
+      // @ts-ignore
+      dataToCompare.children[0].children.unshift({ type:'ListItem', content: [{type: 'Text', value: ''}]})
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+
+      // 2.2 测试 dom
+      await page.evaluate(([firstTextEl, ZWSP]) => {
+        const listElement = (firstTextEl as Node).parentElement!.parentElement!.parentElement
+        window.expectDOMMatch(listElement,
+            <any>
+              <any>
+                <any>
+                  <span>{ZWSP}</span>
+                </any>
+                <any data-testignorechildren></any>
+              </any>
+              <any data-testignorechildren></any>
+              <any data-testignorechildren></any>
+              <any data-testignorechildren></any>
+            </any>
+        ),
+        // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
+        window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}112233`)
+      }, [await firstTextEl.elementHandle(), ZWSP])
+
+      // 2.3 range 测试
+      await page.evaluate(([firstTextEl]) => {
+        window.expectSelectionMatch({
+          startContainer: firstTextEl!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [await firstTextEl.elementHandle()])
 
     })
 
-    //
-    // test('Listitem content', async () => {
-    //   const user = userEvent.setup({ document })
-    //   const { result: doc } = buildModelFromData({
-    //     type: 'Doc',
-    //     content: [{ type: 'Text', value: '00'} ],
-    //     children: [{
-    //       type: 'List',
-    //       children: [{
-    //         type: 'ListItem',
-    //         content: [{ type: 'Text', value: '11'} ]
-    //       }, {
-    //         type: 'ListItem',
-    //         content: [{ type: 'Text', value: '22'} ]
-    //       }, {
-    //         type: 'ListItem',
-    //         content: [{ type: 'Text', value: '33'} ]
-    //       }]
-    //     }]
-    //   })
-    //
-    //   const docElement = buildReactiveView(doc)
-    //   document.body.appendChild(docElement)
-    //   patchRichTextEvents(on, trigger)
-    //   const firstElement = page.getByText('11')
-    //   setCursor(firstElement, 0)
-    //   await page.expect(() =>window.getSelection()!.rangeCount).to.equal(1)
-    //
-    //   await user.keyboard('{Enter}')
-    //   await waitUpdate()
-    //   // 测试数据结构？
-    //   await page.expect(() =>window.doc.root.children!.size()).to.equal(1)
-    //   await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(4)
-    //   await page.expect(() =>window.doc.root.children!.at(0).children.at(0).data.type).to.equal('ListItem')
-    //
-    //   // range 测试
-    //   const range = getCursorRange()
-    //
-    //   await page.expect(() =>range.startContainer).to.equal(page.getByText('11').firstChild)
-    //   await page.expect(() =>range.startOffset).to.equal(0)
-    //   await page.expect(() =>range.collapsed).to.equal(true)
-    //
-    //   // 测试 dom
-    //   const focusPElement = page.getByText('11').parentElement!.parentElement
-    //   const newPElement = focusPElement!.previousSibling!
-    //   await page.expect(() =>newPElement.nodeName).to.equal('DIV')
-    //   await page.expect(() =>newPElement.childNodes.length).to.equal(2)
-    //   await page.expect(() =>newPElement.firstChild!.firstChild.nodeName).to.equal('SPAN')
-    //   await page.expect(() =>newPElement.textContent).to.equal('​')
-    //   await page.expect(() =>docElement.textContent).to.equal('00​112233')
-    // })
   })
 
   //

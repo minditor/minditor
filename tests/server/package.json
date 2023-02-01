@@ -9,6 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "vite": "^4.0.2"
+    "html-prettify": "^1.0.7",
+    "vite": "^4.0.2",
+    "xml-formatter": "^3.2.0"
   }
 }

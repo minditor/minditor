@@ -1,3 +1,5 @@
+import prettify from 'xml-formatter'
+
 import { createElement as _createElement, type JSXElementType, type AttributesArg } from "../../src/DOM";
 
 export function createElement(tag: JSXElementType, attrs: AttributesArg, ...children: HTMLElement[] ) {
@@ -9,6 +11,7 @@ export function createElement(tag: JSXElementType, attrs: AttributesArg, ...chil
 
 
 class ThrowInfo {
+    path?: string[]
     constructor(
         readonly received: any,
         readonly expected: any,
@@ -33,11 +36,14 @@ export function expect(received: any) {
 
 
 // TODO attrs match 还有 className  style dangerouslySetInnerHTML data 等特殊情况
-export function partialMatch(inputTarget: any, toMatch: HTMLElement, context: string[] = []): boolean {
+export function expectDOMMatch(inputTarget: any, toMatch: HTMLElement, path: string[] = []): boolean {
+    const currentPath = path.concat(toMatch.nodeName.toLowerCase())
     try {
         console.log(inputTarget, toMatch)
         expect(inputTarget instanceof HTMLElement).toEqual(true, 'target is not HTMLElement')
         expect(toMatch instanceof HTMLElement).toEqual(true, `toMatch is not HTMLElement`)
+
+
 
         const target = inputTarget as HTMLElement
 
@@ -53,6 +59,7 @@ export function partialMatch(inputTarget: any, toMatch: HTMLElement, context: st
             expect(target[attrName]).toEqual(toMatch[attrName], `${attrName} not equal`)
         })
 
+
         if (!toMatch.dataset['testignorechildren']) {
             expect(target.childNodes.length).toEqual(toMatch.childNodes.length, 'children length not equal');
 
@@ -60,7 +67,7 @@ export function partialMatch(inputTarget: any, toMatch: HTMLElement, context: st
             [...toMatch.childNodes].forEach((child: Node, index) => {
                 const targetChild = target.childNodes[index]
                 if(child instanceof HTMLElement) {
-                    partialMatch(targetChild, child as HTMLElement, context.concat([toMatch.nodeName]))
+                    expectDOMMatch(targetChild, child as HTMLElement, currentPath)
                 } else if (targetChild instanceof Text && child instanceof Text){
                     expect(child.wholeText).toEqual(targetChild.wholeText)
                 } else {
@@ -70,14 +77,25 @@ export function partialMatch(inputTarget: any, toMatch: HTMLElement, context: st
         }
 
     } catch( e: unknown|Error ) {
-
         if (e instanceof ThrowInfo) {
-            throw new Error(`
-    expected: ${JSON.stringify(e.expected, null, 4)}
-    received: ${JSON.stringify(e.received, null, 4)}
-    message: ${e.message}
-    context: ${JSON.stringify(context, null, 4)}
+            if (path.length !== 0) {
+                if (!e.path) e.path = currentPath
+                throw e
+            } else {
+                throw new Error(`
+============================
+path: ${(e.path ? e.path : currentPath).join(' > ')}
+message: ${e.message}
+expected: ${JSON.stringify(e.expected, null, 4)}
+received: ${JSON.stringify(e.received, null, 4)}
+expectedHTML:
+${prettify(toMatch.outerHTML)}
+receivedHTML:  
+${inputTarget instanceof HTMLElement ? prettify(inputTarget.outerHTML) : JSON.stringify(inputTarget)}
+============================
 `)
+            }
+
 
         } else {
             throw e
@@ -90,6 +108,32 @@ export function partialMatch(inputTarget: any, toMatch: HTMLElement, context: st
 
 }
 
-export function deepMatch(target: any, toMatch: any) {
+export function expectDeepMatch(target: any, toMatch: any) {
     return JSON.stringify(target) === JSON.stringify(toMatch)
+}
+
+type RangeLike = {
+    startContainer: Node,
+    startOffset: number,
+    endContainer?: Node,
+    endOffset?: number,
+    collapsed?: boolean,
+}
+export function expectSelectionMatch(toMatch: RangeLike) {
+    const selection = window.getSelection()
+    expect(selection!.rangeCount).toEqual(1)
+    const range = selection!.getRangeAt(0)
+    expect(range.startContainer).toEqual(toMatch.startContainer, 'startContainer not match')
+    expect(range.startOffset).toEqual(toMatch.startOffset, "startOffset not match")
+    if (toMatch.endContainer) {
+        expect(range.endContainer).toEqual(toMatch.endContainer, 'endContainer not match')
+    }
+    if (toMatch.endOffset !== undefined) {
+        expect(range.endOffset).toEqual(toMatch.endOffset, "endOffset not match")
+    }
+    if (toMatch.collapsed !== undefined) {
+        expect(range.collapsed).toEqual(toMatch.collapsed)
+    }
+
+
 }

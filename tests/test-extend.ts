@@ -1,5 +1,6 @@
 import {Screen} from "@testing-library/dom";
 import { Page } from '@playwright/test';
+import {expectSelectionMatch} from "./server/util";
 
 export {};
 
@@ -10,8 +11,9 @@ declare global {
         readonly page: Screen,
         readonly state: any,
         readonly actions: any,
-        readonly partialMatch: any,
-        readonly deepMatch: any,
+        readonly expectDOMMatch: any,
+        readonly expectSelectionMatch: any,
+        readonly expectDeepMatch: any,
         readonly expect: any,
         readonly createElement: any,
     }
@@ -25,6 +27,7 @@ declare module "@playwright/test" {
         expectAll?: any,
         load?: any,
         doc?: any,
-        selection?:any
+        selection?:any,
+        setSelection?: any,
     }
 }

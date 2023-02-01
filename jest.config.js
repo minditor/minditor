@@ -48,7 +48,9 @@ module.exports = {
       ['/node_modules/', '/examples/__tests__', 'cypress']
     : ['/node_modules/'],
   moduleNameMapper: {
-    '@ariesate/reactivity':'<rootDir>/../reactivity/dist/reactivity.cjs.js'
+    '@ariesate/reactivity':'<rootDir>/../reactivity/dist/reactivity.cjs.js',
+    "\\.(css|less|sass|scss)$": "<rootDir>/__test__/styleMock.js",
+    "\\.(gif|ttf|eot|svg)$": "<rootDir>/__test__/fileMock.js"
   },
   transformIgnorePatterns: ['/node_modules', '<rootDir>/../reactivity/dist/reactivity.cjs.js']
 }
