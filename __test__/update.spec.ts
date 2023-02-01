@@ -2,33 +2,7 @@ import {buildReactiveView, waitUpdate} from "../src/buildReactiveView";
 import { Doc, updateRange} from "../src/editing";
 import { within } from "@testing-library/dom";
 import {expect} from "@jest/globals";
-// const { result: doc, firstLeaf, lastLeaf } = new Doc({
-//     type: 'Para',
-//     content: [
-//         {type: 'Text', value: '11'},
-//         {type: 'Text', value: '22'},
-//         {type: 'Text', value: '33'}
-//     ]
-// })
-//
-// doc.firstLeaf = firstLeaf
-// doc.lastLeaf = lastLeaf
-// 
-// document.getElementById('root').appendChild(doc.element!)
-//
-//
-// doc.insertContentNodeAfter({type:'Text', value:'44'}, doc.content.head.next.next.node)
-//
-// for(let i of doc.content) {
-//     console.log(i.value.value)
-// }
-// console.log("222222222")
-// setTimeout(() => {
-//     doc.insertContentNodeAfter({type:'Text', value:'555'}, doc.content.head.next.next.next.node)
-//     for(let i of doc.content) {
-//         console.log(i.value.value)
-//     }
-// }, 1)
+
 
 
 describe('insert', () => {
@@ -72,6 +46,8 @@ describe('insert', () => {
             }]
         })
 
+        doc.render()
+
         expect(doc.element!.textContent).toBe('title112233445566')
         doc.insertContentNodeAfter({type:'Text', value:'99'}, doc.root.children!.head.next.node.content!.head.next.next.node)
         await waitUpdate()
@@ -90,6 +66,7 @@ describe('update range', () => {
             ]
         })
 
+        doc.render()
 
         const range = document.createRange()
         range.setStart(within(doc.element!).getByText('11'), 1)
@@ -109,7 +86,7 @@ describe('update range', () => {
             children: [{
                 type: 'Para',
                 content: [
-                    {type: 'Text', value: 'pt11'},
+                    {type: 'Text', value: 'pt11'}, //<--start
                     {type: 'Text', value: 'pt12'},
                     {type: 'Text', value: 'pt13'}
                 ]
@@ -124,13 +101,13 @@ describe('update range', () => {
                 type: 'Para',
                 content: [
                     {type: 'Text', value: 'pt31'},
-                    {type: 'Text', value: 'pt32'},
+                    {type: 'Text', value: 'pt32'},//<--end
                     {type: 'Text', value: 'pt33'}
                 ]
             }]
         })
 
-
+        doc.render()
         const range = document.createRange()
         range.setStart(within(doc.element!).getByText('pt11'), 1)
         range.setEnd(within(doc.element!).getByText('pt32'), 1)
@@ -191,7 +168,7 @@ describe('update range', () => {
             }]
         })
 
-        
+        doc.render()
 
         const range = document.createRange()
         const from = within(doc.element!).getByText('pt11')
@@ -239,7 +216,7 @@ describe('update range', () => {
             }]
         })
 
-        
+        doc.render()
 
         const range = document.createRange()
         const from = within(doc.element!).getByText('section')
@@ -267,7 +244,7 @@ describe('format range', () => {
             ]
         })
 
-        
+        doc.render()
 
         const range = document.createRange()
         const container = within(doc.element!).getByText('11111').firstChild! as Node
@@ -304,7 +281,7 @@ describe('split text as block', () => {
             }]
         })
 
-        
+        doc.render()
         const range = document.createRange()
         const container = within(doc.element!).getByText('para1').firstChild! as Node
         range.setStart(container, 1)

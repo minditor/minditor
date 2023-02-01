@@ -1,38 +1,9 @@
-import {buildReactiveView, waitUpdate} from "../src/buildReactiveView";
-import {buildModelFromData} from "../src/editing";
-
-// const { result: doc, firstLeaf, lastLeaf } = buildModelFromData({
-//     type: 'Para',
-//     content: [
-//         {type: 'Text', value: '11'},
-//         {type: 'Text', value: '22'},
-//         {type: 'Text', value: '33'}
-//     ]
-// })
-//
-// doc.firstLeaf = firstLeaf
-// doc.lastLeaf = lastLeaf
-// const docElement = buildReactiveView(doc)
-// document.getElementById('root').appendChild(docElement)
-//
-//
-// insertContentNodeAfter({type:'Text', value:'44'}, doc.content.head.next.next.node)
-//
-// for(let i of doc.content) {
-//     console.log(i.value.value)
-// }
-// console.log("222222222")
-// setTimeout(() => {
-//     insertContentNodeAfter({type:'Text', value:'555'}, doc.content.head.next.next.next.node)
-//     for(let i of doc.content) {
-//         console.log(i.value.value)
-//     }
-// }, 1)
-
+import {waitUpdate} from "../src/buildReactiveView";
+import { Doc } from "../src/editing";
 
 describe('basic render', () => {
     test('render Para', () => {
-        const { result: doc } = buildModelFromData({
+        const doc = new Doc({
             type: 'Para',
             content: [
                 {type: 'Text', value: '11'},
@@ -41,12 +12,14 @@ describe('basic render', () => {
             ]
         })
 
-        const docElement = buildReactiveView(doc)
+        doc.render()
+
+        const docElement = doc.element!
         expect(docElement.textContent).toBe('112233')
     })
 
     test('render Section', async () => {
-        const { result: doc } = buildModelFromData({
+        const doc = new Doc({
             type: 'Section',
             content: [{type: 'Text', value: 'title'}],
             children: [{
@@ -66,13 +39,15 @@ describe('basic render', () => {
             }]
         })
 
-        const docElement = buildReactiveView(doc)
+        doc.render()
+
+        const docElement = doc.element!
         await waitUpdate()
         expect(docElement.textContent).toBe('title112233445566')
     })
 
     test('render Section in Section', async () => {
-        const { result: doc } = buildModelFromData({
+        const doc = new Doc({
             type: 'Section',
             content: [{type: 'Text', value: 'title'}],
             children: [{
@@ -103,7 +78,9 @@ describe('basic render', () => {
             }]
         })
 
-        const docElement = buildReactiveView(doc)
+        doc.render()
+
+        const docElement = doc.element!
         await waitUpdate()
         expect(docElement.textContent).toBe('title123title2112233445566')
     })
