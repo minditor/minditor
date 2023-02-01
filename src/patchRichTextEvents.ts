@@ -198,12 +198,7 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
 
 
 
-/**
- *
- * 用来处理 selection 的头或者尾部选在了组件里面的文本的情况。
- * 这个时候需要把在所在的组件整个选上。如果选中的是组件中的组件，那么需要把组高层的组件选上。
- */
-function adjustSelection() {
+function adjustIsolatedNode() {
     if (!globalKM.selectionRange || globalKM.selectionRange.collapsed) return
 
     // 选区不在  doc 或者不在同一个  doc 里，不用管
@@ -240,6 +235,31 @@ function adjustSelection() {
 
     globalKM.selection!.removeAllRanges()
     globalKM.selection!.addRange(newRange)
+}
+
+function adjustOffset0Text() {
+    if (!globalKM.selectionRange || !globalKM.selectionRange.collapsed || !(globalKM.selectionRange.startOffset === 0)) return
+
+    const currentNode = findNodeFromElement(globalKM.selectionRange.startContainer)
+    if(currentNode.data.type !== 'Text' || !currentNode.previousSibling || currentNode.previousSibling.data.type !== 'Text') return
+
+    setCursor(currentNode.previousSibling, currentNode.previousSibling.value.value.length)
+}
+
+
+
+/**
+ *
+ * 用来处理 selection 的头或者尾部选在了组件里面的文本的情况。
+ * 这个时候需要把在所在的组件整个选上。如果选中的是组件中的组件，那么需要把组高层的组件选上。
+ */
+function adjustSelection() {
+    if (!globalKM.selectionRange) return
+    if (globalKM.selectionRange.collapsed) {
+        adjustOffset0Text()
+    } else {
+        adjustIsolatedNode()
+    }
 }
 
 

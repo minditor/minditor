@@ -332,7 +332,11 @@ function updateStartNodeToAncestor(startNode: NodeType, ancestorNode: NodeType) 
 
     // 这里只处理 children，content 在一开始就处理掉了
     let pointer: NodeType = startNode.parent!
-    pointer!.children!.removeBetween()
+    // 1. children 都是后面的节点，先删掉。
+    if (pointer.children) {
+        pointer!.children!.removeBetween()
+    }
+    // 2. 每一层上面的 nextSiblings 都是后续节点，删掉。
     while(pointer && pointer.parent !== ancestorNode){
         pointer.parent!.children!.removeBetween(pointer)
         pointer = pointer.parent!
