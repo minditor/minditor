@@ -4,6 +4,8 @@ import {ElementHandle} from "playwright-webkit";
 const PORT = 5179
 
 export function extend(page: Page) {
+    if (page.load) return
+
     page.load = async (dataName: string = 'singlePara') => {
         //@ts-ignore
         await page.goto(`http://localhost:${PORT}?data=${dataName}`);
@@ -36,11 +38,12 @@ export function extend(page: Page) {
     }
 
     // TODO 再搞一个 selection 方便读写
-    page.setSelection = async (startContainer: Locator, startOffset: number, endContainer: Locator = startContainer, endOffset: number = startOffset) =>  {
+    page.setSelection = async (startContainer: ElementHandle, startOffset: number, endContainer: ElementHandle = startContainer, endOffset: number = startOffset) =>  {
         // @ts-ignore
         return page.evaluate(([startContainer, startOffset, endContainer, endOffset]) => {
-            window.actions.setSelection(startContainer, startOffset, endContainer, endOffset)
-        }, [await startContainer.elementHandle(), startOffset, await endContainer.elementHandle(), endOffset])
+            // CAUTION 由于  locator 不能传递纯文本节点，所以只能这样
+            window.actions.setSelection((startContainer as HTMLElement).firstChild, startOffset, (endContainer as HTMLElement).firstChild, endOffset)
+        }, [startContainer, startOffset, endContainer, endOffset])
     }
 
     // CAUTION 为什么不 extend 出 expectDOMMatch? 因为在  toMatch 中可能有需要在前端 cloneElement 的部分。

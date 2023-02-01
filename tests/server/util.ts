@@ -120,20 +120,44 @@ type RangeLike = {
     collapsed?: boolean,
 }
 export function expectSelectionMatch(toMatch: RangeLike) {
-    const selection = window.getSelection()
-    expect(selection!.rangeCount).toEqual(1)
-    const range = selection!.getRangeAt(0)
-    expect(range.startContainer).toEqual(toMatch.startContainer, 'startContainer not match')
-    expect(range.startOffset).toEqual(toMatch.startOffset, "startOffset not match")
-    if (toMatch.endContainer) {
-        expect(range.endContainer).toEqual(toMatch.endContainer, 'endContainer not match')
-    }
-    if (toMatch.endOffset !== undefined) {
-        expect(range.endOffset).toEqual(toMatch.endOffset, "endOffset not match")
-    }
-    if (toMatch.collapsed !== undefined) {
-        expect(range.collapsed).toEqual(toMatch.collapsed)
-    }
+    let range: Range
+    try {
+        const selection = window.getSelection()
+        expect(selection!.rangeCount).toEqual(1)
+        range = selection!.getRangeAt(0)!
+        expect(range.startContainer).toEqual(toMatch.startContainer, 'startContainer not match')
+        expect(range.startOffset).toEqual(toMatch.startOffset, "startOffset not match")
+        if (toMatch.endContainer) {
+            expect(range.endContainer).toEqual(toMatch.endContainer, 'endContainer not match')
+        }
+        if (toMatch.endOffset !== undefined) {
+            expect(range.endOffset).toEqual(toMatch.endOffset, "endOffset not match")
+        }
+        if (toMatch.collapsed !== undefined) {
+            expect(range.collapsed).toEqual(toMatch.collapsed)
+        }
+    } catch(e) {
+        if (e instanceof ThrowInfo) {
+            throw new Error(`
+============================
+message: ${e.message}
+expected: {
+    startContainer: ${(toMatch.startContainer as Text).wholeText},
+    startOffset: ${toMatch.startOffset},
+    endContainer: ${(toMatch.endContainer as Text).wholeText},
+    endOffset: ${toMatch.endOffset},
+}
+received: {
+    startContainer: ${(range!.startContainer as Text).wholeText},
+    startOffset: ${range!.startOffset},
+    endContainer: ${(range!.endContainer as Text).wholeText},
+    endOffset: ${range!.endOffset},
+}
 
-
+============================
+`)
+        } else {
+            throw e
+        }
+    }
 }

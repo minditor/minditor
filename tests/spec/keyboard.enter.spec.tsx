@@ -32,7 +32,7 @@ test.describe('keyboard Enter actions', () => {
       const firstText = data.children[0].content[0].value
       const allText = data.children[0].content.map(i => i.value).join('')
 
-      const firstTextEl = page.getByText(firstText)
+      const firstTextEl = await page.getByText(firstText).elementHandle()
 
       // 1.1 设置焦点
       await page.setSelection(firstTextEl, 0)
@@ -60,7 +60,7 @@ test.describe('keyboard Enter actions', () => {
               </any>),
           window.expect(window.doc.element!.textContent).toEqual(`${ZWSP}${allText}`)
         ]
-      }, [await firstTextEl.elementHandle(), allText, ZWSP], 'match dom')
+      }, [firstTextEl, allText, ZWSP], 'match dom')
 
 
       // 2.3 range 测试
@@ -70,7 +70,7 @@ test.describe('keyboard Enter actions', () => {
           startOffset: 0,
           collapsed: true
         })
-      }, [await firstTextEl.elementHandle()])
+      }, [firstTextEl])
 
     })
 
@@ -79,8 +79,7 @@ test.describe('keyboard Enter actions', () => {
       await page.load('singleSection')
       const data = singleSectionData
       const firstText = data.children[0].content[0].value
-      const firstTextEl = page.getByText(firstText)
-      const allText = data.children[0].content.map(i => i.value).join('')
+      const firstTextEl = await page.getByText(firstText).elementHandle()
       // 1.1 设置焦点
       await page.setSelection(firstTextEl, 0)
 
@@ -103,7 +102,7 @@ test.describe('keyboard Enter actions', () => {
           // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
           window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}1122`, 'whole text not match')
         ]
-      }, [await firstTextEl.elementHandle(), ZWSP])
+      }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
       await page.evaluate(([firstTextEl]) => {
@@ -112,7 +111,7 @@ test.describe('keyboard Enter actions', () => {
           startOffset: 0,
           collapsed: true
         })
-      }, [await firstTextEl.elementHandle()])
+      }, [firstTextEl])
     })
 
 
@@ -120,7 +119,7 @@ test.describe('keyboard Enter actions', () => {
       await page.load('singleList')
       const data = singleListData
       const firstText = data.children[0].children[0].content[0].value
-      const firstTextEl = page.getByText(firstText)
+      const firstTextEl = await  page.getByText(firstText).elementHandle()
       // 1.1 设置焦点
       await page.setSelection(firstTextEl, 0)
 
@@ -152,7 +151,7 @@ test.describe('keyboard Enter actions', () => {
         ),
         // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
         window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}112233`)
-      }, [await firstTextEl.elementHandle(), ZWSP])
+      }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
       await page.evaluate(([firstTextEl]) => {
@@ -161,7 +160,7 @@ test.describe('keyboard Enter actions', () => {
           startOffset: 0,
           collapsed: true
         })
-      }, [await firstTextEl.elementHandle()])
+      }, [firstTextEl])
 
     })
 
