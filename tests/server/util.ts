@@ -10,21 +10,21 @@ export function createElement(tag: JSXElementType, attrs: AttributesArg, ...chil
 
 
 
-class ThrowInfo {
+class ThrowInfo extends Error{
     path?: string[]
     constructor(
         readonly received: any,
         readonly expected: any,
-        readonly message?: string,
+        readonly message: string,
     ) {
+        super(message)
     }
 }
 
 export function expect(received: any) {
     return {
-        toEqual(expected: any, message?:string) {
+        toEqual(expected: any, message = '') {
             if (received !== expected) {
-                debugger
                 throw new ThrowInfo(received, expected, message)
             }
 
@@ -78,8 +78,12 @@ export function expectDOMMatch(inputTarget: any, toMatch: HTMLElement, path: str
 
     } catch( e: unknown|Error ) {
         if (e instanceof ThrowInfo) {
+            // 只在最高层抛出 error，因为需要最高层的 toMatch 和 target 信息。
             if (path.length !== 0) {
+                // 说明不是最高层。
+                // 如果 !e.path 说明是当前出错的这层，这个 path 信息要记录
                 if (!e.path) e.path = currentPath
+                debugger
                 throw e
             } else {
                 throw new Error(`
@@ -95,10 +99,14 @@ ${inputTarget instanceof HTMLElement ? prettify(inputTarget.outerHTML) : JSON.st
 ============================
 `)
             }
-
-
-        } else {
+        } else if ( e instanceof Error){
             throw e
+        } else {
+            throw new Error(`
+unknown throw:
+path: ${currentPath.join(' > ')},
+object: ${JSON.stringify(e)}
+`)
         }
 
     }
