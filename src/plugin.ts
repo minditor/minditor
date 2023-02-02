@@ -2,6 +2,7 @@ import {findNodeFromElement} from "./editing";
 // @ts-ignore
 import {reactive, shallowRef, ref} from "@ariesate/reactivity";
 import {NodeType} from "./NodeType";
+import { state as globalState } from './globals'
 
 type Ref = {
     value: any
@@ -218,9 +219,8 @@ function registerPlugin(plugin: Plugin, utils: Utils) {
         })
     } else {
         const callback = (e: Event) => {
-            const selection = window.getSelection()!
             // TODO 这里对于是否是作用在 selection 上面的 command 还要判断下。目前没有实现在 selection 上的 command，理论上是有的，例如高亮，加粗，评论。
-            if (!selection.rangeCount || !selection.isCollapsed) return
+            if (!globalState.selection?.rangeCount || !globalState.selection.isCollapsed) return
 
 
             if (test && test(e)) {

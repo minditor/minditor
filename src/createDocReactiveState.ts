@@ -4,7 +4,7 @@ import {debounce, idleThrottle, nextJob} from "./util";
 import {createRangeLikeFromRange, findNodeFromElement} from "./editing";
 import {EventDelegator} from "./event";
 import {NodeType} from "./NodeType";
-
+import { state as globalState } from './globals'
 
 type Rect = {
     top: number,
@@ -48,8 +48,8 @@ function createVisualFocusedBlockNode({ on }: EventDelegator) {
 function createUserSelectionRange({on, trigger}: EventDelegator) {
     const userSelectionRange = shallowRef(null)
     on('selectionchange', () => {
-        const selection = window.getSelection()!
-        const range = selection.rangeCount ? selection.getRangeAt(0) : null
+        // CAUTION 这里默认了 globalState 里的注册的 selectionchange 一定先发生，所以这里才能直接读
+        const range = globalState.selection!.rangeCount ? globalState.selection!.getRangeAt(0) : null
         // 用户可以通过监听事件的方式来处理自己的逻辑
         const inputEvent = new CustomEvent('userSelectionChange',  { detail: {data: range}})
         trigger(inputEvent)
@@ -80,9 +80,8 @@ export function createVisibleRangeRectRef({on} : EventDelegator, boundaryContain
                 stopListenSelectionChange = on('selectionchange', () => {
                     if (updateRangeClientRectCallback) boundaryContainer.removeEventListener('scroll', updateRangeClientRectCallback)
 
-                    const selection = window.getSelection()!
-                    if (selection.rangeCount === 0) return
-                    const range = selection.getRangeAt(0)
+                    if (globalState.selection!.rangeCount === 0) return
+                    const range = globalState.selectionRange!
                     if (range.collapsed) return
 
                     // 有 range 才监听 scroll

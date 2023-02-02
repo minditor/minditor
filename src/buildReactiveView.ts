@@ -5,7 +5,7 @@ import { LinkedList } from "./linkedList";
 import {NodeType} from "./NodeType";
 import {AttributesArg, ExtendedDocumentFragment, setAttributes} from "./DOM";
 import {EventDelegator} from "./event";
-
+import { state as globalState } from './globals'
 
 export const nodeToElement = new WeakMap()
 
@@ -194,9 +194,8 @@ function setNativeCursor(element: HTMLElement | ChildNode, offset: number) {
     range.setStart(element, offset)
 
     range.collapse(true)
-    const selection = window.getSelection()
-    selection!.removeAllRanges()
-    selection!.addRange(range)
+    globalState.selection!.removeAllRanges()
+    globalState.selection!.addRange(range)
 }
 
 export function setCursor(inputNode: NodeType, inputOffset: number) {

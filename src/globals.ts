@@ -22,6 +22,7 @@ export const state:GlobalState = (function() {
     })
 
     document.addEventListener('selectionchange', () => {
+        // TODO 必须 selection 是在 doc 中并且合法才行。
         currentSelection = window.getSelection()
         hasCursor = Boolean(currentSelection?.rangeCount)
         selectionRange = hasCursor ? currentSelection?.getRangeAt(0)! : null
