@@ -99,7 +99,7 @@ test.describe('keyboard Enter actions', () => {
 
           window.expectDOMMatch(newPElement, <p><span>{ZWSP}</span></p>)
           // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-          window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}1122`, 'whole text not match')
+          window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}12322`, 'whole text not match')
 
       }, [firstTextEl, ZWSP])
 
@@ -149,7 +149,7 @@ test.describe('keyboard Enter actions', () => {
             </any>
         ),
         // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-        window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}112233`)
+        window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}123456789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
@@ -249,7 +249,7 @@ test.describe('keyboard Enter actions', () => {
 
         )
           // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-        window.expect(window.doc.element!.textContent).toEqual(`0011${ZWSP}22`, 'whole text not match')
+        window.expect(window.doc.element!.textContent).toEqual(`00123${ZWSP}22`, 'whole text not match')
       }, [focusTextEl, ZWSP])
 
       // 2.3 range 测试
@@ -299,7 +299,7 @@ test.describe('keyboard Enter actions', () => {
             </any>
         ),
             // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-            window.expect(window.doc.element!.textContent).toEqual(`0011${ZWSP}2233`)
+            window.expect(window.doc.element!.textContent).toEqual(`00123${ZWSP}456789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
@@ -312,200 +312,180 @@ test.describe('keyboard Enter actions', () => {
       }, [firstTextEl])
 
     })
-
-
   })
 
 
-  //
-  // describe('at middle of content', () => {
-  //
-  //   beforeEach(() => {
-  //     document.body.innerHTML = ''
-  //     removeAll()
-  //   })
-  //
-  //   test('Para content', async () => {
-  //     const user = userEvent.setup({ document })
-  //     const { result: doc } = buildModelFromData({
-  //       type: 'Doc',
-  //       children: [{
-  //         type: 'Para',
-  //         content: [
-  //           {type: 'Text', value: '11'},
-  //           {type: 'Text', value: '22'},
-  //           {type: 'Text', value: '33'}
-  //         ]
-  //       }]
-  //     })
-  //
-  //     const docElement = buildReactiveView(doc)
-  //     document.body.appendChild(docElement)
-  //     patchRichTextEvents(on, trigger)
-  //
-  //     const firstElement = page.getByText('22')
-  //     setCursor(firstElement.firstChild, 1)
-  //     await page.expect(() =>window.getSelection()!.rangeCount).to.equal(1)
-  //
-  //
-  //     await user.keyboard('{Enter}')
-  //     await waitUpdate()
-  //     // 测试数据结构？
-  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(2)
-  //     await page.expect(() =>window.doc.root.children!.at(0).data.type).to.equal('Para')
-  //     await page.expect(() =>window.doc.root.children!.at(0).content.size()).to.equal(2)
-  //     await page.expect(() =>window.doc.root.children!.at(0).content.at(0).value.value).to.equal('11')
-  //     await page.expect(() =>window.doc.root.children!.at(0).content.at(1).value.value).to.equal('2')
-  //     await page.expect(() =>window.doc.root.children!.at(1).data.type).to.equal('Para')
-  //     await page.expect(() =>window.doc.root.children!.at(1).content.size()).to.equal(2)
-  //     await page.expect(() =>window.doc.root.children!.at(1).content.at(0).value.value).to.equal('2')
-  //     await page.expect(() =>window.doc.root.children!.at(1).content.at(1).value.value).to.equal('33')
-  //
-  //
-  //     // range 测试
-  //     const range = getCursorRange()
-  //
-  //     await page.expect(() =>range.startContainer).to.equal(page.getByText('33')!.previousSibling!.firstChild)
-  //     await page.expect(() =>range.startOffset).to.equal(0)
-  //     await page.expect(() =>range.collapsed).to.equal(true)
-  //
-  //     // 测试 dom
-  //     const newPElement = page.getByText('33').parentElement!
-  //     await page.expect(() =>newPElement.nodeName).to.equal('P')
-  //     await page.expect(() =>newPElement.childNodes.length).to.equal(2)
-  //     await page.expect(() =>newPElement.firstChild!.nodeName).to.equal('SPAN')
-  //     await page.expect(() =>newPElement.textContent).to.equal('233')
-  //     await page.expect(() =>docElement.textContent).to.equal('112233')
-  //
-  //     const oldPElement = page.getByText('11').parentElement!
-  //     await page.expect(() =>oldPElement.nodeName).to.equal('P')
-  //     await page.expect(() =>oldPElement.childNodes.length).to.equal(2)
-  //     await page.expect(() =>oldPElement.firstChild!.nodeName).to.equal('SPAN')
-  //     await page.expect(() =>oldPElement.textContent).to.equal('112')
-  //   })
-  //
-  //   test('Section content', async () => {
-  //     const user = userEvent.setup({ document })
-  //     const { result: doc } = buildModelFromData({
-  //       type: 'Doc',
-  //       content: [{ type: 'Text', value: '00'} ],
-  //       children: [{
-  //         type: 'Section',
-  //         content: [
-  //             {type: 'Text', value: '11'},
-  //             {type: 'Text', value: '22'}, // <-- 这里
-  //             {type: 'Text', value: '33'}
-  //         ], // <- 这里回车
-  //         children: [{
-  //           type: 'Para',
-  //           content: [
-  //             {type: 'Text', value: '44'},
-  //           ]
-  //         }]
-  //       }]
-  //     })
-  //
-  //     const docElement = buildReactiveView(doc)
-  //     document.body.appendChild(docElement)
-  //     patchRichTextEvents(on, trigger)
-  //     setCursor(page.getByText('22').firstChild!, 1)
-  //     await page.expect(() =>window.getSelection()!.rangeCount).to.equal(1)
-  //
-  //     await user.keyboard('{Enter}')
-  //     await waitUpdate()
-  //     // 测试数据结构
-  //
-  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(2)
-  //     await page.expect(() =>window.doc.root.children!.at(0).data.type).to.equal('Section')
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(0)
-  //
-  //     await page.expect(() =>window.doc.root.children!.at(0).content.size()).to.equal(2)
-  //
-  //     await page.expect(() =>window.doc.root.children!.at(1).data.type).to.equal('Section')
-  //     await page.expect(() =>window.doc.root.children!.at(1).content.size()).to.equal(2)
-  //     await page.expect(() =>window.doc.root.children!.at(1).children.size()).to.equal(1)
-  //     //
-  //     // range 测试
-  //     const range = getCursorRange()
-  //     //从 33 这个 span开始依次是: span span Text
-  //     await page.expect(() =>range.startContainer).to.equal(page.getByText('33')!.previousSibling!.firstChild)
-  //     await page.expect(() =>range.startOffset).to.equal(0)
-  //     await page.expect(() =>range.collapsed).to.equal(true)
-  //     //
-  //     // 测试 dom
-  //     const firstElement = page.getByText('11').parentElement!.parentElement!
-  //     await page.expect(() =>firstElement.nodeName).to.equal('DIV')
-  //     await page.expect(() =>firstElement.firstChild!.childNodes.length).to.equal(2)
-  //     await page.expect(() =>firstElement.firstChild!.textContent).to.equal('112')
-  //     await page.expect(() =>firstElement.textContent).to.equal('112')
-  //
-  //     const secondElement = firstElement.nextSibling
-  //     await page.expect(() =>secondElement.nodeName).to.equal('DIV')
-  //     await page.expect(() =>secondElement.firstChild!.childNodes.length).to.equal(2)
-  //     await page.expect(() =>secondElement.firstChild!.textContent).to.equal('233')
-  //     await page.expect(() =>secondElement.textContent).to.equal('23344')
-  //
-  //     await page.expect(() =>docElement.textContent).to.equal('0011223344')
-  //   })
-  //   // //
-  //   test('ListItem content', async () => {
-  //     const user = userEvent.setup({ document })
-  //     const { result: doc } = buildModelFromData({
-  //       type: 'Doc',
-  //       content: [{ type: 'Text', value: '00'} ],
-  //       children: [{
-  //         type: 'List',
-  //         children: [{
-  //           type: 'ListItem',
-  //           content: [{ type: 'Text', value: '11'} ]
-  //         }, {
-  //           type: 'ListItem',
-  //           content: [{ type: 'Text', value: '22'} ] //<- 这里
-  //         }, {
-  //           type: 'ListItem',
-  //           content: [{ type: 'Text', value: '33'} ]
-  //         }]
-  //       }]
-  //     })
-  //
-  //     const docElement = buildReactiveView(doc)
-  //     document.body.appendChild(docElement)
-  //     patchRichTextEvents(on, trigger)
-  //     setCursor(page.getByText('22').firstChild, 1)
-  //     await page.expect(() =>window.getSelection()!.rangeCount).to.equal(1)
-  //
-  //     await user.keyboard('{Enter}')
-  //     await waitUpdate()
-  //     // 测试数据结构？
-  //     await page.expect(() =>window.doc.root.children!.size()).to.equal(1)
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.size()).to.equal(4)
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(0).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(1).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(2).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(3).data.type).to.equal('ListItem')
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(1).content.size()).to.equal(1)
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(1).content.at(0).value.value).to.equal('2')
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(2).content.size()).to.equal(1)
-  //     await page.expect(() =>window.doc.root.children!.at(0).children.at(2).content.at(0).value.value).to.equal('2')
-  //
-  //     // range 测试
-  //     const range = getCursorRange()
-  //     // 从 11 开始依次是 span div div div(new ListItem) div span Text
-  //     await page.expect(() =>range.startContainer).to.equal(page.getByText('33').parentElement!.parentElement!.previousSibling!.firstChild.firstChild!.firstChild)
-  //     await page.expect(() =>range.startOffset).to.equal(0)
-  //     await page.expect(() =>range.collapsed).to.equal(true)
-  //     //
-  //     // // 测试 dom
-  //     const firstElement = page.getByText('11').parentElement!.parentElement!.nextSibling!
-  //     await page.expect(() =>firstElement.nodeName).to.equal('DIV')
-  //     await page.expect(() =>firstElement.firstChild!.firstChild!.nodeName).to.equal('SPAN')
-  //     await page.expect(() =>firstElement.textContent).to.equal('2')
-  //
-  //     const secondElement = firstElement.nextSibling!
-  //     await page.expect(() =>secondElement.firstChild!.firstChild!.nodeName).to.equal('SPAN')
-  //     await page.expect(() =>secondElement.textContent).to.equal('2')
-  //
-  //     await page.expect(() =>docElement.textContent).to.equal('00112233')
-  //   })
-  // })
+  test.describe('at middle of content', () => {
+
+    test('Para content. Should split into to para.', async ({page}) => {
+      await page.load('singlePara')
+      const data = singleParaData
+      const focusText = data.children[0].content[1]!.value
+      const allText = data.children[0].content.map(i => i.value).join('')
+
+      const focusTextEl = await page.getByText(focusText).elementHandle()
+
+      // 1.1 设置焦点在段落的 文字中间。
+      await page.setSelection(focusTextEl, 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Enter')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      // TODO 还要对比和 API 创造出来的是否一样？
+      const firstParaPart = structuredClone(dataToCompare.children[0])
+      firstParaPart.content.pop()
+      firstParaPart.content[1].value = firstParaPart.content[1].value.slice(0, 1)
+
+
+      dataToCompare.children[0].content.shift()
+      dataToCompare.children[0].content[0].value = dataToCompare.children[0].content[0].value.slice(1)
+
+      dataToCompare.children.unshift(firstParaPart)
+
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+
+
+      // 2.2 测试 dom
+      await page.evaluate(([firstTextEl, allText]) => {
+        const originPara = (firstTextEl as Node).parentElement!
+        const contentContainer = originPara.parentElement
+        window.expectDOMMatch(contentContainer,
+            <any>
+              <p>
+                <span>123</span>
+                <span>4</span>
+              </p>
+              <p>
+                <span>56</span>
+                <span>789</span>
+              </p>
+            </any>),
+            window.expect(window.doc.element!.textContent).toEqual(`${allText}`)
+      }, [focusTextEl, allText])
+
+
+      // 2.3 range 测试
+      await page.evaluate(([firstTextEl]) => {
+        window.expectSelectionMatch({
+          startContainer: window.page.getByText('56')!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [focusTextEl])
+
+    })
+
+    test('Section content. Should create two section.', async ({page}) => {
+      await page.load('singleSection')
+      const data = singleSectionData
+      const focusText = data.children[0].content[0].value
+
+      const focusTextEl = await page.getByText(focusText).elementHandle()
+      // 1.1 设置焦点
+      await page.setSelection(focusTextEl, 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Enter')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      // TODO 还要对比和 API 创造出来的是否一样？
+      // @ts-ignore
+      dataToCompare.children.unshift({ type:'Section', content: [{type: 'Text', value: '1'}]})
+      dataToCompare.children[1].content[0].value = '23'
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+
+      // 2.2 测试 dom
+      await page.evaluate(([firstTextEl, ZWSP]) => {
+        const sectionsElement = (firstTextEl as Node)!.parentElement!.parentElement!.parentElement!
+        window.expectDOMMatch(sectionsElement,
+            <any>
+              <any>
+                <any><span>1</span></any>
+                <any></any>
+              </any>
+              <any>
+                <any><span>23</span></any>
+                <any data-testignorechildren>
+                </any>
+              </any>
+            </any>
+
+
+        )
+        // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
+        window.expect(window.doc.element!.textContent).toEqual(`0012322`, 'whole text not match')
+      }, [focusTextEl, ZWSP])
+
+      // 2.3 range 测试
+      const firstParaText = dataToCompare.children[1].content[0]!.value
+      await page.evaluate(([firstParaText]) => {
+        const firstParaElement = window.page.getByText(firstParaText)
+        window.expectSelectionMatch({
+          startContainer: firstParaElement!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [firstParaText])
+    })
+
+    test('List content. Should create new List item in middle.', async ({page}) => {
+      await page.load('singleList')
+      const data = singleListData
+      const firstText = data.children[0].children[1].content[0].value
+      const firstTextEl = await page.getByText(firstText).elementHandle()
+      // 1.1 设置焦点
+      await page.setSelection(firstTextEl, 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Enter')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      // @ts-ignore
+      dataToCompare.children[0].children.splice(1, 0, { type:'ListItem', content: [{type: 'Text', value: '4'}]})
+      dataToCompare.children[0].children[2].content[0].value = '56'
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+
+      // 2.2 测试 dom
+      await page.evaluate(([firstTextEl, ZWSP]) => {
+        const listElement = (firstTextEl as Node).parentElement!.parentElement!.parentElement
+        window.expectDOMMatch(listElement,
+            <any>
+              <any data-testignorechildren></any>
+              <any>
+                <any>
+                  <span>4</span>
+                </any>
+                <any data-testignorechildren></any>
+              </any>
+              <any>
+                <any>
+                  <span>56</span>
+                </any>
+                <any data-testignorechildren></any>
+              </any>
+              <any data-testignorechildren></any>
+            </any>
+        ),
+            // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
+            window.expect(window.doc.element!.textContent).toEqual(`00123456789`)
+      }, [firstTextEl, ZWSP])
+
+      // 2.3 range 测试
+      await page.evaluate(([firstTextEl]) => {
+
+        window.expectSelectionMatch({
+          startContainer: window.page.getByText('56').firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [firstTextEl])
+
+    })
+
+  })
+
 })

@@ -5,13 +5,13 @@ export const data = {
         type: 'List',
         children: [{
             type: 'ListItem',
-            content: [{ type: 'Text', value: '11'} ]
+            content: [{ type: 'Text', value: '123'} ]
         }, {
             type: 'ListItem',
-            content: [{ type: 'Text', value: '22'} ]
+            content: [{ type: 'Text', value: '456'} ]
         }, {
             type: 'ListItem',
-            content: [{ type: 'Text', value: '33'} ]
+            content: [{ type: 'Text', value: '789'} ]
         }]
     }]
 }

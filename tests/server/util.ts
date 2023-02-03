@@ -15,9 +15,13 @@ class ThrowInfo extends Error{
     constructor(
         readonly received: any,
         readonly expected: any,
-        readonly message: string,
+        readonly userMessage: string,
     ) {
-        super(message)
+        super(`
+message: ${userMessage}
+expected: ${expected}
+received: ${received}
+`)
     }
 }
 
@@ -36,8 +40,8 @@ export function expect(received: any) {
 
 
 // TODO attrs match 还有 className  style dangerouslySetInnerHTML data 等特殊情况
-export function expectDOMMatch(inputTarget: any, toMatch: HTMLElement, path: string[] = []): boolean {
-    const currentPath = path.concat(toMatch.nodeName.toLowerCase())
+export function expectDOMMatch(inputTarget: any, toMatch: HTMLElement, path: string[] = [], index? :number): boolean {
+    const currentPath = path.concat(`${toMatch.nodeName.toLowerCase()}${index === undefined ? '' : `[${index}]`}`)
     try {
         console.log(inputTarget, toMatch)
         expect(inputTarget instanceof HTMLElement).toEqual(true, 'target is not HTMLElement')
@@ -67,7 +71,7 @@ export function expectDOMMatch(inputTarget: any, toMatch: HTMLElement, path: str
             [...toMatch.childNodes].forEach((child: Node, index) => {
                 const targetChild = target.childNodes[index]
                 if(child instanceof HTMLElement) {
-                    expectDOMMatch(targetChild, child as HTMLElement, currentPath)
+                    expectDOMMatch(targetChild, child as HTMLElement, currentPath, index)
                 } else if (targetChild instanceof Text && child instanceof Text){
                     expect(child.wholeText).toEqual(targetChild.wholeText)
                 } else {
@@ -150,15 +154,15 @@ export function expectSelectionMatch(toMatch: RangeLike) {
 ============================
 message: ${e.message}
 expected: {
-    startContainer: ${(toMatch.startContainer as Text).wholeText},
+    startContainer: ${(toMatch.startContainer as Text)?.wholeText},
     startOffset: ${toMatch.startOffset},
-    endContainer: ${(toMatch.endContainer as Text).wholeText},
+    endContainer: ${(toMatch.endContainer as Text)?.wholeText},
     endOffset: ${toMatch.endOffset},
 }
 received: {
-    startContainer: ${(range!.startContainer as Text).wholeText},
+    startContainer: ${(range!.startContainer as Text)?.wholeText},
     startOffset: ${range!.startOffset},
-    endContainer: ${(range!.endContainer as Text).wholeText},
+    endContainer: ${(range!.endContainer as Text)?.wholeText},
     endOffset: ${range!.endOffset},
 }
 
