@@ -16,9 +16,10 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList, eventDele
         let parentEl: DocumentFragment | HTMLElement = document.createDocumentFragment()
 
         const stopAutorun = autorunForEach(contentLinkedList, [contentLinkedList.insertAfter, contentLinkedList.removeBetween],
-            (node: NodeType) => {
+            (node: NodeType, prevNode: NodeType) => {
                 // 如果一讲有了 element，说明是把别人的 node 移动过来的额，不不用再新建，
                 // CAUTION 这要做更严谨的校验，防止共用 node 引用的情况。
+                debugger
                 let element = nodeToElement.get(node)
                 if (element) {
                     if (element instanceof ExtendedDocumentFragment) {
@@ -29,26 +30,15 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList, eventDele
                     element = buildReactiveView(node, eventDelegator)
                 }
 
-                const item = contentLinkedList.getItem(node)
-                const refElement = findElementOrFirstChildFromNode(item.next?.node)
+                // CAUTION 这里千万不能去读 prev，不然整个 autorunForEach 就会依赖节点的 prev 属性，后面再 splitTextAsBlock 等产经里面
+                //  复用了子链的时候，由于会  set prev，于是就是的这里产生不必要的 recompute。
+                //  FIXME
+                const refElementOrNull = findElementOrFirstChildFromNode(prevNode)
 
-                // 到底什么时候会触发这个情况？？？
-                if (parentEl === dom && item.next?.node && !refElement){
-                    // parentEl === dom 但是却没有 next 说明是最后一个，或者之前是空的？
-                    debugger
-                }
-
+                // TODO 不记得下面这个问题到底是什么情况了。
                 // TODO 这里有大问题，因为可能存在 refElement，但并不是同一个 parentEl 的，例如 updateRange 的情况，出现了中间新建节点，拼合后面已有节点的情况。
                 //   这个时候 next 当然是有的，但那是之前的。
-
-                // TODO 还有
-                if (refElement?.parentElement === parentEl) {
-                    parentEl.insertBefore(element, refElement)
-                } else {
-                    // console.log(refElement?.parentElement === parentEl, parentEl, element)
-                    parentEl.insertBefore(element, null)
-                }
-
+                parentEl.insertBefore(element, refElementOrNull? refElementOrNull.nextSibling : parentEl.firstChild)
             },
             (removedNode: NodeType) => {
                 const element = nodeToElement.get(removedNode)
@@ -221,7 +211,9 @@ export function setCursor(inputNode: NodeType, inputOffset: number) {
     setNativeCursor(findFirstDescendantElementFromNode(node), offset)
 }
 
-export function findElementOrFirstChildFromNode(node: NodeType) {
+export function findElementOrFirstChildFromNode(node?: NodeType) {
+    if (!node) return null
+
     const el = nodeToElement.get(node)
     if (el instanceof ExtendedDocumentFragment) {
         return el.firstChild

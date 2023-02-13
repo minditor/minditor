@@ -67,7 +67,8 @@ const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: Lin
             added: {
                 from: node.head,
                 to: node.tail
-            }
+            },
+            after: refNode
         }
     } else if(node instanceof LinkedListFragment) {
         const { from, to } = node
@@ -89,7 +90,8 @@ const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: Lin
         LinkedList.iterate(from.prev!, to!, (itemNode: LinkedListNode) => itemNode.container = this)
 
         return {
-            added: { from: from.prev, to}
+            added: { from: from.prev, to},
+            after: refNode
         }
 
     } else {
@@ -110,7 +112,8 @@ const patchableInsertAfter = collectionPatchPoint(function insertAfter(this: Lin
         node.container = this
 
         return {
-            added: {from: item.prev, to: item}
+            added: {from: item.prev, to: item},
+            after: refNode
         }
     }
 })

@@ -78,6 +78,7 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
             setCursor(splitPointNode, 0)
         } else  if (e.key === 'Backspace') {
 
+            // 1. 有选区的情况，等用于 updateRange
             const range = globalKM.selectionRange!
             if (!range.collapsed) {
                 const updateInfo = updateRange(range, '', true)
@@ -86,70 +87,75 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
                     e.stopPropagation()
                     setCursor(updateInfo.node, updateInfo.offset)
                 }
-            } else {
-                // 要考虑破坏结构的情况了
-                const node = findNodeFromElement(range.startContainer)
-                // TODO 要不要直接修正一下节点位置？？？
-                if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
+                return
+            }
+            // 要考虑破坏结构的情况了
+            const node = findNodeFromElement(range.startContainer)
+            // TODO 要不要直接修正一下节点位置？？？
+            if (!node.constructor.isLeaf) throw new Error('range not in a leaf node')
 
-                // 在整个结构的头部，这回破坏当前的结构
-                if (node === node.container.head.next.node && range.startOffset === 0) {
-                    e.preventDefault()
-                    e.stopPropagation()
+            // 2. 在整个结构的头部，这会破坏当前的结构
+            if (node === node.container.head.next.node && range.startOffset === 0) {
+                e.preventDefault()
+                e.stopPropagation()
 
-                    const parent = node.parent
-                    // 如果节点自己有 unwrap 定义，那么就用它自己的
-                    if(parent.constructor.unwrap) {
-                        await parent.constructor.unwrap(parent)
-                    } else {
-                        // 默认行为？content 合并，children 提升？
-                        const previousSiblingInTree = node.previousSiblingInTree
-                        if (previousSiblingInTree) {
-                            // 合并内容
-                            previousSiblingInTree.container.insertBefore(parent.content.move())
-                            // 如果有 children， 还要提升 children
-                            if (parent.children?.tail) {
-                                if (previousSiblingInTree.parent.constructor.hasChildren) {
-                                    previousSiblingInTree.parent.children.insertBefore(parent.children.move())
-                                } else {
-                                    previousSiblingInTree.parent.parent.children.insertAfter(parent.children.move(), previousSiblingInTree.parent)
-                                }
-
-                            }
-                            // 最后再删掉，防止页面抖动
-                            parent.remove()
-                        }
-                    }
-
-                    await waitUpdate()
-                    // 一定要重置一下，因为这时候 dom 更新了，可出现 cursor 漂移到上一级 div 上。
-                    setCursor(node, 0)
+                const blockNode = node.parent
+                // 如果节点自己有 unwrap 定义，那么就用它自己的
+                if(blockNode.constructor.unwrap) {
+                    await blockNode.constructor.unwrap(blockNode)
                 } else {
-                    // 选中前一个字符 update 就行了
-                    let editingNode = range.startOffset === 0 ? node.previousSibling : node
-                    const editingPrevNode = editingNode.previousSibling
+                    // 默认行为: 1. content 和 previousSibling 合并. 2. children 提升到当前位置
+                    const previousSiblingInTree = node.previousSiblingInTree
+                    if (previousSiblingInTree) {
+                        // 1. 合并内容
+                        previousSiblingInTree.container.insertBefore(blockNode.content.move())
+                        // 2. 如果有 children， 还要提升 children
+                        if (blockNode.children?.tail) {
+                            // 如果上一个 block 节点也是有 children 的，那么就和它合并
+                            // TODO 这里有问题，上一个节点的  children 可能和我的节点不兼容
+                            if (previousSiblingInTree.parent.constructor.hasChildren) {
+                                previousSiblingInTree.parent.children.insertBefore(blockNode.children.move())
+                            } else {
+                                (window as any).d = true
+                                previousSiblingInTree.parent.container.insertAfter(blockNode.children.move(), previousSiblingInTree.parent)
+                            }
 
-                    let editingStartOffset = range.startOffset === 0 ? editingNode.value.value.length - 1 : range.startOffset - 1
-                    const updateInfo = updateRange(createRangeLike({
-                        startNode: editingNode,
-                        startOffset: editingStartOffset,
-                        endNode: editingNode,
-                        endOffset: editingStartOffset + 1
-                    }), '', true)
-
-                    if (!updateInfo.success) {
-                        console.log(111, updateInfo)
-                        e.preventDefault()
-                        e.stopPropagation()
-                        if (editingStartOffset === 0) {
-                            // 铁定坍缩了
-                            setCursor(editingPrevNode, editingPrevNode.value?.value.length || 0)
-                        } else {
-                            setCursor(updateInfo.node, updateInfo.offset)
                         }
+                        // 3. 最后再删掉当前节点，防止页面抖动
+                        await waitUpdate()
+                        blockNode.remove()
                     }
                 }
+
+                await waitUpdate()
+                // 一定要重置一下，因为这时候 dom 更新了，可出现 cursor 漂移到上一级 div 上。
+                setCursor(node, 0)
+                return
             }
+
+            // 3. 不在头部。选中前一个字符 update 就行了
+            let editingNode = range.startOffset === 0 ? node.previousSibling : node
+            const editingPrevNode = editingNode.previousSibling
+
+            let editingStartOffset = range.startOffset === 0 ? editingNode.value.value.length - 1 : range.startOffset - 1
+            const updateInfo = updateRange(createRangeLike({
+                startNode: editingNode,
+                startOffset: editingStartOffset,
+                endNode: editingNode,
+                endOffset: editingStartOffset + 1
+            }), '', true)
+
+            if (!updateInfo.success) {
+                e.preventDefault()
+                e.stopPropagation()
+                if (editingStartOffset === 0) {
+                    // 铁定坍缩了
+                    setCursor(editingPrevNode, editingPrevNode.value?.value.length || 0)
+                } else {
+                    setCursor(updateInfo.node, updateInfo.offset)
+                }
+            }
+
 
         } else if (e.key === 'Tab') {
             //2.  TODO tab/shift+tab 向上升一级和向下降一级
