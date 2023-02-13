@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "jest",
-    "test:compile": "tsc --incremental -p ./tests/spec/tsconfig.json",
+    "test:compile": "tsc  -p ./tests/spec/tsconfig.json",
     "test:server": "npm run dev --prefix tests/server -- --port $npm_config_port",
     "dev": "vite",
     "build": "vite build",

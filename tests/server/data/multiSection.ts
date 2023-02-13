@@ -35,7 +35,7 @@ export const data = {
             children: [{
                 type: 'Para',
                 content: [
-                    {type: 'Text', value: 's2p12345', props: { formats: { bold: true }}},
+                    {type: 'Text', value: 's2p12345'},
                     {type: 'Text', value: 's2p12345'},
                     {type: 'Text', value: 's2p12345'}
                 ]
@@ -45,14 +45,11 @@ export const data = {
         type: 'Section',
         content: [{ type: 'Text', value: 'section 3'} ],
         children: [{
-            type: 'Table',
-            value: 'test'
-        }, {
             type: 'Para',
             content: [
                 {type: 'Text', value: '#jsp123'},
-                {type: 'Text', value: 'p456'},
-                {type: 'Text', value: 'p789'}
+                {type: 'Text', value: 'sp456'},
+                {type: 'Text', value: 'sp789'}
             ]
         }]
     }]

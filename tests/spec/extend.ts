@@ -49,3 +49,7 @@ export function extend(page: Page) {
     // CAUTION 为什么不 extend 出 expectDOMMatch? 因为在  toMatch 中可能有需要在前端 cloneElement 的部分。
 }
 
+export function stringifyNodeData(data: any) {
+    if (data.type === 'Text') return data.value
+    return `${data.content?.map((d: any) => stringifyNodeData(d)).join('') || ''}${data.children?.map((d: any) => stringifyNodeData(d)).join('') || ''}`
+}

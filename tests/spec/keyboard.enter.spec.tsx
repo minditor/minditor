@@ -343,7 +343,7 @@ test.describe('keyboard Enter actions', () => {
       dataToCompare.children[0].content[0].value = dataToCompare.children[0].content[0].value.slice(1)
 
       dataToCompare.children.unshift(firstParaPart)
-
+      // FIXME
       expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
 
 

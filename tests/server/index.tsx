@@ -15,6 +15,7 @@ import { Doc } from "../../src";
 // import { data } from './data/singleSection'
 // import { data } from './data/multiSection'
 // import { data } from './data/singlePara'
+// import { data } from './data/singleList'
 // import { data } from './data/component'
 // import { data } from './data/nestedList'
 // import { data } from './data/multiPara'
@@ -22,6 +23,7 @@ import { Doc } from "../../src";
 
 
 // @ts-ignore @vite-ignore
+// const { data } = await import(`./data/${searchObj.data || 'singlePara'}`)
 const { data } = await import(`./data/${searchObj.data || 'singlePara'}`)
 const rootElement = document.getElementById('root')!
 rootElement.style.position = 'relative'

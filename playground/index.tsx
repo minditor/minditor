@@ -8,6 +8,7 @@ import { Doc } from "../src";
 // import { data } from './data/singlePara'
 // import { data } from './data/component'
 // import { data } from './data/nestedList'
+// import { data } from './data/singleList'
 // import { data } from './data/multiPara'
 // import { data } from './data/playgroundMultiPara'
 const rootElement = document.getElementById('root')!
