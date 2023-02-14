@@ -60,7 +60,7 @@ export const data = {
             {
                 type: 'ListItem',
                 content: [
-                    {type: 'Text', value: '2focusText'},
+                    {type: 'Text', value: 'focusSecondText'},
                     {type: 'Text', value: '888'},
                     {type: 'Text', value: '888'}
                 ],

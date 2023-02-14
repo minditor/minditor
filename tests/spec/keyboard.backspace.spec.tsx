@@ -191,7 +191,7 @@ test.describe('keyboard Backspace actions', () => {
 
     })
 
-    test.only('ListItem content second level. should split into two list', async ({page}) => {
+    test('ListItem content second level. should split into two list', async ({page}) => {
       await page.load('nestedList')
       const data = nestedListData
       const focusText = data.children[0].children[1].content[0].value
