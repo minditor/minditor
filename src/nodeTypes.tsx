@@ -97,7 +97,7 @@ class ListItem extends TextBlock{
     static createDefaultContent() : NodeData[]{
         return [{ type: 'Para', content: [{ type: 'Text', value: ''}]}]
     }
-    static async unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = node.root!.createDefaultNode) {
+    static async unwrap(node: NodeType, createDefaultNode: (content?: LinkedList) => NodeType = node.root!.createDefaultNode.bind(node.root)) {
         const parent = node.parent
         if (parent.constructor === ListItem) {
 

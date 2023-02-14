@@ -19,7 +19,6 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList, eventDele
             (node: NodeType, prevNode: NodeType) => {
                 // 如果一讲有了 element，说明是把别人的 node 移动过来的额，不不用再新建，
                 // CAUTION 这要做更严谨的校验，防止共用 node 引用的情况。
-                debugger
                 let element = nodeToElement.get(node)
                 if (element) {
                     if (element instanceof ExtendedDocumentFragment) {
@@ -42,8 +41,6 @@ export function buildReactiveLinkedList(contentLinkedList: LinkedList, eventDele
             },
             (removedNode: NodeType) => {
                 const element = nodeToElement.get(removedNode)
-                if (!element) debugger
-                console.log('remove element', element)
                 element.remove()
             },
             scheduleImmediateUpdate,
