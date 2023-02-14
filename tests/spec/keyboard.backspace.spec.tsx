@@ -7,7 +7,7 @@ import { data as singleListData } from '../server/data/singleList'
 import { data as singleSectionData } from '../server/data/singleSection'
 import { data as multiSectionData } from '../server/data/multiSection'
 // import { data } from './data/component'
-// import { data } from './data/nestedList'
+import { data as nestedListData } from '../server/data/nestedList'
 import { data as multiParaData } from '../server/data/multiPara'
 // import { data } from './data/playgroundMultiPara'
 import '../test-extend'
@@ -137,6 +137,122 @@ test.describe('keyboard Backspace actions', () => {
     })
 
 
+    test('ListItem content. Should change item into para.', async ({page}) => {
+      await page.load('nestedList')
+      const data = nestedListData
+      const focusText = data.children[0].children[0].content[0].value
+      const allText = stringifyNodeData(data)
+
+      const focusTextEl = await page.getByText(focusText).elementHandle()
+
+      // 1.1 设置焦点
+      await page.setSelection(focusTextEl, 0)
+      await page.expect(() => window.getSelection()!.rangeCount === 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Backspace')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      const deletedItem: any = dataToCompare.children[0].children[0];
+      // content 变 para content
+      (dataToCompare.children as any[]).unshift({type: 'Para', content: deletedItem.content})
+      // children 提升
+      dataToCompare.children[1].children.splice(0, 1, ...deletedItem.children);
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      //
+      //
+      // 2.2 测试 dom
+      await page.evaluate(([focusText, dataToCompare, allText]) => {
+
+        const paraContainer = window.page.getByText(focusText as string).parentElement!
+        const contentContainer = paraContainer.parentElement!
+
+        const listContainer = window.page.getByText((dataToCompare as any).children!.at(1)!.children[0].content[0].value).parentElement!.parentElement!.parentElement!
+
+        window.expectDOMMatch(contentContainer,
+            <any>
+              <p>{(dataToCompare as any).children[0].content.map(({value}: {value: string}) => <span>{value}</span>)}</p>
+              {listContainer.cloneNode(true)}
+            </any>),
+            window.expect(window.doc.element!.textContent).toEqual(allText)
+      }, [focusText, dataToCompare, allText])
+      //
+      // 新的 selection 会变成 para 的头部。
+      // 2.3 range 测试
+      await page.evaluate(([focusText]) => {
+        const focusEl = window.page.getByText(focusText)
+        window.expectSelectionMatch({
+          startContainer: focusEl!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [focusText])
+
+    })
+
+    test.only('ListItem content second level. should split into two list', async ({page}) => {
+      await page.load('nestedList')
+      const data = nestedListData
+      const focusText = data.children[0].children[1].content[0].value
+      const allText = stringifyNodeData(data)
+
+      const focusTextEl = await page.getByText(focusText).elementHandle()
+
+      // 1.1 设置焦点
+      await page.setSelection(focusTextEl, 0)
+      await page.expect(() => window.getSelection()!.rangeCount === 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Backspace')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      const deletedItem: any = dataToCompare.children[0].children[1];
+      const restItems = dataToCompare.children[0].children.slice(2)
+      dataToCompare.children[0].children.splice(1);
+      // focus 的 content 变成 para，自己的 children 和后面的 item 变成新的 list。
+      (dataToCompare.children as any[]).push({ type: 'Para', content: deletedItem.content});
+      (dataToCompare.children as any[]).push({ type: 'List', children: deletedItem.children.concat(restItems)})
+
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      // //
+      // //
+      // // 2.2 测试 dom
+      await page.evaluate(([focusText, dataToCompare, allText]) => {
+
+        const paraContainer = window.page.getByText(focusText as string).parentElement!
+        const contentContainer = paraContainer.parentElement!
+
+        window.expectDOMMatch(contentContainer,
+            <any>
+              <any>
+                <any data-testignorechildren></any>
+              </any>
+              <p>{(dataToCompare as any).children[1].content.map(({value}: {value: string}) => <span>{value}</span>)}</p>
+              <any>
+                <any data-testignorechildren></any>
+                <any data-testignorechildren></any>
+              </any>
+            </any>),
+            window.expect(window.doc.element!.textContent).toEqual(allText)
+      }, [focusText, dataToCompare, allText])
+      // //
+      // 新的 selection 会变成 para 的头部。
+      // 2.3 range 测试
+      await page.evaluate(([focusText]) => {
+        const focusEl = window.page.getByText(focusText)
+        window.expectSelectionMatch({
+          startContainer: focusEl!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [focusText])
+
+    })
+
+
+
   })
 
 
@@ -145,166 +261,10 @@ test.describe('keyboard Backspace actions', () => {
 // describe('keyboard Enter actions', () => {
 //
 //   describe('at head of content', () => {
+
 //
 //
 //
-//
-//     it('ListItem content first level item', async () => {
-//       const user = userEvent.setup({ document })
-//       const { result: doc } = buildModelFromData({
-//         type: 'Doc',
-//         content: [{ type: 'Text', value: '00'} ],
-//         children: [{
-//           type: 'List',
-//           children: [{
-//             type: 'ListItem',
-//             content: [{ type: 'Text', value: '22'} ]
-//           }, {
-//             type: 'ListItem',
-//             content: [{ type: 'Text', value: '33'} ] // <-- 这里
-//           }, {
-//             type: 'ListItem',
-//             content: [{ type: 'Text', value: '44'} ]
-//           }]
-//         }]
-//       })
-//
-//       const docElement = buildReactiveView(doc)
-//       document.body.appendChild(docElement)
-//       patchRichTextEvents(on, trigger)
-//       const firstElement = screen.getByText('33')
-//       setCursor(firstElement.firstChild, 0)
-//       expect(window.getSelection()!.rangeCount).to.equal(1)
-//
-//       await user.keyboard('{Backspace}')
-//       await waitUpdate()
-//       // 测试数据结构？
-//       expect(doc.children!.size()).to.equal(3)
-//
-//       expect(doc.children!.at(0).data.type).to.equal('List')
-//       expect(doc.children!.at(0).children.size()).to.equal(1)
-//       expect(doc.children!.at(0).children.at(0).content.at(0).value.value).to.equal('22')
-//
-//       expect(doc.children!.at(1).data.type).to.equal('Para')
-//       expect(doc.children!.at(1).content.size()).to.equal(1)
-//       expect(doc.children!.at(1).content.at(0).value.value).to.equal('33')
-//
-//       expect(doc.children!.at(2).data.type).to.equal('List')
-//       expect(doc.children!.at(2).children.size()).to.equal(1)
-//       expect(doc.children!.at(2).children.at(0).content.at(0).value.value).to.equal('44')
-//
-//       // range 测试
-//       const range = getCursorRange()
-//
-//       expect(range.startContainer).to.equal(screen.getByText('33').firstChild)
-//       expect(range.startOffset).to.equal(0)
-//       expect(range.collapsed).to.equal(true)
-//       //
-//       // 测试 dom
-//       const newPElement = screen.getByText('33').parentElement!
-//       expect(newPElement.nodeName).to.equal('P')
-//       expect(newPElement.childNodes.length).to.equal(1)
-//       expect(newPElement.textContent).to.equal('33')
-//
-//       const nextElement= newPElement.nextSibling!
-//       expect(nextElement.nodeName).to.equal('DIV')
-//       expect(nextElement.childNodes.length).to.equal(1)
-//       expect(nextElement.textContent).to.equal('44')
-//
-//       const prevElement= newPElement.previousSibling!
-//       expect(prevElement.nodeName).to.equal('DIV')
-//       expect(prevElement.childNodes.length).to.equal(1)
-//       expect(prevElement.textContent).to.equal('22')
-//
-//       expect(docElement.textContent).to.equal('00223344')
-//     })
-//
-//
-//     it('ListItem content second level item', async () => {
-//       const user = userEvent.setup({ document })
-//       const { result: doc } = buildModelFromData({
-//         type: 'Doc',
-//         content: [{ type: 'Text', value: '00'} ],
-//         children: [{
-//           type: 'List',
-//           children: [{
-//             type: 'ListItem',
-//             content: [{ type: 'Text', value: '22'} ]
-//           }, {
-//             type: 'ListItem',
-//             content: [{ type: 'Text', value: '33'} ],
-//             children: [{
-//               type: 'ListItem',
-//               content: [{ type: 'Text', value: '44'} ],// <-- 这里
-//               children: [{
-//                 type: 'ListItem',
-//                 content: [{ type: 'Text', value: '55'} ]
-//               }]
-//             }]
-//           }, {
-//             type: 'ListItem',
-//             content: [{ type: 'Text', value: '66'} ]
-//           }]
-//         }]
-//       })
-//
-//       const docElement = buildReactiveView(doc)
-//       document.body.appendChild(docElement)
-//       patchRichTextEvents(on, trigger)
-//       const firstElement = screen.getByText('44')
-//       setCursor(firstElement.firstChild, 0)
-//       expect(window.getSelection()!.rangeCount).to.equal(1)
-//
-//       await user.keyboard('{Backspace}')
-//       await waitUpdate()
-//       // 测试数据结构？
-//       expect(doc.children!.size()).to.equal(1)
-//
-//       const listNode = doc.children!.at(0)!
-//       expect(listNode.children.size()).to.equal(4)
-//
-//
-//
-//       expect(listNode.children.at(0).data.type).to.equal('ListItem')
-//       expect(listNode.children.at(0).content.size()).to.equal(1)
-//       expect(listNode.children.at(0).content.at(0).value.value).to.equal('22')
-//
-//       expect(listNode.children.at(1).data.type).to.equal('ListItem')
-//       expect(listNode.children.at(1).content.size()).to.equal(1)
-//       expect(listNode.children.at(1).content.at(0).value.value).to.equal('33')
-//
-//       expect(listNode.children.at(2).data.type).to.equal('ListItem')
-//       expect(listNode.children.at(2).content.size()).to.equal(1)
-//       expect(listNode.children.at(2).content.at(0).value.value).to.equal('44')
-//       expect(listNode.children.at(2).children.size()).to.equal(1)
-//       expect(listNode.children.at(2).children.at(0).data.type).to.equal('ListItem')
-//       expect(listNode.children.at(2).children.at(0).content.at(0).value.value).to.equal('55')
-//
-//       expect(listNode.children.at(3).data.type).to.equal('ListItem')
-//       expect(listNode.children.at(3).content.size()).to.equal(1)
-//       expect(listNode.children.at(3).content.at(0).value.value).to.equal('66')
-//
-//
-//       // range 测试
-//       const range = getCursorRange()
-//
-//       expect(range.startContainer).to.equal(screen.getByText('44').firstChild)
-//       expect(range.startOffset).to.equal(0)
-//       expect(range.collapsed).to.equal(true)
-//       // 测试 dom
-//       const newPElement = screen.getByText('44').parentElement!.parentElement!
-//       expect(newPElement.nodeName).to.equal('DIV')
-//
-//       const listElement = newPElement.parentElement!
-//       expect(listElement.childNodes.length).to.equal(4)
-//
-//       expect(listElement.childNodes[0].textContent).to.equal('22')
-//       expect(listElement.childNodes[1].textContent).to.equal('33')
-//       expect(listElement.childNodes[2].textContent).to.equal('4455')
-//       expect(listElement.childNodes[3].textContent).to.equal('66')
-//
-//       expect(docElement.textContent).to.equal('002233445566')
-//     })
 //
 //   })
 //

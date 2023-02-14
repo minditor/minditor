@@ -2,16 +2,11 @@ export const data = {
     type: 'Doc',
     children: [{
         type: 'List',
-        content: [
-            {type: 'Text', value: '111'},
-            {type: 'Text', value: '111'},
-            {type: 'Text', value: '111'}
-        ],
         children: [
             {
                 type: 'ListItem',
                 content: [
-                    {type: 'Text', value: '222'},
+                    {type: 'Text', value: 'focusText'},
                     {type: 'Text', value: '222'},
                     {type: 'Text', value: '222'}
                 ],
@@ -20,24 +15,24 @@ export const data = {
                         type: 'ListItem',
                         content: [
                             {type: 'Text', value: '333'},
-                            {type: 'Text', value: '333'},
-                            {type: 'Text', value: '333'}
+                            {type: 'Text', value: '3333'},
+                            {type: 'Text', value: '333333'}
                         ],
                         children: [
                             {
                                 type: 'ListItem',
                                 content: [
                                     {type: 'Text', value: '444'},
-                                    {type: 'Text', value: '444'},
-                                    {type: 'Text', value: '444'}
+                                    {type: 'Text', value: '4444'},
+                                    {type: 'Text', value: '444444'}
                                 ],
                             },
                             {
                                 type: 'ListItem',
                                 content: [
                                     {type: 'Text', value: '555'},
-                                    {type: 'Text', value: '555'},
-                                    {type: 'Text', value: '555'}
+                                    {type: 'Text', value: '5555'},
+                                    {type: 'Text', value: '55555'}
                                 ],
                             },
                         ]
@@ -46,8 +41,8 @@ export const data = {
                         type: 'ListItem',
                         content: [
                             {type: 'Text', value: '666'},
-                            {type: 'Text', value: '666'},
-                            {type: 'Text', value: '666'}
+                            {type: 'Text', value: '6666'},
+                            {type: 'Text', value: '66666'}
                         ],
                         children: [
                             {
@@ -65,7 +60,7 @@ export const data = {
             {
                 type: 'ListItem',
                 content: [
-                    {type: 'Text', value: '888'},
+                    {type: 'Text', value: '2focusText'},
                     {type: 'Text', value: '888'},
                     {type: 'Text', value: '888'}
                 ],
