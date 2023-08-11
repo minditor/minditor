@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": "./",
     "outDir": "dist",
-    "sourceMap": false,
+    "sourceMap": true,
     "target": "es2016",
     "newLine": "LF",
     "useDefineForClassFields": false,

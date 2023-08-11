@@ -14,6 +14,10 @@ export function nextJob(fn: Function) {
   Promise.resolve().then(() => fn())
 }
 
+export function nextTask(fn: Function) {
+  setTimeout(() => fn(), 0)
+}
+
 export function debounce(fn: Function, delay: number) {
   let timeoutHandle: number | null
   return (...argv: any[]) => {
@@ -50,8 +54,9 @@ export function assert(condition: boolean, message: string ) {
   }
 }
 
-export function flatten(arr: any[]) {
-  return arr.reduce((last, current) => last.concat(current), [])
+export function deepFlatten(arr?: any) : any[]{
+  if (!Array.isArray(arr)) return [arr]
+  return arr.reduce((last, current) => last.concat(deepFlatten(current)), [])
 }
 
 export function unwrapChildren(children: any[]) {

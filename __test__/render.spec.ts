@@ -1,8 +1,7 @@
-import {waitUpdate} from "../src/buildReactiveView";
 import {DocumentContent} from "../src/Document";
 import {DocumentContentView} from "../src/View";
 import {Paragraph, Section, Text} from "../src/DocNode";
-
+import {expect, describe, test} from "@jest/globals";
 
 describe('basic render', () => {
     test('render Paragraph', () => {
@@ -16,7 +15,6 @@ describe('basic render', () => {
         }], { Section, Paragraph, Text})
 
         const docElement = (new DocumentContentView(doc)).render()
-
         expect(docElement.textContent).toBe('112233')
     })
 

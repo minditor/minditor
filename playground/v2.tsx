@@ -12,6 +12,7 @@ const data = {
     singlePara: (await import('@tests/data/singlePara')).data,
     // @ts-ignore
     nestedList: (await import('@tests/data/nestedList')).data,
+    multiSection: (await import('@tests/data/multiSection')).data,
 }
 
 const searchObj = Object.fromEntries(
@@ -22,7 +23,11 @@ const searchObj = Object.fromEntries(
 // const { data } = await import(`@tests/data/${searchObj.data || 'singlePara'}`)
 // const { data } = await import(`../../tests/server/data/${'singlePara'}`)
 
-const content = new DocumentContent(data.singlePara.children, {Paragraph, Section, Text})
+const content = new DocumentContent(
+    // data.singlePara.children,
+    data.multiSection.children,
+    {Paragraph, Section, Text}
+)
 const newView = new DocumentContentView(content)
 
 document.getElementById('root')!.appendChild(newView.render())
