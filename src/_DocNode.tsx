@@ -3,7 +3,7 @@ import {LinkedList} from "./linkedList";
 import {createElement} from "./DOM";
 export type RenderProp = {content?: Function, children?: Function, value?: Object, props?:any}
 
-export class NodeType {
+export class DocNode {
     children? : LinkedList
     content? : LinkedList
     syncValue? : Function
@@ -18,16 +18,16 @@ export class NodeType {
         this.container = container
         this.root = root
 
-        if ((this.constructor as typeof NodeType).hasContent) {
+        if ((this.constructor as typeof DocNode).hasContent) {
             this.content = new LinkedList(this)
         }
-        if ((this.constructor as typeof NodeType).hasChildren) {
+        if ((this.constructor as typeof DocNode).hasChildren) {
             this.children = new LinkedList(this)
         }
     }
     static createDefaultContent?: () => NodeData[]
     static createDefaultChildren?: () =>  NodeData[]
-    static setCursor?: (node: NodeType, offset: number, setNativeCursor?: Function) => [NodeType, number] | false | void
+    static setCursor?: (node: DocNode, offset: number, setNativeCursor?: Function) => [DocNode, number] | false | void
     static hasContent?: Boolean
     static hasChildren?: Boolean
     static isLeaf?: Boolean
@@ -48,7 +48,7 @@ export class NodeType {
     }
     cloneEmpty() {
         const data: NodeData = { type: this.data.type }
-        const Type = this.constructor as typeof NodeType
+        const Type = this.constructor as typeof DocNode
         if (Type.hasContent) {
             data.content = createDefaultContent()
         }
@@ -70,16 +70,16 @@ export class NodeType {
     }
     toJSON() {
         const result : { type: string, content?: any[], children? : any[], value?: any } = { type: this.data.type }
-        if ((this.constructor as typeof NodeType).hasContent) {
+        if ((this.constructor as typeof DocNode).hasContent) {
             result.content = []
-            this.content?.forEach((item:NodeType) => {
+            this.content?.forEach((item:DocNode) => {
                 result.content!.push(item.toJSON())
             })
         }
 
-        if ((this.constructor as typeof NodeType).hasChildren) {
+        if ((this.constructor as typeof DocNode).hasChildren) {
             result.children = []
-            this.children?.forEach((item: NodeType) => {
+            this.children?.forEach((item: DocNode) => {
                 result.children!.push(item.toJSON())
             })
         }

@@ -1,4 +1,4 @@
-import {NodeType} from "./NodeType";
+import {DocNode} from "./DocNode";
 import {viewToNodeMap} from "./editing";
 import {scheduleImmediateUpdate} from "./buildReactiveView";
 // @ts-ignore
