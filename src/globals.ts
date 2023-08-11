@@ -4,7 +4,10 @@ export type GlobalState = {
     readonly selection: Selection|null,
     readonly selectionRange: Range| null,
     readonly rangeBeforeComposition:Range|null
+    onSelectionChange: (callback: SelectionChangeCallback) => void
 }
+
+export type SelectionChangeCallback = (e: Event) => any
 
 export const state:GlobalState = (function() {
     let isMouseDown = false
@@ -13,7 +16,8 @@ export const state:GlobalState = (function() {
     let rangeBeforeComposition:Range|null
     let selectionRange: Range|null
 
-    document.addEventListener('mousedown', () => {
+    const callbacks = new Set<SelectionChangeCallback>()
+        document.addEventListener('mousedown', () => {
         isMouseDown = true
     })
 
@@ -21,11 +25,13 @@ export const state:GlobalState = (function() {
         if (!e.buttons) isMouseDown = false
     })
 
-    document.addEventListener('selectionchange', () => {
+    document.addEventListener('selectionchange', (e) => {
         // TODO 必须 selection 是在 doc 中并且合法才行。
         currentSelection = window.getSelection()
         hasCursor = Boolean(currentSelection?.rangeCount)
         selectionRange = hasCursor ? currentSelection?.getRangeAt(0)! : null
+
+        callbacks.forEach(callback => callback(e))
     })
 
     document.addEventListener('keydown', (e) => {
@@ -37,6 +43,7 @@ export const state:GlobalState = (function() {
             rangeBeforeComposition = currentSelection!.getRangeAt(0)
         }
     })
+
 
 
     return {
@@ -55,6 +62,9 @@ export const state:GlobalState = (function() {
         get rangeBeforeComposition() {
             return rangeBeforeComposition
         },
+        onSelectionChange(callback: SelectionChangeCallback) {
+            callbacks.add(callback)
+        }
 
     }
 })()

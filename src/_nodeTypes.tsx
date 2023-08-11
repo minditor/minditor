@@ -6,7 +6,7 @@ import {LinkedList, LinkedListFragment} from "./linkedList";
 import {createReactiveAttribute, setCursor, waitUpdate} from "./buildReactiveView";
 // @ts-ignore
 import {patchPoint, reactive} from '@ariesate/reactivity'
-import { DocNode, RenderProp } from "./DocNode";
+import { _DocNode, RenderProp } from "./——DocNode";
 // @ts-ignore
 import Table from './components/Table'
 import InsertSuggestion from './components/InsertSuggestion'
@@ -15,7 +15,7 @@ import InsertSuggestion from './components/InsertSuggestion'
 import {NodeData} from "./editing";
 
 
-class TextBlock extends DocNode{
+class TextBlock extends _DocNode{
     data?: NodeData
     container?: LinkedList
     static hasContent = true
@@ -39,7 +39,7 @@ class Doc extends TextBlock{
 
 class Para extends TextBlock{
     static readonly hasChildren = false
-    static setCursor(node: DocNode, offset: number) : [DocNode, number] | false {
+    static setCursor(node: _DocNode, offset: number) : [_DocNode, number] | false {
         return [node.content!.head.next.node, offset]
     }
     render({ content }: RenderProp) {
@@ -52,7 +52,7 @@ class Para extends TextBlock{
 
 
 class Section extends TextBlock {
-    static setCursor(node: DocNode, offset: number) : [DocNode, number] | false {
+    static setCursor(node: _DocNode, offset: number) : [_DocNode, number] | false {
         return [node.content!.head.next.node, offset]
     }
     static createDefaultContent() : NodeData[]{
@@ -74,7 +74,7 @@ class Section extends TextBlock {
 
 class List extends TextBlock{
     static readonly hasContent = false
-    static setCursor(node: DocNode, offset: number) : [DocNode, number] | false {
+    static setCursor(node: _DocNode, offset: number) : [_DocNode, number] | false {
         return ListItem.setCursor(node.children!.head.next.node, offset)
     }
     static createDefaultChildren() : NodeData[] {
@@ -91,13 +91,13 @@ class List extends TextBlock{
 
 class ListItem extends TextBlock{
     static readonly createSiblingAsDefault = true
-    static setCursor(node: DocNode, offset: number) : [DocNode, number] | false {
+    static setCursor(node: _DocNode, offset: number) : [_DocNode, number] | false {
         return Para.setCursor(node.content!.head.next.node, offset)
     }
     static createDefaultContent() : NodeData[]{
         return [{ type: 'Para', content: [{ type: 'Text', value: ''}]}]
     }
-    static async unwrap(node: DocNode, createDefaultNode: (content?: LinkedList) => DocNode = node.root!.createDefaultNode.bind(node.root)) {
+    static async unwrap(node: _DocNode, createDefaultNode: (content?: LinkedList) => _DocNode = node.root!.createDefaultNode.bind(node.root)) {
         const parent = node.parent
         if (parent.constructor === ListItem) {
 
@@ -152,7 +152,7 @@ class ListItem extends TextBlock{
             throw new Error('invalid listItem, something wrong')
         }
     }
-    static wrap(node: DocNode) {
+    static wrap(node: _DocNode) {
         // TODO 自己降一级，其他不变
     }
 
@@ -167,11 +167,11 @@ class ListItem extends TextBlock{
 }
 
 
-const patchableSyncValue = patchPoint(function (this: DocNode, newValue: string) {
+const patchableSyncValue = patchPoint(function (this: _DocNode, newValue: string) {
     this.value!.value = newValue
 })
 
-class Text extends DocNode{
+class Text extends _DocNode{
     static readonly isLeaf = true
     static readonly display = 'inline'
     static formatToStyle = ([formatName, formatValue]:[string, any]) => {
@@ -217,7 +217,7 @@ class Text extends DocNode{
 }
 
 
-export const nodeTypes: {[key: string]: typeof DocNode} = {
+export const _nodeTypes: {[key: string]: typeof _DocNode} = {
     Doc,
     Para,
     Text,

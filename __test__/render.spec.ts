@@ -1,57 +1,57 @@
 import {waitUpdate} from "../src/buildReactiveView";
-import { Doc } from "../src/editing";
+import {DocumentContent} from "../src/Document";
+import {DocumentContentView} from "../src/View";
+import {Paragraph, Section, Text} from "../src/DocNode";
+
 
 describe('basic render', () => {
-    test('render Para', () => {
-        const doc = new Doc({
-            type: 'Para',
+    test('render Paragraph', () => {
+        const doc = new DocumentContent([{
+            type: 'Paragraph',
             content: [
                 {type: 'Text', value: '11'},
                 {type: 'Text', value: '22'},
                 {type: 'Text', value: '33'}
             ]
-        })
+        }], { Section, Paragraph, Text})
 
-        doc.render()
+        const docElement = (new DocumentContentView(doc)).render()
 
-        const docElement = doc.element!
         expect(docElement.textContent).toBe('112233')
     })
 
     test('render Section', async () => {
-        const doc = new Doc({
+        const doc = new DocumentContent([{
             type: 'Section',
             content: [{type: 'Text', value: 'title'}],
             children: [{
-                type: 'Para',
+                type: 'Paragraph',
                 content: [
                     {type: 'Text', value: '11'},
                     {type: 'Text', value: '22'},
                     {type: 'Text', value: '33'}
                 ]
             }, {
-                type: 'Para',
+                type: 'Paragraph',
                 content: [
                     {type: 'Text', value: '44'},
                     {type: 'Text', value: '55'},
                     {type: 'Text', value: '66'}
                 ]
             }]
-        })
+        }], { Section, Paragraph, Text})
 
-        doc.render()
+        const docElement = (new DocumentContentView(doc)).render()
 
-        const docElement = doc.element!
-        await waitUpdate()
         expect(docElement.textContent).toBe('title112233445566')
     })
 
     test('render Section in Section', async () => {
-        const doc = new Doc({
+        const doc = new DocumentContent([{
             type: 'Section',
             content: [{type: 'Text', value: 'title'}],
             children: [{
-                type: 'Para',
+                type: 'Paragraph',
                 content: [
                     {type: 'Text', value: '1'},
                     {type: 'Text', value: '2'},
@@ -61,14 +61,14 @@ describe('basic render', () => {
                 type: 'Section',
                 content: [{type: 'Text', value: 'title2'}],
                 children: [{
-                    type: 'Para',
+                    type: 'Paragraph',
                     content: [
                         {type: 'Text', value: '11'},
                         {type: 'Text', value: '22'},
                         {type: 'Text', value: '33'}
                     ]
                 }, {
-                    type: 'Para',
+                    type: 'Paragraph',
                     content: [
                         {type: 'Text', value: '44'},
                         {type: 'Text', value: '55'},
@@ -76,12 +76,9 @@ describe('basic render', () => {
                     ]
                 }]
             }]
-        })
+        }], { Section, Paragraph, Text})
 
-        doc.render()
-
-        const docElement = doc.element!
-        await waitUpdate()
+        const docElement = (new DocumentContentView(doc)).render()
         expect(docElement.textContent).toBe('title123title2112233445566')
     })
 })

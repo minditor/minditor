@@ -5,7 +5,7 @@ import { createElement, useState, useEffect, StrictMode, cloneElement} from "rea
 import ReactDOM from 'react-dom/client'
 /* @ts-ignore */
 import {reactive} from "@ariesate/reactivity";
-import { NodeType } from "../NodeType";
+import { _DocNode } from "../——DocNode";
 import {NodeData} from "../editing";
 import {LinkedList} from "../linkedList";
 
@@ -36,7 +36,7 @@ function toReactValue(attachValue: Function) {
 }
 
 
-export default class ExportCode extends NodeType{
+export default class ExportCode extends _DocNode{
     static isLeaf = true
     static isolated = true
     constructor(data: NodeData, container: LinkedList) {

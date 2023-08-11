@@ -4,7 +4,7 @@ import { createElement} from "../DOM";
 // @ts-ignore
 // @ts-ignore
 import {reactive} from "@ariesate/reactivity";
-import {NodeType, RenderProp} from "../NodeType";
+import {_DocNode, RenderProp} from "../——DocNode";
 import {LinkedList} from "../linkedList";
 
 
@@ -20,7 +20,7 @@ function InsertSuggestion({ value } : RenderProp) {
 }
 
 
-export default class ExportInsertSuggestion extends NodeType{
+export default class ExportInsertSuggestion extends _DocNode{
     static isLeaf = true
     static isComponent = true
     static readonly display = 'inlineBlock'
@@ -31,7 +31,7 @@ export default class ExportInsertSuggestion extends NodeType{
         this.data = data
         this.value = reactive({ value })
     }
-    static setCursor(node: NodeType, offset: number, setNativeCursor?: Function) {
+    static setCursor(node: _DocNode, offset: number, setNativeCursor?: Function) {
         ((node as ExportInsertSuggestion).dom!.lastElementChild as HTMLInputElement)!.select()
     }
     render(props: RenderProp) {

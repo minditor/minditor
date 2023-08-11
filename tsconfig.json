@@ -17,14 +17,20 @@
     "removeComments": false,
     "jsx": "react",
     "jsxFactory": "createElement",
+    "jsxFragmentFactory": "Fragment",
     "lib": ["esnext", "dom"],
     "types": ["jest", "node"],
+    "paths": {
+      "rata": ["../rata/src"],
+      "axii": ["../rata/playground/framework/src"],
+    },
     "allowSyntheticDefaultImports": true,
     "declaration": true,
   },
   "include": [
     "global.d.ts",
     "src",
-    "jsx.d.ts"
+    "jsx.d.ts",
+    "playground/v2.tsx"
   ]
 }

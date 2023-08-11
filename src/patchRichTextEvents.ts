@@ -6,7 +6,7 @@ import {
 } from "./editing";
 import {waitUpdate, setCursor, findElementOrFirstChildFromNode, scheduleImmediateUpdate} from "./buildReactiveView";
 import {EventDelegator} from "./event";
-import {NodeType} from "./NodeType";
+import {_DocNode} from "./——DocNode";
 import { state as globalKM, actions } from "./globals";
 
 function collapseSelection(selection:Selection) {
@@ -54,7 +54,6 @@ export default function patchRichTextEvents({ on, trigger } : EventDelegator, do
             // 1. 手动收拢 selection。
             collapseSelection(globalKM.selection!)
             console.log("inserting", e.key, globalKM.selectionRange!.startContainer)
-            // CAUTION 不能在这里插入字符是因为这个时候并不知道是不是输入法 compositionstart 的 keydown
             // 2. 修改字符
             const updateInfo = updateRange(globalKM.selectionRange!, e.key, true)
             // 如果success === false，说明使用 defaultBehavior 失败了
@@ -269,7 +268,7 @@ function adjustSelection() {
 }
 
 
-function findFarthestIsolateNode(startNode: NodeType, endAncestorNode: NodeType) {
+function findFarthestIsolateNode(startNode: _DocNode, endAncestorNode: _DocNode) {
     let pointer = startNode
     let foundNode
     while(pointer && pointer !== endAncestorNode) {

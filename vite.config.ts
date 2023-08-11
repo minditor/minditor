@@ -1,4 +1,3 @@
-import path from 'path'
 import {fileURLToPath, URL } from 'url'
 
 export default {
@@ -11,7 +10,8 @@ export default {
   },
   resolve: {
     alias: {
-      '@ariesate/reactivity': fileURLToPath(new URL('../reactivity/dist/reactivity.esm.js', import.meta.url))
+      'rata': fileURLToPath(new URL('../rata/src/index.ts', import.meta.url)),
+      'axii': fileURLToPath(new URL('../rata/playground/framework/src/index.ts', import.meta.url)),
     }
   },
   server: {

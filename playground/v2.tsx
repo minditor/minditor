@@ -1,11 +1,10 @@
 /**@jsx createElement*/
 
-import { registerCommands as markdownPlugins } from "../src/markdown";
-import { registerCommands as inlineToolCommands } from "../src/inlineTool";
-import { Doc } from "../src";
-const rootElement = document.getElementById('root')!
-rootElement.style.position = 'relative'
-
+import {ANY, DocumentContent} from "../src/Document";
+import { DocumentContentView } from "../src/View";
+import {Paragraph, Section, Text} from "../src/DocNode";
+import { createRoot, createElement } from 'axii'
+import { atom } from 'rata'
 
 // CAUTION 只能这样写是因为 data 在当前目录之外，用了 alias。但 alias 不能支持动态 import。
 const data = {
@@ -23,18 +22,22 @@ const searchObj = Object.fromEntries(
 // const { data } = await import(`@tests/data/${searchObj.data || 'singlePara'}`)
 // const { data } = await import(`../../tests/server/data/${'singlePara'}`)
 
+const content = new DocumentContent(data.singlePara.children, {Paragraph, Section, Text})
+const newView = new DocumentContentView(content)
 
-const doc = new Doc(
-    // @ts-ignore
-    data[searchObj.data || 'singlePara'],
-    rootElement,
-    [...markdownPlugins(), ...inlineToolCommands()]
-    // []，
+document.getElementById('root')!.appendChild(newView.render())
+const root = createRoot(document.getElementById('data')!)
 
-)
-doc.render()
-// @ts-ignore
-window.doc = doc
+content.listen(ANY, () => {
+    changeTimestamp(Date.now())
+})
 
+const changeTimestamp = atom('')
+root.render(() => <pre>
+{() => {
+    console.log(changeTimestamp())
+    return JSON.stringify(content.toJSON(), null, 4)
+}}
+</pre>)
 
 

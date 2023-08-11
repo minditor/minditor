@@ -41,3 +41,19 @@ export function idleThrottle(fn: Function, timeout = 100) {
     lastArgv = argv
   }
 }
+
+
+export function assert(condition: boolean, message: string ) {
+  if (!condition) {
+    if (__DEV__) debugger
+    throw new Error(message)
+  }
+}
+
+export function flatten(arr: any[]) {
+  return arr.reduce((last, current) => last.concat(current), [])
+}
+
+export function unwrapChildren(children: any[]) {
+  return (children.length ===1) ? children[0] : children
+}

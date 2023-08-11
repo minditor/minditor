@@ -1,7 +1,7 @@
 export const data = {
     type: 'Doc',
     children: [{
-        type: 'Para',
+        type: 'Paragraph',
         content: [
             {type: 'Text', value: '123'},
             {type: 'Text', value: '456'},
