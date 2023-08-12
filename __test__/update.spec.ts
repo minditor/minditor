@@ -245,9 +245,340 @@ describe('update range', () => {
         expect(element.textContent).toBe('s$$$ection1.1pt111pt112pt113')
     })
     //
-
     // TODO 还有不兼容的情况
 })
+
+describe('delete at content head', () => {
+    test('delete at section content head', () => {
+        const content = new DocumentContent([{
+            type: 'Section',
+            content: [
+                {type: 'Text', value: 'section', testid:'section'} // <-- from here
+            ],
+            children: [{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt11'},
+                    {type: 'Text', value: 'pt12'},
+                    {type: 'Text', value: 'pt13'}
+                ]
+            }]
+        }], BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'section')!
+        range.setStart(from, 0)
+        range.setEnd(from, 0)
+
+        view.deleteContent(undefined, range)
+        const newData = content.toJSON()
+
+        expect(newData).toMatchObject([
+            {
+                type: 'Paragraph',
+                content: [{ type: 'Text', value: 'section'}]
+            },
+            {
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt11'},
+                    {type: 'Text', value: 'pt12'},
+                    {type: 'Text', value: 'pt13'}
+                ]
+            }
+        ])
+
+        // 内容不变
+        expect(element.textContent).toBe('sectionpt11pt12pt13')
+    })
+
+    test('delete in head with previous sibling in tree', () => {
+        const content = new DocumentContent([{
+            type: 'Section',
+            content: [
+                {type: 'Text', value: 'section', testid:'section'}
+            ],
+            children: [{
+                type: 'Section',
+                content: [
+                    {type: 'Text', value: 'section1.1', testid:'section1.1'}
+                ],
+                children: [{
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt11'},
+                        {type: 'Text', value: 'pt12'},
+                        {type: 'Text', value: 'pt13'}
+                    ]
+                }]
+            }]
+        }, {
+            type: 'Section',
+            content: [
+                {type: 'Text', value: 'section1.2', testid:'section1.2'} // <-- here
+            ],
+            children: [{
+                type: 'Section',
+                content: [
+                    {type: 'Text', value: 'section1.2.1', testid:'section1.2.1'}
+                ],
+                children: []
+            }]
+        }], BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'section1.2')!
+        range.setStart(from, 0)
+        range.setEnd(from, 0)
+
+        view.deleteContent(undefined, range)
+        const newData = content.toJSON()
+        debugger
+        expect(newData).toMatchObject([{
+            type: 'Section',
+            content: [
+                {type: 'Text', value: 'section', }
+            ],
+            children: [{
+                type: 'Section',
+                content: [
+                    {type: 'Text', value: 'section1.1', }
+                ],
+                children: [{
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt11'},
+                        {type: 'Text', value: 'pt12'},
+                        {type: 'Text', value: 'pt13'},
+                    ]
+                }, {
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'section1.2',}
+                    ]
+                }, {
+                    type: 'Section',
+                    content: [
+                        {type: 'Text', value: 'section1.2.1'}
+                    ],
+                    children: []
+                }]
+            }]
+        }])
+
+        // 内容不变
+        expect(element.textContent).toBe('sectionsection1.1pt11pt12pt13section1.2section1.2.1')
+    })
+
+    test('delete at para head, should merge into previous para content', () => {
+        const content = new DocumentContent([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt11'},
+                {type: 'Text', value: 'pt12'},
+                {type: 'Text', value: 'pt13'}
+            ]
+        }, {
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt21', testid: 'pt21'}, // <-- here
+                {type: 'Text', value: 'pt22'},
+                {type: 'Text', value: 'pt23'}
+            ]
+        }], BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'pt21')!
+        range.setStart(from, 0)
+        range.setEnd(from, 0)
+
+        view.deleteContent(undefined, range)
+        const newData = content.toJSON()
+        expect(newData).toMatchObject([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt11'},
+                {type: 'Text', value: 'pt12'},
+                {type: 'Text', value: 'pt13'},
+                {type: 'Text', value: 'pt21'},
+                {type: 'Text', value: 'pt22'},
+                {type: 'Text', value: 'pt23'}
+            ]
+        }])
+        expect(element.textContent).toBe('pt11pt12pt13pt21pt22pt23')
+    })
+})
+
+describe('change line', () => {
+    test('change line at para head', () => {
+        const content = new DocumentContent([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt11', testid:'pt11'}, // <-- here
+                {type: 'Text', value: 'pt12'},
+                {type: 'Text', value: 'pt13'}
+            ]
+        }], BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'pt11')!
+        range.setStart(from, 0)
+        range.setEnd(from, 0)
+
+        view.changeLine(undefined, range)
+        const newData = content.toJSON()
+        expect(newData).toMatchObject([{
+            type: 'Paragraph',
+            content: [{type: 'Text', value:''}]
+        },{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt11'},
+                {type: 'Text', value: 'pt12'},
+                {type: 'Text', value: 'pt13'},
+            ]
+        }])
+        expect(element.textContent).toBe('pt11pt12pt13')
+    })
+
+    test('change line at middle of para', () => {
+        const content = new DocumentContent([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt11', },
+                {type: 'Text', value: 'pt12', testid:'pt12'}, // <-- here
+                {type: 'Text', value: 'pt13'}
+            ]
+        }], BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'pt12')!
+        range.setStart(from, 1)
+        range.setEnd(from, 1)
+
+        view.changeLine(undefined, range)
+        const newData = content.toJSON()
+        expect(newData).toMatchObject([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value:'pt11'},
+                {type: 'Text', value:'p'},
+            ]
+        },{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 't12'},
+                {type: 'Text', value: 'pt13'},
+            ]
+        }])
+        expect(element.textContent).toBe('pt11pt12pt13')
+    })
+
+    test('change line at middle of section', () => {
+        const content = new DocumentContent([{
+            type: 'Section',
+            content: [
+                {type: 'Text', value: 's11', },
+                {type: 'Text', value: 's12', testid:'s12'}, // <-- here
+                {type: 'Text', value: 's13'}
+            ],
+            children: [{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt21', }
+                ]
+            }]
+        }], BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 's12')!
+        range.setStart(from, 1)
+        range.setEnd(from, 1)
+
+        view.changeLine(undefined, range)
+        const newData = content.toJSON()
+
+        expect(newData).toMatchObject([{
+            type: 'Section',
+            content: [
+                {type: 'Text', value:'s11'},
+                {type: 'Text', value:'s'},
+            ],
+            children: [{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: '12'},
+                    {type: 'Text', value: 's13'},
+                ]
+            },{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt21'},
+                ]
+            }]
+        }])
+        expect(element.textContent).toBe('s11s12s13pt21')
+    })
+
+    test('change line at end of para', () => {
+        const content = new DocumentContent([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt11', },
+                {type: 'Text', value: 'pt12',},
+                {type: 'Text', value: 'pt13',  testid:'pt13'}// <-- here
+            ]
+        }], BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'pt13')!
+        // CAUTION 如果要选中文字的最后，一定要用 firstChild 得到那个 Text 节点才行，不然就会报 out of bound。严格来说上面都应该改成这样。
+        //  只不过刚好 span 里只有一个节点，所以能兼容。
+        range.setStart(from.firstChild!, 4)
+        range.setEnd(from.firstChild!, 4)
+
+        view.changeLine(undefined, range)
+        const newData = content.toJSON()
+
+        expect(newData).toMatchObject([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value:'pt11'},
+                {type: 'Text', value: 'pt12'},
+                {type: 'Text', value: 'pt13'},
+            ]
+        },{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: ''},
+            ]
+        }])
+        expect(element.textContent).toBe('pt11pt12pt13')
+    })
+
+})
+
 //
 //
 // describe('format range', () => {

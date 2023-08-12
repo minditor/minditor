@@ -1,13 +1,13 @@
 import {LinkedList, computed, TrackOpTypes, TriggerOpTypes } from "rata";
-import { createHost, onEnterKey, onBackspaceKey, eventAlias, onTabKey, createElement, Fragment, Host } from 'axii'
+import { createHost, onEnterKey, onBackspaceKey, eventAlias, onTabKey, createElement, Fragment, Host, withCurrentRange } from 'axii'
 import {Component, InjectHandles, Props} from "../global";
-import {DocumentContent} from "./Document";
+import {Document, DocumentContent} from "./Document";
 import {DocNodeData, DocNode, DocRange, Text, ViewNode, RenderProps} from "./DocNode";
 import {state as globalKM} from "./globals";
 import {setCursor, waitUpdate} from "./buildReactiveView";
 import {Doc, updateRange, viewToNodeMap} from "./editing";
 import {ExtendedDocumentFragment} from "./DOM";
-import {assert, deepFlatten, nextJob, nextTask, unwrapChildren} from "./util";
+import {assert, deepFlatten, nextJob, nextTask, removeNodesBetween, unwrapChildren} from "./util";
 
 
 type ComponentMap = {
@@ -27,12 +27,17 @@ export class DocumentContentView{
         this.doc.listen('updateRange', this.patchUpdateRange)
         this.doc.listen('unwrap', this.patchUnwrap)
         this.doc.listen('insertContentNodeAfter', this.patchInsertContentNodeAfter)
+        this.doc.listen('mergeByPreviousSiblingInTree', this.patchMergeByPreviousSiblingInTree)
+        this.doc.listen('spliceContent', this.patchSpliceContent)
+        // TODO 要不要直接就改成 prepend/append ?
+        this.doc.listen('prependDefaultPreviousSibling', this.patchPrependDefaultPreviousSibling)
+        this.doc.listen('appendDefaultNextSibling', this.patchAppendDefaultNextSibling)
     }
     onSelectionChange = () => {
         console.log(globalKM.selectionRange!)
     }
     defaultBehaviorEvent: Event|undefined
-    tryUseDefaultBehavior(event: Event) {
+    tryUseDefaultBehavior(event: Event|undefined) {
         this.defaultBehaviorEvent = event
     }
     resetUseDefaultBehavior() {
@@ -101,7 +106,6 @@ export class DocumentContentView{
         }
     }
     patchUnwrap = ({ result: newPara, args: [docNode]} : {result: DocNode, args: [docNode: DocNode]}) => {
-        //
         // 结构破坏肯定不能用 default behavior
         this.defaultBehaviorEvent?.stopPropagation()
         this.defaultBehaviorEvent?.preventDefault()
@@ -118,27 +122,93 @@ export class DocumentContentView{
         const refTextDOMNode = this.textNodeToElement.get(refText)!
         insertAfter(this.createTextDOMNode(newText), refTextDOMNode)
     }
-    // 外部也可以调用。
+    patchMergeByPreviousSiblingInTree = ({args: [docNode], result: previousSiblingInTree}: {args: [DocNode], result: DocNode}) => {
+        this.defaultBehaviorEvent?.stopPropagation()
+        this.defaultBehaviorEvent?.preventDefault()
+
+        if (!previousSiblingInTree) return
+
+        const oldBlockUnit = this.docNodeToBlockUnit.get(docNode)!
+        const oldHost = this.blockUnitToHost.get(oldBlockUnit!)!
+        oldHost.destroy()
+
+        // 完全重新生成上一个节点。
+        // TODO 为了更好地性能未来我们可以有更细致的操作，但先要解决 old host 一旦 destroy 里面所有的  computed 都会失效和复用 content 节点冲突的问题。
+        const oldPreviousBlockUnit = this.docNodeToBlockUnit.get(previousSiblingInTree)!
+        const oldPreviousHost = this.blockUnitToHost.get(oldPreviousBlockUnit)!
+        const newBlockUnitFrag = this.createBlockUnitFragment(previousSiblingInTree) as DocumentFragment
+        oldPreviousBlockUnit.replaceWith(newBlockUnitFrag)
+        oldPreviousHost.destroy(true)
+
+        // TODO set cursor
+    }
+    patchSpliceContent = ({ args: [docNode, startText, startOffset, endText, endOffset]} : {args: [DocNode, Text, number, Text?, number?]}) => {
+        const startTextDOM = this.textNodeToElement.get(startText)!
+        const endTextDOM = endText ? this.textNodeToElement.get(endText) : undefined
+        // 1. 删掉中间的节点
+        removeNodesBetween(startTextDOM.nextElementSibling! as ChildNode, endTextDOM as ChildNode, false)
+        // 2. 更新节点
+        startTextDOM.replaceWith(this.createTextDOMNode(startText))
+        if (endTextDOM) endTextDOM.replaceWith(this.createTextDOMNode(endText!))
+    }
+    patchPrependDefaultPreviousSibling = ({ result: newDocNode }: {result: DocNode}) => {
+        const blockUnit = newDocNode.previousSiblingInTree ? this.docNodeToBlockUnit.get(newDocNode.previousSiblingInTree) : undefined
+        const newBlockUnit = this.createBlockUnitFragment(newDocNode)
+        if (blockUnit) {
+            insertAfter(newBlockUnit, blockUnit)
+        } else {
+            this.element?.prepend(newBlockUnit)
+        }
+    }
+    patchAppendDefaultNextSibling = ({ result: newDocNode }: {result: DocNode}) =>{
+        const blockUnit = this.docNodeToBlockUnit.get(newDocNode.previousSiblingInTree)!
+        const newBlockUnit = this.createBlockUnitFragment(newDocNode)
+        insertAfter(newBlockUnit, blockUnit)
+    }
+
+
+
+    // 外部也可以调用的 api
     updateRange(range: Range, newText: string) {
         this.doc.updateRange(this.createDocRange(range)!, newText)
     }
-    inputCharacter = (e: KeyboardEvent) => {
+    inputCharacter = (e: KeyboardEvent, currentRange: Range|undefined) => {
+        assert(!!currentRange, 'no range')
         this.tryUseDefaultBehavior(e)
-        this.updateRange(globalKM.selectionRange!, e.key)
+        this.updateRange(currentRange!, e.key)
         this.resetUseDefaultBehavior()
     }
-    changeLine(e: Event) {
-        // e.preventDefault()
-        // e.stopPropagation()
-        // const splitPointNode = this.doc.splitTextAsBlock(globalKM.selectionRange!)
-        // // restore cursor
-        // setCursor(splitPointNode, 0)
+    changeLine = (e: Event|undefined, currentRange: Range|undefined) => {
+        assert(!!currentRange, 'no range selected')
+        // 本身就破坏结构了，不需要支持 defaultBehavior
+        e?.preventDefault()
+        e?.stopPropagation()
+        if (currentRange!.collapsed) {
+            const docRange = this.createDocRange(currentRange!)
+            const {startOffset, startText, startNode} = docRange
+            if (startOffset === 0 && startText.isFirstContent()) {
+                // 1. 头部。就在当前节点前面 prepend 一个空行或者别的空节点，例如空的 listItem
+                this.doc.prependDefaultPreviousSibling(startNode)
+            } else if(!startText.next && startOffset === startText.value.length){
+                // 2. 尾部，在下面添加个默认的就行
+                this.doc.appendDefaultNextSibling(startNode)
+            } else {
+                // 3. 中间
+                const removedContent = this.doc.spliceContent(startNode, startText, startOffset)
+                this.doc.appendDefaultNextSibling(startNode, removedContent)
+            }
+        } else {
+            // TODO 有 range 的情况。range 清空，但是剩下的部分单独变成 Para，要不要复用 updateRange ?
+        }
+
+        // TODO setCursor(splitPointNode, 0)
     }
-    deleteContent = (e: Event) => {
+    deleteContent = (e: Event|undefined, currentRange: Range|undefined) => {
+        assert(!!currentRange, 'no range selected')
         this.tryUseDefaultBehavior(e)
-        if (globalKM.selectionRange!.collapsed) {
+        if (currentRange!.collapsed) {
             // 删除单个字符，或者进行结构变化
-            const docRange = this.createDocRange(globalKM.selectionRange!)
+            const docRange = this.createDocRange(currentRange!)
             const {startOffset, startText, startNode} = docRange
             if (startOffset === 0 && startText.isFirstContent()) {
                 // 1. 如果自己身的结构可以破坏，不影响其他节点。那么就只破坏自身，例如 Section 的 title、list 等
@@ -146,7 +216,7 @@ export class DocumentContentView{
                     this.doc.unwrap(startText.parent())
                 } else {
                     // 2. TODO 如果自身的结构不能破坏。那就就是和前一个节点的内容合并了。这是 Para 合到 section title 或者 listItem 里面。
-
+                    this.doc.mergeByPreviousSiblingInTree(startNode)
                 }
 
             } else {
@@ -173,7 +243,7 @@ export class DocumentContentView{
         this.textNodeToElement.set(textNode as Text, textDOMNode)
         return textDOMNode
     }
-    createBlockUnitFragment(docNode: DocNode) : DocumentFragment|DocumentFragment[]{
+    createBlockUnitFragment(docNode: DocNode) : DocumentFragment{
         const renderProps: RenderProps = {}
 
         if ((docNode.constructor as typeof DocNode).hasContent) {
@@ -214,9 +284,9 @@ export class DocumentContentView{
         this.element = (
             <div contenteditable
                 onKeydown={[
-                    onNotComposition(onSingleKey(this.inputCharacter)),
-                    onNotComposition(onEnterKey(this.changeLine)),
-                    onNotComposition(onBackspaceKey(this.deleteContent)),
+                    onNotComposition(onSingleKey(withCurrentRange(this.inputCharacter))),
+                    onNotComposition(onEnterKey(withCurrentRange(this.changeLine))),
+                    onNotComposition(onBackspaceKey(withCurrentRange(this.deleteContent))),
                     onNotComposition(onTabKey(this.changeLevel))
                 ]}
             >
@@ -235,4 +305,6 @@ const onSingleKey = eventAlias((e: KeyboardEvent) => e.key.length === 1)
 function insertAfter(newEle: HTMLElement|DocumentFragment, refEle: HTMLElement) {
     refEle.parentElement?.insertBefore(newEle, refEle.nextElementSibling!)
 }
+
+
 

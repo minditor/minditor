@@ -62,3 +62,18 @@ export function deepFlatten(arr?: any) : any[]{
 export function unwrapChildren(children: any[]) {
   return (children.length ===1) ? children[0] : children
 }
+
+export function removeNodesBetween(start: ChildNode, endNode: ChildNode|Comment|undefined, includeEnd = false) {
+  if (endNode && start.parentElement !== endNode.parentElement) {
+    throw new Error('placeholder and element parentElement not same')
+  }
+
+  let pointer = start
+  while(pointer && pointer !== endNode) {
+    const current = pointer
+    pointer = current.nextSibling!
+    current.remove()
+  }
+
+  if (includeEnd && endNode) endNode.remove()
+}

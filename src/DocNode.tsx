@@ -29,21 +29,21 @@ export type RenderContext = {
     Fragment: typeof Fragment
 }
 
-function mapDocNodeList(start: DocNode|undefined, mapFn:(n:DocNode) => any) {
+function mapDocNodeList<T extends DocNode>(start: T|undefined, mapFn:(n:T) => any) {
     let current = start
     const result = []
     while(current) {
         result.push(mapFn(current))
-        current = current.next
+        current = current.next as T
     }
     return result
 }
 
-function forEachNode(start: DocNode|undefined, fn:(n:DocNode)=> any) {
+function forEachNode<T extends DocNode>(start: T|undefined, fn:(n:T)=> any) {
     let current = start
     while(current) {
         // CAUTION 因为在 fn 中可能会断开和 next 的连接，所以这里我们要先记住
-        const next = current.next
+        const next = current.next as T
         fn(current)
         current = next
     }
@@ -91,6 +91,21 @@ export class DocNode {
     static typeHasChildren = typeHasChildren
     static typeHasContent = typeHasContent
     static ParagraphType?: typeof DocNode
+    static createDefaultParagraph = (content? : Text) => {
+        const newPara = new DocNode.ParagraphType!({type: 'Paragraph', content: [{type: 'Text', value:''}]})
+        if (content) newPara.replaceContent(content)
+        return newPara
+    }
+    static appendDefaultNextSibling(docNode: DocNode, content?: Text) {
+        const newPara = DocNode.createDefaultParagraph(content)
+        docNode.append(newPara)
+        return newPara
+    }
+    static prependDefaultPreviousSibling(docNode: DocNode) {
+        const newPara = DocNode.createDefaultParagraph()
+        docNode.prepend(newPara)
+        return newPara
+    }
     public parent: Atom<DocNode> =  atom(undefined)
     public prev: Atom<DocNode> = atom(undefined)
     public next?: DocNode
@@ -101,6 +116,7 @@ export class DocNode {
     public firstChild?: DocNode
     public content?: Text
     public id: number
+
     constructor(public data: DocNodeData, parent?: DocNode) {
         this.id = ++DocNode.id
         this.parent(parent)
@@ -149,7 +165,7 @@ export class DocNode {
     replaceContent(newContent?: Text) {
         // CAUTION 无论如何都有一个 Text
         this.content = newContent ?? new Text()
-        forEachNode(this.content, (docNode: DocNode) => {
+        forEachNode(this.content, (docNode: Text) => {
             docNode.parent(this)
         })
     }
@@ -183,15 +199,34 @@ export class DocNode {
     isContentEmpty() {
         return !!this.content!.value && !this.content!.next
     }
-    append(next?: DocNode) {
+    append(next: DocNode) {
+        assert(!!next, 'can not append empty next node')
         const originNext = this.next
         this.next = next
+        // CAUTION 可能是抢夺了比人的节点。所以这里要处理一下
+        if (next?.prev()) {
+            next.prev().next = undefined
+        }
         next?.prev(this)
 
         forEachNode(next, (newDocNode: DocNode) => newDocNode.parent(this.parent()))
-
         this.next?.lastSibling.replaceNext(originNext)
     }
+    prepend(prev: DocNode) {
+        assert(!!prev, 'can not append empty next node')
+
+
+        if (this.prev()) {
+            this.prev().append(prev)
+        } else {
+            // 头节点
+            // CAUTION 一定先把 parent 拿出来，不然 append(this) 执行完就拿不到了
+            const parent = this.parent()
+            prev.lastSibling.append(this)
+            if (parent) parent.replaceFirstChild(prev)
+        }
+    }
+
     replaceNext(next?: DocNode,) {
         this.next = next
         next?.prev(this)
@@ -220,9 +255,8 @@ export class DocNode {
             } else {
                 this.parent().replaceFirstChild(newDocNode)
             }
-            newDocNode.lastSibling.append(this.next)
+            this.next && newDocNode.lastSibling.append(this.next)
         }
-
     }
     toJSON() {
         const result: DocNodeData = {type: this.data.type, id: this.id}
@@ -283,6 +317,16 @@ export class Section extends DocNode {
     // static createDefaultContent() : NodeData[]{
     //     return [{ type: 'Text', value: ''}]
     // }
+    static appendDefaultNextSibling(section: Section, content?: Text) {
+        const newPara = DocNode.createDefaultParagraph(content)
+
+        if (section.firstChild) {
+            section.firstChild.prepend(newPara)
+        } else {
+            section.replaceFirstChild(newPara)
+        }
+        return newPara
+    }
     render({ content}: RenderProps, {createElement, Fragment}: RenderContext): HTMLElement {
         return (
             <div uuid={this.id}>
@@ -364,6 +408,18 @@ export class Text extends DocNode{
         //     <span data-type-text _uuid style={style}>{value}</span>
         //     <span contenteditable={false} dangerouslySetInnerHTML={{__html: '&ZeroWidthSpace;'}}></span>
         // </>
+    }
+    prepend(prev: Text) {
+        assert(!!prev, 'cannot prepend empty text')
+        if (this.prev()) {
+            this.prev().append(prev)
+        } else {
+            prev.append(this)
+
+            if (this.parent()) {
+                this.parent().content = prev
+            }
+        }
     }
     get previousSiblingInTree() {
         assert(false,'should not call previousSibling on Text')

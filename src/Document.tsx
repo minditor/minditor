@@ -79,17 +79,16 @@ export class DocumentContent extends Observable{
         const previousSiblingInTree = docNode.previousSiblingInTree
         const originDocNodePrev = docNode.prev()
 
-        docNode.replaceWith(docNode.firstChild)
-
-        // 2. 把原本的 content 处理成 Paragraph，变成 previousSibling 的 next
         const ParagraphType = DocNode.ParagraphType!
         const newPara = new ParagraphType({type: 'Paragraph'}, docNode.parent())
         newPara.replaceContent(docNode.content!)
-        // newPara 要变成上一个节点的兄弟节点
+        // newPara 要变成上一个节点的兄弟节点，如果有 previousSiblingInTree 说明不是全篇第一个节点。
         if (previousSiblingInTree) {
-            // const previousSibling
+            // 1. 把原本的 content 处理成 Paragraph，变成 previousSibling 的 next
             previousSiblingInTree.append(newPara)
 
+            // 2. 开始处理自己的 child，如果是 para，就也要往前合并
+            docNode.remove()
             if (originDocNodePrev) {
                 // 原来前面还有节点，那么自己内容被合并到前面节点的里面去。
                 let childLeft: DocNode|undefined
@@ -116,7 +115,8 @@ export class DocumentContent extends Observable{
 
         } else {
             // 自己就是根节点下第一个节点
-            newPara.replaceNext(this.firstChild)
+            newPara.replaceNext(docNode.firstChild)
+            docNode.next && newPara.lastSibling.append(docNode.next)
             this.firstChild = newPara
         }
 
@@ -174,6 +174,54 @@ export class DocumentContent extends Observable{
 
         // FIXME 改成 decorator
         this.dispatch('updateRange', {args: [docRange, textToInsert]})
+    }
+    mergeByPreviousSiblingInTree(docNode: DocNode) {
+        const previousSiblingInTree = docNode.previousSiblingInTree
+        if (previousSiblingInTree) {
+            assert(!DocNode.typeHasChildren(docNode), 'cannot merge type with children, unwrap it first.')
+            docNode.remove()
+            previousSiblingInTree.content?.lastSibling.replaceNext(docNode.content)
+            docNode.replaceFirstChild(undefined)
+        }
+
+        this.dispatch('mergeByPreviousSiblingInTree', { args: [docNode], result: previousSiblingInTree })
+        return previousSiblingInTree
+    }
+    prependDefaultPreviousSibling(docNode: DocNode) {
+        const prependPreviousSibling = (docNode.constructor as typeof DocNode).prependDefaultPreviousSibling ?? DocNode.prependDefaultPreviousSibling
+        const newDocNode = prependPreviousSibling(docNode)
+        if(this.firstChild === docNode) {
+            this.firstChild = newDocNode
+        }
+        this.dispatch('prependDefaultPreviousSibling', { args: [docNode], result: newDocNode })
+        return newDocNode
+    }
+    appendDefaultNextSibling(docNode: DocNode, content?: Text) {
+        const appendNextSibling = (docNode.constructor as typeof DocNode).appendDefaultNextSibling ?? DocNode.appendDefaultNextSibling
+        const result= appendNextSibling(docNode, content)
+        this.dispatch('appendDefaultNextSibling', { args: [docNode, content], result })
+        return result
+    }
+    spliceContent(docNode: DocNode, startText: Text, startOffset: number, endText?: Text, endOffset?: number) {
+        assert(startText !== endText, 'startText equal to endText, update value instead of use this method')
+
+        const removedStartText = new Text({ type: 'Text', value: startText.value.slice(startOffset) })
+        const removedEndText = endText ? new Text({ type:'Text', value: endText.value.slice(0, endOffset!)}) : null
+
+        // 1. 先把中间的链移出去，构造 remove 链
+        startText.next && removedStartText.append(startText.next)
+        if (endText) {
+            // CAUTION 这里的endText 本来在 removedStartText 里面了， append 会把 endText 再抢夺回来
+            startText.append(endText)
+        }
+        if (removedEndText) removedStartText.lastSibling.append(removedEndText)
+
+        // 2. 更新原本的 value
+        startText.value = startText.value.slice(0, startOffset)
+        if (endText) endText.value = endText.value.slice(endOffset!)
+
+        this.dispatch('spliceContent', { args: [docNode, startText, startOffset, endText, endOffset], result: removedStartText })
+        return removedStartText
     }
     toJSON() {
         return DocNode.map(this.firstChild, (child) => child.toJSON())
