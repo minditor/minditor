@@ -16,7 +16,7 @@ export function nextJob(fn: Function) {
 }
 
 export function nextTask(fn: Function) {
-  setTimeout(() => fn(), 0)
+  setTimeout(() => fn(), 1)
 }
 
 export function debounce(fn: Function, delay: number) {
@@ -82,8 +82,8 @@ export function removeNodesBetween(start: ChildNode, endNode: ChildNode|Comment|
 export function setNativeCursor(element: HTMLElement | ChildNode, offset: number) {
   const range = document.createRange()
   range.setStart(element, offset)
+  range.setEnd(element, offset)
 
-  range.collapse(true)
   globalState.selection!.removeAllRanges()
   globalState.selection!.addRange(range)
 }

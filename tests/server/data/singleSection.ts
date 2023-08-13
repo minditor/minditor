@@ -5,7 +5,7 @@ export const data = {
         type: 'Section',
         content: [{type: 'Text', value: '123'}],
         children: [{
-            type: 'Para',
+            type: 'Paragraph',
             content: [
                 {type: 'Text', value: '22'},
             ]

@@ -1,7 +1,7 @@
-import { atom, Atom, reactive, toRaw, LinkedList, computed,  } from 'rata'
+import { atom, Atom, reactive, toRaw, computed } from 'rata'
 import { Fragment, createElement } from "axii"
-import {DocumentContent} from "./Document";
 import {assert} from "./util";
+import {DocumentContent} from "./Content";
 
 export type DocNodeData = {
     [k: string]: any,
@@ -96,16 +96,12 @@ export class DocNode {
         if (content) newPara.replaceContent(content)
         return newPara
     }
-    static appendDefaultNextSibling(docNode: DocNode, content?: Text) {
-        const newPara = DocNode.createDefaultParagraph(content)
-        docNode.append(newPara)
-        return newPara
+    static createDefaultNextSibling(docNode: DocNode, content?: Text) {
+        return DocNode.createDefaultParagraph(content)
     }
-    static prependDefaultPreviousSibling(docNode: DocNode) {
-        const newPara = DocNode.createDefaultParagraph()
-        // TODO 应该这里去读 previousSiblingInTree 吗？？？感觉应该 Document 去读
-        docNode.previousSiblingInTree?.append(newPara)
-        return newPara
+    static appendDefaultAsChildren: boolean = false
+    static createDefaultPreviousSibling(docNode: DocNode) {
+        return DocNode.createDefaultParagraph()
     }
     public parent: Atom<DocNode> =  atom(undefined)
     public prev: Atom<DocNode> = atom(undefined)
@@ -117,11 +113,12 @@ export class DocNode {
     public firstChild?: DocNode
     public content?: Text
     public id: number
-
-    constructor(public data: DocNodeData, parent?: DocNode) {
+    constructor(public data: DocNodeData, parent?: DocNode, public isRoot:boolean = false) {
         this.id = ++DocNode.id
         this.parent(parent)
-        this.level = computed(() => ((this.parent()?.level?.() ?? 0) + 1))
+        this.level = computed(() => {
+            return this.isRoot ? 0 : ((this.parent()?.level?.() ?? 0) + 1)
+        })
         // 序号问题
         this.serialNumber = computed(() => {
             if (!this.useAutoSerialNumber()) return null
@@ -164,6 +161,8 @@ export class DocNode {
         })
     }
     replaceContent(newContent?: Text) {
+        // 抢夺
+        if (newContent?.parent()) newContent.parent().replaceContent(undefined)
         // CAUTION 无论如何都有一个 Text
         this.content = newContent ?? new Text()
         forEachNode(this.content, (docNode: Text) => {
@@ -201,6 +200,7 @@ export class DocNode {
         return !!this.content!.value && !this.content!.next
     }
     append(next: DocNode) {
+        assert(!this.isRoot, 'root cannot append')
         assert(!!next, 'can not append empty next node')
         const originNext = this.next
         this.next = next
@@ -214,6 +214,7 @@ export class DocNode {
         this.next?.lastSibling.replaceNext(originNext)
     }
     prepend(prev: DocNode) {
+        assert(!this.isRoot, 'root cannot prepend')
         assert(!!prev, 'can not append empty next node')
 
 
@@ -229,11 +230,13 @@ export class DocNode {
     }
 
     replaceNext(next?: DocNode,) {
+        assert(!this.isRoot, 'root cannot replaceNext')
         this.next = next
         next?.prev(this)
         forEachNode(next, (newDocNode: DocNode) => newDocNode.parent(this.parent()))
     }
     remove() {
+        assert(!this.isRoot, 'root cannot remove')
         if (this.prev()) {
             // CAUTION 这里一定要注意第二个参数。不传会引起指针混乱。
             this.prev().replaceNext(this.next)
@@ -248,6 +251,7 @@ export class DocNode {
         return this
     }
     replaceWith(newDocNode?: DocNode) {
+        assert(!this.isRoot, 'root cannot replaceWith')
         if (!newDocNode) {
             this.remove()
         } else {
@@ -285,12 +289,18 @@ export class DocNode {
         return this.lastChild!.lastDescendant
     }
     get previousSiblingInTree() : DocNode {
+        assert(!this.isRoot, 'root cannot call previousSiblingInTree')
         // 上一个 Doc 节点
         // 1. 如果有 prev，那么就是 prev 或者 prev 的最后一个 children
         // 2. 就是父节点。
-        return this.prev() ? this.prev().lastDescendant : this.parent()
+        return this.prev() ?
+            this.prev().lastDescendant :
+            this.parent().isRoot ?
+                null:
+                this.parent()
     }
     get lastSibling(): DocNode {
+        assert(!this.isRoot, 'root cannot call lastSibling')
         return last(this)
     }
     findParentByLevel(levelOffset: number) {
@@ -309,28 +319,12 @@ export class DocNode {
 
 
 export class Section extends DocNode {
-    // TODO
-    // static setCursor(node: DocNode, offset: number) : [DocNode, number] | false {
-    //     return [node.content!.head.next.node, offset]
-    // }
     static hasChildren = true
     static hasContent = true
-    // static createDefaultContent() : NodeData[]{
-    //     return [{ type: 'Text', value: ''}]
-    // }
-    static appendDefaultNextSibling(section: Section, content?: Text) {
-        const newPara = DocNode.createDefaultParagraph(content)
-
-        if (section.firstChild) {
-            section.firstChild.prepend(newPara)
-        } else {
-            section.replaceFirstChild(newPara)
-        }
-        return newPara
-    }
+    public static appendDefaultAsChildren = true
     render({ content}: RenderProps, {createElement, Fragment}: RenderContext): HTMLElement {
         return (
-            <div uuid={this.id}>
+            <div uuid={this.id} onRemove={() => console.warn(this)}>
                 {() => {
                     const Tag = `h${this.level!()}`
                     return <Tag>{content}</Tag>
@@ -367,13 +361,12 @@ export class Text extends DocNode{
         } else if (formatName === 'italic') {
             return { fontStyle: 'italic'}
         } else if (formatName === 'underline') {
-            // TODO color?
             return {
-                textDecorationLine: 'underline'
+                textDecoration: 'underline'
             }
         } else if (formatName === 'lineThrough') {
             return {
-                textDecorationLine: 'line-through'
+                textDecoration: 'line-through'
             }
         }
     }
@@ -388,6 +381,7 @@ export class Text extends DocNode{
         this.value = value
         this.props = reactive(props)
         this.testid = data.testid
+        if (this.props.formats) console.log(this.props.formats, Object.entries(this.props.formats || {}).map(Text.formatToStyle))
     }
     insertText( offset: number, textToInsert: string) {
         this.value = this.value.slice(0, offset) + textToInsert + this.value.slice(offset)
@@ -401,10 +395,15 @@ export class Text extends DocNode{
     render( { }: RenderProps, {createElement, Fragment}: RenderContext): HTMLElement{
         // TODO format to style
         const style = () => {
+            if (this.props.formats)
+                console.log(this.props.formats, Object.entries(this.props.formats || {}).map(Text.formatToStyle))
             return Object.assign({}, ...Object.entries(this.props.formats || {}).map(Text.formatToStyle))
+
         }
-        // CAUTION 注意这里没有用 children 传 content, 因为  children 会变成数组型。后面处理起来要用 children[0] 获取，太麻烦。
-        return <span data-type-text data-testid={this.testid} uuid={this.id} style={style}>{this.value}</span> as unknown as HTMLElement
+        // CAUTION 注意这里的 &ZeroWidthSpace 非常重要，不然遇到空行的时候，没法 setCursor 到 span 里面的空 Text 中，会导致输入的字符跑到了 span 标签的前面。
+        return <span data-type-text data-testid={this.testid} uuid={this.id} style={style} dangerouslySetInnerHTML={this.value === '' ? '&ZeroWidthSpace;' : undefined}>
+            {this.value}
+        </span> as unknown as HTMLElement
         // return <>
         //     <span data-type-text _uuid style={style}>{value}</span>
         //     <span contenteditable={false} dangerouslySetInnerHTML={{__html: '&ZeroWidthSpace;'}}></span>
@@ -428,6 +427,24 @@ export class Text extends DocNode{
     }
 }
 
+// export class ListItem extends DocNode {
+//     static hasChildren = true
+//     static hasContent = true
+//     render({content}) : HTMLElement{
+//         const style = () => {
+//             return {
+//                 paddingLeft: this.level() * 10
+//             }
+//         }
+//         // TODO 序号？
+//         return <div style={style}>
+//             {content}
+//         </div> as HTMLElement
+//     }
+// }
+
+
+
 type OverwriteDocRange = {
     startText?: Text,
     startOffset?: number,
@@ -439,7 +456,7 @@ type OverwriteDocRange = {
 export class DocRange {
     public startNode: DocNode
     public endNode: DocNode
-    public commonAncestorNode?: DocNode
+    public commonAncestorNode?: DocNode|null
     constructor(public startText: Text, public startOffset: number, public endText: Text, public endOffset: number) {
         // CAUTION 必须在 constructor 里面固定这三个信息，因为之后这些对象的引用都可能会变
         this.commonAncestorNode = this.getCommonAncestorNode()!
@@ -452,7 +469,7 @@ export class DocRange {
         const result = []
         while(current) {
             result.push(current)
-            current = current.parent()
+            current = current.parent?.()
         }
         return result
     }

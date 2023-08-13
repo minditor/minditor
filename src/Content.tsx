@@ -2,6 +2,8 @@ import { atom, Atom, computed, LinkedList } from 'rata'
 import { Fragment } from "axii"
 import {assert, deepFlatten, unwrapChildren} from "./util";
 import {DocNode, ViewNode, DocNodeData, DocRange, Text, Paragraph} from "./DocNode";
+import {Document} from "./Document";
+import {Doc} from "./editing";
 
 
 type CallbackType = (...arg: any[]) => any
@@ -29,24 +31,44 @@ class Observable {
 }
 
 
-export class Document {
+export class Content {
 
 }
 
 
-export class DocumentContent extends Observable{
-    public root?: Document
+export class DocumentContent extends DocNode{
+    public root?: Content
     public firstChild?: DocNode
-
-    constructor(public data: DocNodeData[], public docNodeTypes: {[k: string]: (typeof DocNode|typeof Text)}) {
-        super()
-        this.firstChild = this.buildChildList(this.data)
+    constructor(public data: DocNodeData, public docNodeTypes: {[k: string]: (typeof DocNode|typeof Text)}) {
+        super(data, undefined, true)
+        this.isRoot = true
+        this.firstChild = this.buildChildList(this.data.children!)
     }
-    createNode(nodeData: DocNodeData, parent?: DocNode){
+
+    public listeners : Map<any, Set<CallbackType> >= new Map()
+    listen(eventName: any, callback: CallbackType) {
+        let callbacks = this.listeners.get(eventName)
+        if (!this.listeners.get(eventName)) this.listeners.set(eventName, (callbacks = new Set()))
+        callbacks!.add(callback)
+
+        return () => callbacks!.delete(callback)
+    }
+    dispatch(eventName: string, ...argv: any[]) {
+        this.listeners.get(eventName)?.forEach((callback: CallbackType) => {
+            callback(...argv)
+        })
+
+        this.listeners.get(ANY)?.forEach((callback: CallbackType) => {
+            callback(...argv)
+        })
+    }
+
+
+    createNode(nodeData: DocNodeData, parent: DocNode){
         const DocNodeType =  this.docNodeTypes[nodeData.type]
         return new DocNodeType(nodeData, parent)
     }
-    buildChildList(data: DocNodeData[], parent?: DocNode) {
+    buildChildList(data: DocNodeData[], parent: DocNode = this) {
         let first: DocNode
         let prev: DocNode
         data.forEach(nodeData => {
@@ -66,9 +88,9 @@ export class DocumentContent extends Observable{
 
         return first!
     }
-    insertContentNodeAfter(newText: Text, refText:Text) {
+    insertContentAfter(newText: Text, refText:Text) {
         refText.append(newText)
-        this.dispatch('insertContentNodeAfter', {args: [newText, refText]})
+        this.dispatch('insertContentAfter', {args: [newText, refText]})
     }
     // insertBlockNodeAfter(newDocNode: DocNode, refDocNode: DocNode) {
     //     refDocNode.append(newDocNode)
@@ -76,6 +98,7 @@ export class DocumentContent extends Observable{
     // }
     unwrap(docNode: DocNode) {
         assert(DocNode.typeHasChildren(docNode), 'doc node type do not have children, cannot unwrap')
+
         const previousSiblingInTree = docNode.previousSiblingInTree
         const originDocNodePrev = docNode.prev()
 
@@ -84,6 +107,7 @@ export class DocumentContent extends Observable{
         newPara.replaceContent(docNode.content!)
         // newPara 要变成上一个节点的兄弟节点，如果有 previousSiblingInTree 说明不是全篇第一个节点。
         if (previousSiblingInTree) {
+
             // 1. 把原本的 content 处理成 Paragraph，变成 previousSibling 的 next
             previousSiblingInTree.append(newPara)
 
@@ -118,7 +142,7 @@ export class DocumentContent extends Observable{
             // 自己就是根节点下第一个节点
             newPara.replaceNext(docNode.firstChild)
             docNode.next && newPara.lastSibling.append(docNode.next)
-            this.firstChild = newPara
+            this.replaceFirstChild(newPara)
         }
 
 
@@ -131,6 +155,7 @@ export class DocumentContent extends Observable{
         const { startText, endText, startOffset, startNode, endNode, endOffset, collapsed, commonAncestorNode: ancestorNode } = docRange
         if (collapsed) {
             startText.insertText(startOffset, textToInsert)
+            newStartText = startText
         } else if(startNode === endNode) {
             // FIXME 顶层的节点删除时，没有 ancestorNode ???
             assert (!!ancestorNode, 'range not valid')
@@ -191,19 +216,51 @@ export class DocumentContent extends Observable{
         return previousSiblingInTree
     }
     prependDefaultPreviousSibling(docNode: DocNode) {
-        const prependPreviousSibling = (docNode.constructor as typeof DocNode).prependDefaultPreviousSibling ?? DocNode.prependDefaultPreviousSibling
-        const newDocNode = prependPreviousSibling(docNode)
-        if(this.firstChild === docNode) {
-            this.firstChild = newDocNode
+        const createPreviousSibling = (docNode.constructor as typeof DocNode).createDefaultPreviousSibling ?? DocNode.createDefaultPreviousSibling
+        const newDocNode = createPreviousSibling(docNode)
+        return this.prependPreviousSibling(docNode, newDocNode)
+    }
+    prependPreviousSibling(docNode: DocNode, newDocNode: DocNode) {
+        if (docNode.previousSiblingInTree) {
+            docNode.previousSiblingInTree?.append(newDocNode)
+        } else {
+            docNode.prepend(newDocNode)
         }
-        this.dispatch('prependDefaultPreviousSibling', { args: [docNode], result: newDocNode })
+
+        this.dispatch('prependPreviousSibling', { args: [docNode], result: newDocNode })
         return newDocNode
     }
     appendDefaultNextSibling(docNode: DocNode, content?: Text) {
-        const appendNextSibling = (docNode.constructor as typeof DocNode).appendDefaultNextSibling ?? DocNode.appendDefaultNextSibling
+        const appendNextSibling = (docNode.constructor as typeof DocNode).createDefaultNextSibling ?? DocNode.createDefaultNextSibling
         const newDocNode = appendNextSibling(docNode, content)
-        this.dispatch('appendDefaultNextSibling', { args: [docNode, content], result: newDocNode })
+        return this.appendNextSibling(docNode, newDocNode, (docNode.constructor as typeof DocNode).appendDefaultAsChildren)
+    }
+    appendNextSibling(docNode: DocNode, newDocNode: DocNode, asChildren: boolean = false) {
+        if (asChildren) {
+            if (docNode.firstChild) {
+                docNode.firstChild.prepend(newDocNode)
+            } else {
+                docNode.replaceFirstChild(newDocNode)
+            }
+        } else {
+            docNode.append(newDocNode)
+        }
+
+        this.dispatch('appendNextSibling', { args: [docNode], result: newDocNode })
         return newDocNode
+    }
+    removeDocNode(docNode: DocNode) {
+        if (docNode.prev()) {
+            docNode.prev().replaceNext(docNode.next)
+        } else {
+            // 自己是第一个
+            docNode.parent().replaceFirstChild(docNode.next)
+        }
+        this.dispatch('removeDocNode', { args: [docNode] })
+    }
+    replaceDocNode(newDocNode: DocNode, refDocNode: DocNode) {
+        refDocNode.replaceWith(newDocNode)
+        this.dispatch('replaceDocNode', { args: [newDocNode, refDocNode]})
     }
     spliceContent(docNode: DocNode, startText: Text, startOffset: number, endText?: Text, endOffset?: number) {
         assert(startText !== endText, 'startText equal to endText, update value instead of use this method')
@@ -226,7 +283,11 @@ export class DocumentContent extends Observable{
         this.dispatch('spliceContent', { args: [docNode, startText, startOffset, endText, endOffset], result: removedStartText })
         return removedStartText
     }
-    toJSON() {
+    updateText(text: Text, newValue: string) {
+        text.value = newValue
+        this.dispatch('updateText', {args:[text, newValue]})
+    }
+    toArrayJSON() {
         return DocNode.map(this.firstChild, (child) => child.toJSON())
     }
 }

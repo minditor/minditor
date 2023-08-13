@@ -1,4 +1,4 @@
-import {DocumentContent} from "../src/Document";
+import {DocumentContent} from "../src/Content";
 import {DocumentContentView} from "../src/View";
 import {Paragraph, Section, Text} from "../src/DocNode";
 import {getByText} from '@testing-library/dom'
@@ -12,28 +12,8 @@ function getByTestID(element: HTMLElement, id: string) {
 
 describe('insert', () => {
     test('insert content node to para', async () => {
-        const doc = new DocumentContent([{
-            type: 'Paragraph',
-            content: [
-                {type: 'Text', value: '11'},
-                {type: 'Text', value: '22'},
-                {type: 'Text', value: '33'}
-            ]
-        }], BuiltinTypes)
-        const view = (new DocumentContentView(doc)).render()
-
-        doc.insertContentNodeAfter(new Text({type:'Text', value:'44'}), doc.firstChild!.content!.next!)
-        
-        expect(view.textContent).toBe('11224433')
-        doc.insertContentNodeAfter(new Text({type:'Text', value:'555'}), doc.firstChild!.content!.next!.next!)
-        
-        expect(view.textContent).toBe('11224455533')
-    })
-
-    test('insert content node to Para in Section', async () => {
-        const doc = new DocumentContent([{
-            type: 'Section',
-            content: [{type: 'Text', value: 'title'}],
+        const doc = new DocumentContent({
+            type: 'Document',
             children: [{
                 type: 'Paragraph',
                 content: [
@@ -41,20 +21,46 @@ describe('insert', () => {
                     {type: 'Text', value: '22'},
                     {type: 'Text', value: '33'}
                 ]
-            }, {
-                type: 'Paragraph',
-                content: [
-                    {type: 'Text', value: '44'},
-                    {type: 'Text', value: '55'},
-                    {type: 'Text', value: '66'}
-                ]
             }]
-        }], BuiltinTypes)
+        }, BuiltinTypes)
+        const view = (new DocumentContentView(doc)).render()
+
+        doc.insertContentAfter(new Text({type:'Text', value:'44'}), doc.firstChild!.content!.next!)
+        
+        expect(view.textContent).toBe('11224433')
+        doc.insertContentAfter(new Text({type:'Text', value:'555'}), doc.firstChild!.content!.next!.next!)
+        
+        expect(view.textContent).toBe('11224455533')
+    })
+
+    test('insert content node to Para in Section', async () => {
+        const doc = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Section',
+                content: [{type: 'Text', value: 'title'}],
+                children: [{
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: '11'},
+                        {type: 'Text', value: '22'},
+                        {type: 'Text', value: '33'}
+                    ]
+                }, {
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: '44'},
+                        {type: 'Text', value: '55'},
+                        {type: 'Text', value: '66'}
+                    ]
+                }]
+            }]
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(doc).render()
 
         expect(view.textContent).toBe('title112233445566')
-        doc.insertContentNodeAfter(new Text({type:'Text', value:'99'}), doc.firstChild!.firstChild!.content!.next!)
+        doc.insertContentAfter(new Text({type:'Text', value:'99'}), doc.firstChild!.firstChild!.content!.next!)
 
         expect(view.textContent).toBe('title11229933445566')
     })
@@ -62,14 +68,17 @@ describe('insert', () => {
 
 describe('update range', () => {
     test('update range in same content', async () => {
-        const doc = new DocumentContent([{
-            type: 'Paragraph',
-            content: [
-                {type: 'Text', value: '11', testid:'11'},
-                {type: 'Text', value: '22'},
-                {type: 'Text', value: '33', testid:'33'}
-            ]
-        }], BuiltinTypes)
+        const doc = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: '11', testid:'11'},
+                    {type: 'Text', value: '22'},
+                    {type: 'Text', value: '33', testid:'33'}
+                ]
+            }]
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(doc)
         const element = view.render()
@@ -82,7 +91,7 @@ describe('update range', () => {
         range.setEnd(element.querySelector("[data-testid='33']")!, 1)
 
         view.updateRange(range, '$$$')
-        const newData = doc.toJSON()
+        const newData = doc.toArrayJSON()
         expect(newData.length).toBe(1)
         expect(newData[0].content.length).toBe(2)
         expect(newData[0].content[0].value).toBe('1$$$')
@@ -91,34 +100,37 @@ describe('update range', () => {
     })
 
     test('update range in sibling node content', async () => {
-        const content = new DocumentContent([{
-            type: 'Section',
-            content: [
-                {type: 'Text', value: 'section'}
-            ],
-            children: [{
-                type: 'Paragraph',
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Section',
                 content: [
-                    {type: 'Text', value: 'pt11', testid:'pt11'}, //<--start
-                    {type: 'Text', value: 'pt12'},
-                    {type: 'Text', value: 'pt13'}
-                ]
-            }, {
-                type: 'Paragraph',
-                content: [
-                    {type: 'Text', value: 'pt21'},
-                    {type: 'Text', value: 'pt22'},
-                    {type: 'Text', value: 'pt23'}
-                ]
-            }, {
-                type: 'Paragraph',
-                content: [
-                    {type: 'Text', value: 'pt31'},
-                    {type: 'Text', value: 'pt32', testid:'pt32'},//<--end
-                    {type: 'Text', value: 'pt33'}
-                ]
+                    {type: 'Text', value: 'section'}
+                ],
+                children: [{
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt11', testid:'pt11'}, //<--start
+                        {type: 'Text', value: 'pt12'},
+                        {type: 'Text', value: 'pt13'}
+                    ]
+                }, {
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt21'},
+                        {type: 'Text', value: 'pt22'},
+                        {type: 'Text', value: 'pt23'}
+                    ]
+                }, {
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt31'},
+                        {type: 'Text', value: 'pt32', testid:'pt32'},//<--end
+                        {type: 'Text', value: 'pt33'}
+                    ]
+                }]
             }]
-        }], BuiltinTypes)
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -132,54 +144,57 @@ describe('update range', () => {
 
     test('update range in different tree level', async () => {
 
-        const content = new DocumentContent([{
-            type: 'Section',
-            content: [
-                {type: 'Text', value: 'section'}
-            ],
-            children: [{
-                type: 'Paragraph',
-                content: [
-                    {type: 'Text', value: 'pt11', testid: 'pt11'},// <-- from here
-                    {type: 'Text', value: 'pt12'},
-                    {type: 'Text', value: 'pt13'}
-                ]
-            }, {
-                type: 'Paragraph',
-                content: [
-                    {type: 'Text', value: 'pt21'},
-                    {type: 'Text', value: 'pt22'},
-                    {type: 'Text', value: 'pt23'}
-                ]
-            }, {
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
                 type: 'Section',
                 content: [
-                    {type: 'Text', value: 'section1.1'},
+                    {type: 'Text', value: 'section'}
                 ],
                 children: [{
                     type: 'Paragraph',
                     content: [
-                        {type: 'Text', value: 'pt111'},
-                        {type: 'Text', value: 'pt112'},
-                        {type: 'Text', value: 'pt113'}
+                        {type: 'Text', value: 'pt11', testid: 'pt11'},// <-- from here
+                        {type: 'Text', value: 'pt12'},
+                        {type: 'Text', value: 'pt13'}
                     ]
                 }, {
                     type: 'Paragraph',
                     content: [
-                        {type: 'Text', value: 'pt121'},
-                        {type: 'Text', value: 'pt122', testid: 'pt122'}, //<-- to here
-                        {type: 'Text', value: 'pt123'}
+                        {type: 'Text', value: 'pt21'},
+                        {type: 'Text', value: 'pt22'},
+                        {type: 'Text', value: 'pt23'}
                     ]
-                },{
-                    type: 'Paragraph',
+                }, {
+                    type: 'Section',
                     content: [
-                        {type: 'Text', value: 'pt131'},
-                        {type: 'Text', value: 'pt132'},
-                        {type: 'Text', value: 'pt133'}
-                    ]
+                        {type: 'Text', value: 'section1.1'},
+                    ],
+                    children: [{
+                        type: 'Paragraph',
+                        content: [
+                            {type: 'Text', value: 'pt111'},
+                            {type: 'Text', value: 'pt112'},
+                            {type: 'Text', value: 'pt113'}
+                        ]
+                    }, {
+                        type: 'Paragraph',
+                        content: [
+                            {type: 'Text', value: 'pt121'},
+                            {type: 'Text', value: 'pt122', testid: 'pt122'}, //<-- to here
+                            {type: 'Text', value: 'pt123'}
+                        ]
+                    },{
+                        type: 'Paragraph',
+                        content: [
+                            {type: 'Text', value: 'pt131'},
+                            {type: 'Text', value: 'pt132'},
+                            {type: 'Text', value: 'pt133'}
+                        ]
+                    }]
                 }]
             }]
-        }], BuiltinTypes)
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -202,33 +217,36 @@ describe('update range', () => {
     // TODO 如果是 children 相兼容的情况，要合并 children
     test('update range in different tree level and merge endNode children', async () => {
 
-        const content = new DocumentContent([{
-            type: 'Section',
-            content: [
-                {type: 'Text', value: 'section', testid:'section'} // <-- from here
-            ],
-            children: [{
-                type: 'Paragraph',
-                content: [
-                    {type: 'Text', value: 'pt11'},
-                    {type: 'Text', value: 'pt12'},
-                    {type: 'Text', value: 'pt13'}
-                ]
-            }, {
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
                 type: 'Section',
                 content: [
-                    {type: 'Text', value: 'section1.1', testid: 'section1.1'}, // <-- to here
+                    {type: 'Text', value: 'section', testid:'section'} // <-- from here
                 ],
                 children: [{
                     type: 'Paragraph',
                     content: [
-                        {type: 'Text', value: 'pt111'},
-                        {type: 'Text', value: 'pt112'},
-                        {type: 'Text', value: 'pt113'}
+                        {type: 'Text', value: 'pt11'},
+                        {type: 'Text', value: 'pt12'},
+                        {type: 'Text', value: 'pt13'}
                     ]
+                }, {
+                    type: 'Section',
+                    content: [
+                        {type: 'Text', value: 'section1.1', testid: 'section1.1'}, // <-- to here
+                    ],
+                    children: [{
+                        type: 'Paragraph',
+                        content: [
+                            {type: 'Text', value: 'pt111'},
+                            {type: 'Text', value: 'pt112'},
+                            {type: 'Text', value: 'pt113'}
+                        ]
+                    }]
                 }]
             }]
-        }], BuiltinTypes)
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -250,20 +268,23 @@ describe('update range', () => {
 
 describe('delete at content head', () => {
     test('delete at section content head', () => {
-        const content = new DocumentContent([{
-            type: 'Section',
-            content: [
-                {type: 'Text', value: 'section', testid:'section'} // <-- from here
-            ],
+        const content = new DocumentContent({
+            type: 'Document',
             children: [{
-                type: 'Paragraph',
+                type: 'Section',
                 content: [
-                    {type: 'Text', value: 'pt11'},
-                    {type: 'Text', value: 'pt12'},
-                    {type: 'Text', value: 'pt13'}
-                ]
+                    {type: 'Text', value: 'section', testid: 'section'} // <-- from here
+                ],
+                children: [{
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt11'},
+                        {type: 'Text', value: 'pt12'},
+                        {type: 'Text', value: 'pt13'}
+                    ]
+                }]
             }]
-        }], BuiltinTypes)
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -274,8 +295,9 @@ describe('delete at content head', () => {
         range.setEnd(from, 0)
 
         view.deleteContent(undefined, range)
-        const newData = content.toJSON()
+        const newData = content.toArrayJSON()
 
+        debugger
         expect(newData).toMatchObject([
             {
                 type: 'Paragraph',
@@ -296,38 +318,41 @@ describe('delete at content head', () => {
     })
 
     test('delete in head with previous sibling in tree', () => {
-        const content = new DocumentContent([{
-            type: 'Section',
-            content: [
-                {type: 'Text', value: 'section', testid:'section'}
-            ],
-            children: [{
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
                 type: 'Section',
                 content: [
-                    {type: 'Text', value: 'section1.1', testid:'section1.1'}
+                    {type: 'Text', value: 'section', testid:'section'}
                 ],
                 children: [{
-                    type: 'Paragraph',
+                    type: 'Section',
                     content: [
-                        {type: 'Text', value: 'pt11'},
-                        {type: 'Text', value: 'pt12'},
-                        {type: 'Text', value: 'pt13'}
-                    ]
+                        {type: 'Text', value: 'section1.1', testid:'section1.1'}
+                    ],
+                    children: [{
+                        type: 'Paragraph',
+                        content: [
+                            {type: 'Text', value: 'pt11'},
+                            {type: 'Text', value: 'pt12'},
+                            {type: 'Text', value: 'pt13'}
+                        ]
+                    }]
                 }]
-            }]
-        }, {
-            type: 'Section',
-            content: [
-                {type: 'Text', value: 'section1.2', testid:'section1.2'} // <-- here
-            ],
-            children: [{
+            }, {
                 type: 'Section',
                 content: [
-                    {type: 'Text', value: 'section1.2.1', testid:'section1.2.1'}
+                    {type: 'Text', value: 'section1.2', testid:'section1.2'} // <-- here
                 ],
-                children: []
+                children: [{
+                    type: 'Section',
+                    content: [
+                        {type: 'Text', value: 'section1.2.1', testid:'section1.2.1'}
+                    ],
+                    children: []
+                }]
             }]
-        }], BuiltinTypes)
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -338,7 +363,7 @@ describe('delete at content head', () => {
         range.setEnd(from, 0)
 
         view.deleteContent(undefined, range)
-        const newData = content.toJSON()
+        const newData = content.toArrayJSON()
         debugger
         expect(newData).toMatchObject([{
             type: 'Section',
@@ -377,21 +402,24 @@ describe('delete at content head', () => {
     })
 
     test('delete at para head, should merge into previous para content', () => {
-        const content = new DocumentContent([{
-            type: 'Paragraph',
-            content: [
-                {type: 'Text', value: 'pt11'},
-                {type: 'Text', value: 'pt12'},
-                {type: 'Text', value: 'pt13'}
-            ]
-        }, {
-            type: 'Paragraph',
-            content: [
-                {type: 'Text', value: 'pt21', testid: 'pt21'}, // <-- here
-                {type: 'Text', value: 'pt22'},
-                {type: 'Text', value: 'pt23'}
-            ]
-        }], BuiltinTypes)
+        const content = new DocumentContent({
+            type: 'Document',
+            children: [{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt11'},
+                    {type: 'Text', value: 'pt12'},
+                    {type: 'Text', value: 'pt13'}
+                ]
+            }, {
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt21', testid: 'pt21'}, // <-- here
+                    {type: 'Text', value: 'pt22'},
+                    {type: 'Text', value: 'pt23'}
+                ]
+            }]
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -402,7 +430,7 @@ describe('delete at content head', () => {
         range.setEnd(from, 0)
 
         view.deleteContent(undefined, range)
-        const newData = content.toJSON()
+        const newData = content.toArrayJSON()
         expect(newData).toMatchObject([{
             type: 'Paragraph',
             content: [
@@ -420,14 +448,17 @@ describe('delete at content head', () => {
 
 describe('change line', () => {
     test('change line at para head', () => {
-        const content = new DocumentContent([{
-            type: 'Paragraph',
-            content: [
-                {type: 'Text', value: 'pt11', testid:'pt11'}, // <-- here
-                {type: 'Text', value: 'pt12'},
-                {type: 'Text', value: 'pt13'}
-            ]
-        }], BuiltinTypes)
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt11', testid:'pt11'}, // <-- here
+                    {type: 'Text', value: 'pt12'},
+                    {type: 'Text', value: 'pt13'}
+                ]
+            }]
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -438,7 +469,8 @@ describe('change line', () => {
         range.setEnd(from, 0)
 
         view.changeLine(undefined, range)
-        const newData = content.toJSON()
+        const newData = content.toArrayJSON()
+
         expect(newData).toMatchObject([{
             type: 'Paragraph',
             content: [{type: 'Text', value:''}]
@@ -454,14 +486,17 @@ describe('change line', () => {
     })
 
     test('change line at middle of para', () => {
-        const content = new DocumentContent([{
-            type: 'Paragraph',
-            content: [
-                {type: 'Text', value: 'pt11', },
-                {type: 'Text', value: 'pt12', testid:'pt12'}, // <-- here
-                {type: 'Text', value: 'pt13'}
-            ]
-        }], BuiltinTypes)
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt11', },
+                    {type: 'Text', value: 'pt12', testid:'pt12'}, // <-- here
+                    {type: 'Text', value: 'pt13'}
+                ]
+            }]
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -472,7 +507,7 @@ describe('change line', () => {
         range.setEnd(from, 1)
 
         view.changeLine(undefined, range)
-        const newData = content.toJSON()
+        const newData = content.toArrayJSON()
         expect(newData).toMatchObject([{
             type: 'Paragraph',
             content: [
@@ -490,20 +525,23 @@ describe('change line', () => {
     })
 
     test('change line at middle of section', () => {
-        const content = new DocumentContent([{
-            type: 'Section',
-            content: [
-                {type: 'Text', value: 's11', },
-                {type: 'Text', value: 's12', testid:'s12'}, // <-- here
-                {type: 'Text', value: 's13'}
-            ],
-            children: [{
-                type: 'Paragraph',
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Section',
                 content: [
-                    {type: 'Text', value: 'pt21', }
-                ]
+                    {type: 'Text', value: 's11', },
+                    {type: 'Text', value: 's12', testid:'s12'}, // <-- here
+                    {type: 'Text', value: 's13'}
+                ],
+                children: [{
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt21', }
+                    ]
+                }]
             }]
-        }], BuiltinTypes)
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -514,7 +552,7 @@ describe('change line', () => {
         range.setEnd(from, 1)
 
         view.changeLine(undefined, range)
-        const newData = content.toJSON()
+        const newData = content.toArrayJSON()
 
         expect(newData).toMatchObject([{
             type: 'Section',
@@ -539,14 +577,17 @@ describe('change line', () => {
     })
 
     test('change line at end of para', () => {
-        const content = new DocumentContent([{
-            type: 'Paragraph',
-            content: [
-                {type: 'Text', value: 'pt11', },
-                {type: 'Text', value: 'pt12',},
-                {type: 'Text', value: 'pt13',  testid:'pt13'}// <-- here
-            ]
-        }], BuiltinTypes)
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt11', },
+                    {type: 'Text', value: 'pt12',},
+                    {type: 'Text', value: 'pt13',  testid:'pt13'}// <-- here
+                ]
+            }]
+        }, BuiltinTypes)
 
         const view = new DocumentContentView(content)
         const element = view.render()
@@ -559,7 +600,7 @@ describe('change line', () => {
         range.setEnd(from.firstChild!, 4)
 
         view.changeLine(undefined, range)
-        const newData = content.toJSON()
+        const newData = content.toArrayJSON()
 
         expect(newData).toMatchObject([{
             type: 'Paragraph',
