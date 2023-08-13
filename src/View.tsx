@@ -191,19 +191,27 @@ export class DocumentContentView{
             if (startOffset === 0 && startText.isFirstContent()) {
                 // 1. 头部。就在当前节点前面 prepend 一个空行或者别的空节点，例如空的 listItem
                 this.doc.prependDefaultPreviousSibling(startNode)
-                setNativeCursor(this.textNodeToElement.get(startNode.content!)!.firstChild, 0)
+                this.setCursor(startNode, 0)
             } else if(!startText.next && startOffset === startText.value.length){
                 // 2. 尾部，在下面添加个默认的就行
                 const newDocNode = this.doc.appendDefaultNextSibling(startNode)
-                setNativeCursor(this.textNodeToElement.get(newDocNode.content!)!.firstChild, 0)
+                this.setCursor(newDocNode, 0)
             } else {
                 // 3. 中间
                 const removedContent = this.doc.spliceContent(startNode, startText, startOffset)
                 const newDocNode = this.doc.appendDefaultNextSibling(startNode, removedContent)
-                setNativeCursor(this.textNodeToElement.get(newDocNode.content!)!.firstChild, 0)
+                this.setCursor(newDocNode, 0)
             }
         } else {
-            // TODO 有 range 的情况。range 清空，但是剩下的部分单独变成 Para，要不要复用 updateRange ?
+            // 等同于先 updateRange ，再 change changeLine
+            // TODO 因为 startText 肯定还在？？？如果一直选到头部呢？？？
+            const newText = this.updateRange(currentRange!, '')
+            const newTextDOM = this.textNodeToElement.get(newText)?.firstChild
+            const newRange = document.createRange()
+            newRange.selectNodeContents(newTextDOM)
+            newRange.collapse()
+            debugger
+            this.changeLine(undefined, newRange)
         }
 
     }
@@ -218,12 +226,12 @@ export class DocumentContentView{
                 // 1. 如果自己身的结构可以破坏，不影响其他节点。那么就只破坏自身，例如 Section 的 title、list 等
                 if(DocNode.typeHasChildren(startNode)) {
                     const newPara = this.doc.unwrap(startText.parent())
-                    setNativeCursor(this.textNodeToElement.get(newPara.content!)!.firstChild!, 0)
+                    this.setCursor(newPara, 0)
                 } else {
                     // 2. 如果自身的结构不能破坏。那就就是和前一个节点的内容合并了。这是 Para 合到 section title 或者 listItem 里面。
                     this.doc.mergeByPreviousSiblingInTree(startNode)
                     // startText 还在
-                    setNativeCursor(this.textNodeToElement.get(startText)!.firstChild!, 0)
+                    this.setCursor(startText, 0)
                 }
 
             } else {
@@ -240,10 +248,10 @@ export class DocumentContentView{
             const newStartText = this.doc.updateRange(this.createDocRange(globalKM.selectionRange!)!, '')
             if (e?.defaultPrevented) {
                 if (startOffset !== 0) {
-                    setNativeCursor(this.textNodeToElement.get(startText)!.firstChild!, startText.value.length)
+                    this.setCursor(startText, Infinity)
                 } else {
                     // TODO 如果不是 0，就一定有 newStartText ???
-                    setNativeCursor(this.textNodeToElement.get(newStartText)!.firstChild!, newStartText.value.length)
+                    this.setCursor(newStartText, Infinity)
                 }
             }
         }
@@ -286,6 +294,10 @@ export class DocumentContentView{
             )
         }
         return fragment
+    }
+    setCursor(docNode: DocNode, offset: number) {
+        const firstText = docNode instanceof Text ? docNode : docNode.content as Text
+        setNativeCursor(this.textNodeToElement.get(firstText)!.firstChild!, offset === Infinity ? firstText.value.length : offset)
     }
     renderBlockUnitList(container: HTMLElement) {
         const blockUnitFragments = DocNode.map(this.doc.firstChild, node => this.createBlockUnitFragment(node))
