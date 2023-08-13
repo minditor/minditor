@@ -88,6 +88,7 @@ export class DocumentContent extends Observable{
             previousSiblingInTree.append(newPara)
 
             // 2. 开始处理自己的 child，如果是 para，就也要往前合并
+            const docNodeChildLevel = docNode.level() + 1 // CAUTION 一定要记住，不然后面就不对了
             docNode.remove()
             if (originDocNodePrev) {
                 // 原来前面还有节点，那么自己内容被合并到前面节点的里面去。
@@ -103,7 +104,7 @@ export class DocumentContent extends Observable{
                 })
 
                 if(childLeft) {
-                    const acceptableSibling = newPara.lastSibling.findParentByLevel(childLeft.level() - newPara.level())
+                    const acceptableSibling = newPara.lastSibling.findParentByLevel(docNodeChildLevel - newPara.level())
                     acceptableSibling.append(childLeft)
                 }
 
@@ -125,13 +126,15 @@ export class DocumentContent extends Observable{
         return newPara
     }
     updateRange(docRange: DocRange, textToInsert: string ){
+        let newStartText: Text
 
         const { startText, endText, startOffset, startNode, endNode, endOffset, collapsed, commonAncestorNode: ancestorNode } = docRange
         if (collapsed) {
             startText.insertText(startOffset, textToInsert)
         } else if(startNode === endNode) {
+            // FIXME 顶层的节点删除时，没有 ancestorNode ???
             assert (!!ancestorNode, 'range not valid')
-            startNode.updateRange(docRange, textToInsert)
+            newStartText = startNode.updateRange(docRange, textToInsert)
         } else {
             assert (!!ancestorNode, 'range not valid')
             // 1. 清空 startNode 的 children
@@ -160,20 +163,20 @@ export class DocumentContent extends Observable{
             // TODO 如果节点内容没有了，按照 contenteditable 的行为规则，节点应该是会被消除掉的。
             startText.value = startText.value.slice(0, startOffset) + textToInsert
             endText.value = endText.value.slice(endOffset)
-            const newStart = startText.value ? startText : startText.prev()
+            newStartText = startText.value ? startText : startText.prev()
             const newEnd = endText.value? endText : endText.next
 
-            if (newStart) {
-                newStart.replaceNext(newEnd)
+            if (newStartText) {
+                newStartText.replaceNext(newEnd)
             } else {
                 // 说明 start 是头。
                 startNode.replaceContent(newEnd)
             }
-
         }
 
         // FIXME 改成 decorator
         this.dispatch('updateRange', {args: [docRange, textToInsert]})
+        return newStartText!
     }
     mergeByPreviousSiblingInTree(docNode: DocNode) {
         const previousSiblingInTree = docNode.previousSiblingInTree
@@ -198,9 +201,9 @@ export class DocumentContent extends Observable{
     }
     appendDefaultNextSibling(docNode: DocNode, content?: Text) {
         const appendNextSibling = (docNode.constructor as typeof DocNode).appendDefaultNextSibling ?? DocNode.appendDefaultNextSibling
-        const result= appendNextSibling(docNode, content)
-        this.dispatch('appendDefaultNextSibling', { args: [docNode, content], result })
-        return result
+        const newDocNode = appendNextSibling(docNode, content)
+        this.dispatch('appendDefaultNextSibling', { args: [docNode, content], result: newDocNode })
+        return newDocNode
     }
     spliceContent(docNode: DocNode, startText: Text, startOffset: number, endText?: Text, endOffset?: number) {
         assert(startText !== endText, 'startText equal to endText, update value instead of use this method')

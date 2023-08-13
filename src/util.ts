@@ -1,3 +1,4 @@
+import {state as globalState} from "./globals";
 
 
 type PlainObject = {
@@ -76,4 +77,13 @@ export function removeNodesBetween(start: ChildNode, endNode: ChildNode|Comment|
   }
 
   if (includeEnd && endNode) endNode.remove()
+}
+
+export function setNativeCursor(element: HTMLElement | ChildNode, offset: number) {
+  const range = document.createRange()
+  range.setStart(element, offset)
+
+  range.collapse(true)
+  globalState.selection!.removeAllRanges()
+  globalState.selection!.addRange(range)
 }

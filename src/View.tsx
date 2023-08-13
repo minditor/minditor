@@ -7,7 +7,7 @@ import {state as globalKM} from "./globals";
 import {setCursor, waitUpdate} from "./buildReactiveView";
 import {Doc, updateRange, viewToNodeMap} from "./editing";
 import {ExtendedDocumentFragment} from "./DOM";
-import {assert, deepFlatten, nextJob, nextTask, removeNodesBetween, unwrapChildren} from "./util";
+import {assert, deepFlatten, nextJob, nextTask, removeNodesBetween, setNativeCursor, unwrapChildren} from "./util";
 
 
 type ComponentMap = {
@@ -96,7 +96,6 @@ export class DocumentContentView{
             current = previousElementSibling
         }
 
-        // block 内更新，默认行为
         if (!useDefaultBehavior) {
             // 重新生成 start 节点，插到原来的节点前面。
             const newStartBlockUnit = this.createBlockUnitFragment(docRange.startNode) as DocumentFragment
@@ -170,13 +169,16 @@ export class DocumentContentView{
 
     // 外部也可以调用的 api
     updateRange(range: Range, newText: string) {
-        this.doc.updateRange(this.createDocRange(range)!, newText)
+        return this.doc.updateRange(this.createDocRange(range)!, newText)
     }
     inputCharacter = (e: KeyboardEvent, currentRange: Range|undefined) => {
         assert(!!currentRange, 'no range')
         this.tryUseDefaultBehavior(e)
         this.updateRange(currentRange!, e.key)
         this.resetUseDefaultBehavior()
+        if (e.defaultPrevented) {
+
+        }
     }
     changeLine = (e: Event|undefined, currentRange: Range|undefined) => {
         assert(!!currentRange, 'no range selected')
@@ -189,34 +191,39 @@ export class DocumentContentView{
             if (startOffset === 0 && startText.isFirstContent()) {
                 // 1. 头部。就在当前节点前面 prepend 一个空行或者别的空节点，例如空的 listItem
                 this.doc.prependDefaultPreviousSibling(startNode)
+                setNativeCursor(this.textNodeToElement.get(startNode.content!)!.firstChild, 0)
             } else if(!startText.next && startOffset === startText.value.length){
                 // 2. 尾部，在下面添加个默认的就行
-                this.doc.appendDefaultNextSibling(startNode)
+                const newDocNode = this.doc.appendDefaultNextSibling(startNode)
+                setNativeCursor(this.textNodeToElement.get(newDocNode.content!)!.firstChild, 0)
             } else {
                 // 3. 中间
                 const removedContent = this.doc.spliceContent(startNode, startText, startOffset)
-                this.doc.appendDefaultNextSibling(startNode, removedContent)
+                const newDocNode = this.doc.appendDefaultNextSibling(startNode, removedContent)
+                setNativeCursor(this.textNodeToElement.get(newDocNode.content!)!.firstChild, 0)
             }
         } else {
             // TODO 有 range 的情况。range 清空，但是剩下的部分单独变成 Para，要不要复用 updateRange ?
         }
 
-        // TODO setCursor(splitPointNode, 0)
     }
     deleteContent = (e: Event|undefined, currentRange: Range|undefined) => {
         assert(!!currentRange, 'no range selected')
         this.tryUseDefaultBehavior(e)
+        const docRange = this.createDocRange(currentRange!)
+        const {startOffset, startText, startNode} = docRange
         if (currentRange!.collapsed) {
             // 删除单个字符，或者进行结构变化
-            const docRange = this.createDocRange(currentRange!)
-            const {startOffset, startText, startNode} = docRange
             if (startOffset === 0 && startText.isFirstContent()) {
                 // 1. 如果自己身的结构可以破坏，不影响其他节点。那么就只破坏自身，例如 Section 的 title、list 等
                 if(DocNode.typeHasChildren(startNode)) {
-                    this.doc.unwrap(startText.parent())
+                    const newPara = this.doc.unwrap(startText.parent())
+                    setNativeCursor(this.textNodeToElement.get(newPara.content!)!.firstChild!, 0)
                 } else {
-                    // 2. TODO 如果自身的结构不能破坏。那就就是和前一个节点的内容合并了。这是 Para 合到 section title 或者 listItem 里面。
+                    // 2. 如果自身的结构不能破坏。那就就是和前一个节点的内容合并了。这是 Para 合到 section title 或者 listItem 里面。
                     this.doc.mergeByPreviousSiblingInTree(startNode)
+                    // startText 还在
+                    setNativeCursor(this.textNodeToElement.get(startText)!.firstChild!, 0)
                 }
 
             } else {
@@ -230,7 +237,15 @@ export class DocumentContentView{
                 }
             }
         } else {
-            this.doc.updateRange(this.createDocRange(globalKM.selectionRange!)!, '')
+            const newStartText = this.doc.updateRange(this.createDocRange(globalKM.selectionRange!)!, '')
+            if (e?.defaultPrevented) {
+                if (startOffset !== 0) {
+                    setNativeCursor(this.textNodeToElement.get(startText)!.firstChild!, startText.value.length)
+                } else {
+                    // TODO 如果不是 0，就一定有 newStartText ???
+                    setNativeCursor(this.textNodeToElement.get(newStartText)!.firstChild!, newStartText.value.length)
+                }
+            }
         }
         this.resetUseDefaultBehavior()
     }

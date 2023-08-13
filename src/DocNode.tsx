@@ -103,13 +103,14 @@ export class DocNode {
     }
     static prependDefaultPreviousSibling(docNode: DocNode) {
         const newPara = DocNode.createDefaultParagraph()
-        docNode.prepend(newPara)
+        // TODO 应该这里去读 previousSiblingInTree 吗？？？感觉应该 Document 去读
+        docNode.previousSiblingInTree?.append(newPara)
         return newPara
     }
     public parent: Atom<DocNode> =  atom(undefined)
     public prev: Atom<DocNode> = atom(undefined)
     public next?: DocNode
-    public level: Atom<number>
+    public level: Atom<number> // level 是从 1 开始算的
     public useAutoSerialNumber = atom(false)
     public serialNumber: Atom<null|number[]> // 格式: [1, 2, 2, 1]
     public manualSerialNumber = atom(false)
@@ -176,7 +177,7 @@ export class DocNode {
     updateRange({startText, endText, startNode, endNode, startOffset, endOffset}: DocRange, textToInsert: string) {
         // TODO update content
         assert(startNode === this && endNode === this, `not this node range, use DocumentContent to updateRange`)
-
+        let newStartText: Text
         if (startText === endText) {
 
             startText.value = startText.value.slice(0, startOffset) + textToInsert + endText.value.slice(endOffset)
@@ -184,17 +185,17 @@ export class DocNode {
         } else {
             startText.value = startText.value.slice(0, startOffset) + textToInsert
             endText.value = endText.value.slice(endOffset)
-            const newStart = startText.value ? startText : startText.prev()
+            newStartText = startText.value ? startText : startText.prev()
             const newEnd = endText.value? endText : endText.next
 
-            debugger
-            if (newStart) {
-                newStart.replaceNext(newEnd)
+            if (newStartText) {
+                newStartText.replaceNext(newEnd)
             } else {
                 // 说明 start 是头。
                 startNode.replaceContent(newEnd)
             }
         }
+        return newStartText!
     }
     isContentEmpty() {
         return !!this.content!.value && !this.content!.next
@@ -442,6 +443,7 @@ export class DocRange {
     constructor(public startText: Text, public startOffset: number, public endText: Text, public endOffset: number) {
         // CAUTION 必须在 constructor 里面固定这三个信息，因为之后这些对象的引用都可能会变
         this.commonAncestorNode = this.getCommonAncestorNode()!
+        console.assert(!!this.commonAncestorNode, 'can not find ancestor')
         this.startNode = this.startText.parent()
         this.endNode = this.endText.parent()
     }

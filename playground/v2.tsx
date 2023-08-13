@@ -45,4 +45,4 @@ root.render(() => <pre>
 }}
 </pre>)
 
-
+window.doc = content
