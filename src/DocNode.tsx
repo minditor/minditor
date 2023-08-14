@@ -1,7 +1,8 @@
 import { atom, Atom, reactive, toRaw, computed } from 'rata'
 import { Fragment, createElement } from "axii"
-import {assert} from "./util";
+import {assert, deepClone} from "./util";
 import {DocumentContent} from "./Content";
+import {Doc} from "./editing";
 
 export type DocNodeData = {
     [k: string]: any,
@@ -79,12 +80,22 @@ function typeHasContent(docNode: DocNode) : boolean{
     return !!(docNode.constructor as typeof DocNode).hasContent
 }
 
+// 注意这个遍历是包括 start 和 end
+function forEachInRange<T extends DocNode>(start: T, end: T, handle: (d: T) => any) {
+    let current: T|null|undefined = start
+    while(current) {
+        handle(current)
+        current = current === end ? null : current.next as T
+    }
+}
+
 
 export class DocNode {
     static hasChildren?: Boolean
     static hasContent?: Boolean
     static map = mapDocNodeList
     static forEach = forEachNode
+    static forEachInRange = forEachInRange
     static findPath = findPath
     static last = last
     static id = 0
@@ -355,19 +366,13 @@ export class Text extends DocNode{
     static hasContent = false
     static formatToStyle = ([formatName, formatValue]:[string, any]) => {
         if (formatName === 'bold') {
-            return {
-                fontWeight: 'bold'
-            }
+            return { fontWeight: formatValue ? 'bold' : undefined}
         } else if (formatName === 'italic') {
-            return { fontStyle: 'italic'}
+            return { fontStyle: formatValue ? 'italic' : undefined}
         } else if (formatName === 'underline') {
-            return {
-                textDecoration: 'underline'
-            }
+            return { textDecoration: formatValue ? 'underline' : undefined}
         } else if (formatName === 'lineThrough') {
-            return {
-                textDecoration: 'line-through'
-            }
+            return { textDecoration: formatValue ? 'line-through' : undefined }
         }
     }
     public prev: Atom<Text> = atom(undefined)
@@ -392,6 +397,9 @@ export class Text extends DocNode{
     isFirstContent() {
         return this === this.parent().content
     }
+    clone() {
+        return new Text(deepClone(this.toJSON()))
+    }
     render( { }: RenderProps, {createElement, Fragment}: RenderContext): HTMLElement{
         // TODO format to style
         const style = () => {
@@ -414,10 +422,12 @@ export class Text extends DocNode{
         if (this.prev()) {
             this.prev().append(prev)
         } else {
-            prev.append(this)
+            // CAUTION 这里一定要先记录一下。
+            const parent = this.parent()
+            prev.lastSibling.append(this)
 
-            if (this.parent()) {
-                this.parent().content = prev
+            if (parent) {
+                parent.replaceContent(prev)
             }
         }
     }

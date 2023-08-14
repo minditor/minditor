@@ -10,25 +10,7 @@ type CallbackType = (...arg: any[]) => any
 
 export const ANY = Symbol('any')
 
-class Observable {
-    public listeners : Map<any, Set<CallbackType> >= new Map()
-    listen(eventName: any, callback: CallbackType) {
-        let callbacks = this.listeners.get(eventName)
-        if (!this.listeners.get(eventName)) this.listeners.set(eventName, (callbacks = new Set()))
-        callbacks!.add(callback)
 
-        return () => callbacks!.delete(callback)
-    }
-    dispatch(eventName: string, ...argv: any[]) {
-        this.listeners.get(eventName)?.forEach((callback: CallbackType) => {
-            callback(...argv)
-        })
-
-        this.listeners.get(ANY)?.forEach((callback: CallbackType) => {
-            callback(...argv)
-        })
-    }
-}
 
 
 export class Content {
@@ -91,6 +73,10 @@ export class DocumentContent extends DocNode{
     insertContentAfter(newText: Text, refText:Text) {
         refText.append(newText)
         this.dispatch('insertContentAfter', {args: [newText, refText]})
+    }
+    insertContentBefore(newText: Text, refText:Text) {
+        refText.prepend(newText)
+        this.dispatch('insertContentBefore', {args: [newText, refText]})
     }
     // insertBlockNodeAfter(newDocNode: DocNode, refDocNode: DocNode) {
     //     refDocNode.append(newDocNode)
@@ -287,9 +273,55 @@ export class DocumentContent extends DocNode{
         text.value = newValue
         this.dispatch('updateText', {args:[text, newValue]})
     }
+    splitText(text: Text, offset: number, splitToStart?: boolean) {
+        if (offset === 0 || offset === text.value.length) return
+
+        const newText = text.clone()
+        if (splitToStart) {
+            newText.value = newText.value.slice(0, offset)
+            this.updateText(text, text.value.slice(offset))
+            this.insertContentBefore(newText, text)
+        } else {
+            newText.value = newText.value.slice(offset)
+            this.updateText(text, text.value.slice(0, offset))
+            this.insertContentAfter(newText, text)
+        }
+
+        this.dispatch('splitText', {args:[text, offset, splitToStart]})
+    }
+    formatRange(range: DocRange, formatData: FormatData) {
+
+        const { endNode, startNode, startText, endText, startOffset, endOffset } = range
+        const updateFormat = (text: Text) => text.props.formats = Object.assign(text.props.formats || {}, formatData)
+
+        // 先要 split text
+        this.splitText(startText, startOffset, true)
+        this.splitText(endText, endOffset)
+
+        if (startNode === endNode) {
+            DocNode.forEachInRange(startText, endText, updateFormat)
+        } else {
+            // 1. 先单独处理 startNode 和 endNode，再处理中间
+            DocNode.forEach(startText, updateFormat)
+            DocNode.forEachInRange(endNode.content!, endText, updateFormat)
+
+            // 2. 处理中间
+            let current = endNode.previousSiblingInTree
+
+            while(current !== startNode) {
+                DocNode.forEach(current.content, updateFormat)
+                current = current.previousSiblingInTree
+            }
+        }
+
+    }
     toArrayJSON() {
         return DocNode.map(this.firstChild, (child) => child.toJSON())
     }
+}
+
+export type FormatData = {
+    [k:string]: any
 }
 
 export type updateRangeResult = {

@@ -3,7 +3,7 @@ import { shallowRef } from '@ariesate/reactivity'
 import {debounce, idleThrottle, nextJob} from "./util";
 import {createRangeLikeFromRange, findNodeFromElement} from "./editing";
 import {EventDelegator} from "./event";
-import {NodeType} from "./NodeType";
+import { DocNode } from "./DocNode";
 import { state as globalState } from './globals'
 
 type Rect = {
@@ -29,7 +29,7 @@ function createUserMousePosition({ on }: EventDelegator) {
 function createVisualFocusedBlockNode({ on }: EventDelegator) {
 
     const visualFocusedBlockNode = shallowRef(null)
-    const debouncedUpdateNode = debounce((node: NodeType) => {
+    const debouncedUpdateNode = debounce((node: DocNode) => {
         visualFocusedBlockNode.value = node
     }, 100)
 

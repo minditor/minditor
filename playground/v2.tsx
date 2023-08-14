@@ -6,7 +6,9 @@ import {Document} from "../src/Document";
 import {Paragraph, Section, Text} from "../src/DocNode";
 import { createRoot, createElement } from 'axii'
 import { atom } from 'rata'
-import { plugins } from "../src/plugins/markdown";
+import { plugins as markdownPlugins } from "../src/plugins/markdown";
+import { createRangeTool, defaultFormatWidgets } from '../src/plugins/RangeTool'
+import {nextTask} from "../src/util";
 
 // CAUTION 只能这样写是因为 data 在当前目录之外，用了 alias。但 alias 不能支持动态 import。
 const data = {
@@ -28,21 +30,46 @@ const searchObj = Object.fromEntries(
 
 const doc = new Document(
     // data.singlePara,
-    // data.multiSection,
-    data.singleSection,
+    data.multiSection,
+    // data.singleSection,
     {Paragraph, Section, Text},
-    plugins
+    [
+        // ...markdownPlugins,
+        createRangeTool(defaultFormatWidgets)
+    ]
 )
 
 document.getElementById('root')!.appendChild(doc.render())
-const root = createRoot(document.getElementById('data')!)
+document.getElementById('root')!.appendChild(doc.renderPluginViews())
 
+// state preview
+const stateRoot = createRoot(document.getElementById('state')!)
+stateRoot.render(() => <div>
+    <div>
+        <span>mouse position:</span>
+        <span>{() => JSON.stringify(doc.view.state.mousePosition())}</span>
+    </div>
+    <div>
+        <span>selection range rect:</span>
+        <span>{() => JSON.stringify(doc.view.state.visibleRangeRect())}</span>
+    </div>
+    <div>
+        <span>last active device:</span>
+        <span>{() => JSON.stringify(doc.view.state.lastActiveDevice())}</span>
+    </div>
+</div>)
+
+// data preview
+const dataRoot = createRoot(document.getElementById('data')!)
 doc.content.listen(ANY, () => {
-    changeTimestamp(Date.now())
+    nextTask(() => {
+        changeTimestamp(Date.now())
+    })
 })
 
 const changeTimestamp = atom('')
-root.render(() => <pre>
+
+dataRoot.render(() => <pre>
 {() => {
     console.log(changeTimestamp())
     return JSON.stringify(doc.content.toArrayJSON(), null, 4)

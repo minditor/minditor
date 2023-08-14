@@ -87,3 +87,16 @@ export function setNativeCursor(element: HTMLElement | ChildNode, offset: number
   globalState.selection!.removeAllRanges()
   globalState.selection!.addRange(range)
 }
+
+export function setNativeRange(startElement: HTMLElement | ChildNode, startOffset: number, endElement: HTMLElement|ChildNode, endOffset: number) {
+  const range = document.createRange()
+  range.setStart(startElement, startOffset)
+  range.setEnd(endElement, endOffset)
+
+  globalState.selection!.removeAllRanges()
+  globalState.selection!.addRange(range)
+}
+
+export function deepClone(obj: any) {
+  return JSON.parse(JSON.stringify(obj))
+}

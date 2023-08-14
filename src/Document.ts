@@ -24,4 +24,12 @@ export class Document {
 
         return this.element
     }
+    renderPluginViews() {
+        const fragment = document.createDocumentFragment()
+        this.plugins.forEach(plugin => {
+            const view = plugin.renderPluginView()
+            if (view) fragment.append(view)
+        })
+        return fragment
+    }
 }

@@ -1,28 +1,53 @@
 import { createHost, onEnterKey, onBackspaceKey, eventAlias, onTabKey, createElement, Fragment, Host, withCurrentRange } from 'axii'
 import {Component, } from "../global";
-import {Content, DocumentContent} from "./Content";
+import {ANY, Content, DocumentContent, FormatData} from "./Content";
 import {DocNode, DocRange, Text, RenderProps} from "./DocNode";
 import {state as globalKM} from "./globals";
-import {assert, nextTask, removeNodesBetween, setNativeCursor, unwrapChildren} from "./util";
+import {assert, nextTask, removeNodesBetween, setNativeCursor, setNativeRange, unwrapChildren} from "./util";
+import {ReactiveState} from "./ReactiveState";
+import {EventDelegator} from "./EventDelegator";
 
 
-type ComponentMap = {
-    [k: string]: Component
+type CallbackType = (...arg: any[]) => any
+
+export class Observable {
+    public listeners : Map<any, Set<CallbackType> >= new Map()
+    listen(eventName: any, callback: CallbackType) {
+        let callbacks = this.listeners.get(eventName)
+        if (!this.listeners.get(eventName)) this.listeners.set(eventName, (callbacks = new Set()))
+        callbacks!.add(callback)
+
+        return () => callbacks!.delete(callback)
+    }
+    dispatch(eventName: string, ...argv: any[]) {
+        this.listeners.get(eventName)?.forEach((callback: CallbackType) => {
+            callback(...argv)
+        })
+
+        this.listeners.get(ANY)?.forEach((callback: CallbackType) => {
+            callback(...argv)
+        })
+    }
 }
 
 
-export class DocumentContentView{
+export class DocumentContentView extends EventDelegator{
     public element?: HTMLElement
     public elementToTextNode = new WeakMap<HTMLElement, Text>()
     public textNodeToElement = new WeakMap<Text, HTMLElement>()
     public hostContext = { skipIndicator: {skip: false} }
     public docNodeToBlockUnit = new WeakMap<DocNode, HTMLElement>()
     public blockUnitToHost: WeakMap<HTMLElement, Host> = new WeakMap()
+    public state: ReactiveState
     constructor(public doc: DocumentContent) {
-        globalKM.onSelectionChange(this.onSelectionChange)
+        super()
+
+        this.state = new ReactiveState(this)
+
         this.doc.listen('updateRange', this.patchUpdateRange)
         this.doc.listen('unwrap', this.patchUnwrap)
         this.doc.listen('insertContentAfter', this.patchInsertContentAfter)
+        this.doc.listen('insertContentBefore', this.patchInsertContentBefore)
         this.doc.listen('mergeByPreviousSiblingInTree', this.patchMergeByPreviousSiblingInTree)
         this.doc.listen('spliceContent', this.patchSpliceContent)
         // TODO 要不要直接就改成 prepend/append ?
@@ -31,9 +56,12 @@ export class DocumentContentView{
         this.doc.listen('removeDocNode', this.patchRemoveDocNode)
         this.doc.listen('replaceDocNode', this.patchReplaceDocNode)
         this.doc.listen('updateText', this.patchUpdateText)
+
+        this.listen('selectionchange', this.onSelectionChange)
+
     }
     onSelectionChange = () => {
-        console.log(globalKM.selectionRange!)
+        console.log('selection change', this.state.selectionRange()!)
     }
     defaultBehaviorEvent: Event|undefined
     tryUseDefaultBehavior(event: Event|undefined) {
@@ -128,6 +156,16 @@ export class DocumentContentView{
         textHost.render()
         // insertAfter(newTextDOM, refTextDOMNode)
     }
+    patchInsertContentBefore = ({ args: [newText, refText]} : {args: [Text, Text]}) => {
+        const refTextDOMNode = this.textNodeToElement.get(refText)!
+        // FIXME 还是要设计一个自动 destroy host 的机制才行。不然每个小节点更新都去自己找 host 太麻烦了。
+        const placeholder = new Comment('text')
+        refTextDOMNode.parentElement!.insertBefore(placeholder, refTextDOMNode!)
+        const newTextDOM = this.createTextDOMNode(newText)
+        const textHost = createHost(newTextDOM, placeholder, this.hostContext)
+        textHost.render()
+        // insertAfter(newTextDOM, refTextDOMNode)
+    }
     patchMergeByPreviousSiblingInTree = ({args: [docNode], result: previousSiblingInTree}: {args: [DocNode], result: DocNode}) => {
         this.defaultBehaviorEvent?.stopPropagation()
         this.defaultBehaviorEvent?.preventDefault()
@@ -197,7 +235,7 @@ export class DocumentContentView{
     }
     inputCharacter = (e: KeyboardEvent, currentRange: Range|undefined) => {
         assert(!!currentRange, 'no range')
-        const originOffset = currentRange?.startOffset
+        const originOffset = currentRange?.startOffset!
         this.tryUseDefaultBehavior(e)
         const newText = this.updateRange(currentRange!, e.key)
         this.resetUseDefaultBehavior()
@@ -275,7 +313,7 @@ export class DocumentContentView{
                 }
             }
         } else {
-            const newStartText = this.doc.updateRange(this.createDocRange(globalKM.selectionRange!)!, '')
+            const newStartText = this.doc.updateRange(this.createDocRange(this.state.selectionRange()!)!, '')
             if (e?.defaultPrevented) {
                 if (startOffset !== 0) {
                     this.setCursor(startText, Infinity)
@@ -326,20 +364,22 @@ export class DocumentContentView{
         }
         return fragment
     }
-    setCursor(docNode: DocNode, offset: number) {
-        const firstText = docNode instanceof Text ? docNode : docNode.content as Text
-        const startContainer = this.textNodeToElement.get(firstText)!.firstChild!
-        const startOffset = offset === Infinity ? firstText.value.length : offset
-        setNativeCursor(startContainer, startOffset)
-        console.log(firstText, this.textNodeToElement.get(firstText)!.firstChild)
-    }
-    renderBlockUnitList(container: HTMLElement) {
+
+    renderBlockUnitList() {
         const blockUnitFragments = DocNode.map(this.doc.firstChild, node => this.createBlockUnitFragment(node))
         // CAUTION 为了性能，暂时决定不 reactive 化，因为操作 blockUnit 本来就是 dom 了，操作这个链表和操作 dom 是一样的。
         blockUnitFragments.forEach(fragment => {
-            container.appendChild(fragment)
+            this.element!.appendChild(fragment)
+            if (fragment instanceof DocumentFragment) {
+                for(let child of Array.from(fragment.children)) {
+                    this.childDelegators.block?.bindElement(child as HTMLElement)
+                }
+            } else {
+                this.childDelegators.block?.bindElement(fragment)
+            }
         })
     }
+
     render() {
 
         this.element = (
@@ -353,9 +393,35 @@ export class DocumentContentView{
             >
             </div>
         ) as unknown as HTMLElement
-        this.renderBlockUnitList( this.element!)
+        this.renderBlockUnitList()
+
+        this.bindElement(this.element!)
 
         return this.element
+    }
+    setCursor(docNode: DocNode, offset: number) {
+        const firstText = docNode instanceof Text ? docNode : docNode.content as Text
+        const startContainer = this.textNodeToElement.get(firstText)!.firstChild!
+        const startOffset = offset === Infinity ? firstText.value.length : offset
+        setNativeCursor(startContainer, startOffset)
+        console.log(firstText, this.textNodeToElement.get(firstText)!.firstChild)
+    }
+    setRange(docRange: DocRange) {
+        const startContainer = this.textNodeToElement.get(docRange.startText)!.firstChild!
+        const endContainer = this.textNodeToElement.get(docRange.endText)!.firstChild!
+        setNativeRange(startContainer, docRange.startOffset, endContainer, docRange.endOffset)
+    }
+    formatRange(range: Range, formatData: FormatData) {
+        this.doc.formatRange(this.createDocRange(range), formatData)
+    }
+    formatCurrentRange(formatData: FormatData) {
+        const currentRange = this.state.selectionRange()!
+        this.doc.formatRange(currentRange, formatData)
+        // 重置 range
+        this.setRange(currentRange)
+    }
+    get boundaryContainer() {
+        return this.element?.parentElement
     }
 }
 

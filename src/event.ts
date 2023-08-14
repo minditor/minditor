@@ -37,7 +37,7 @@ export function createDelegator(namespace = 'global'): EventDelegator {
             }
         }
         callback.capture = capture
-        return callback
+        return callback as EventCallbackWithCapture
     }
 
 
@@ -96,7 +96,6 @@ export function createDelegator(namespace = 'global'): EventDelegator {
     }
 
     function attach(element: HTMLElement) {
-
         if (attachedElements.has(element)) throw new Error('event delegator already attached to this element')
 
         attachedElements.add(element)

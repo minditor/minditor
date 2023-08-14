@@ -10,6 +10,8 @@ function getByTestID(element: HTMLElement, id: string) {
     return element.querySelector(`[data-testid='${id}']`)
 }
 
+const ZWSP = '​'
+
 describe('insert', () => {
     test('insert content node to para', async () => {
         const doc = new DocumentContent({
@@ -482,7 +484,8 @@ describe('change line', () => {
                 {type: 'Text', value: 'pt13'},
             ]
         }])
-        expect(element.textContent).toBe('pt11pt12pt13')
+        // CAUTION 这里判断的 ZWSP 非常重要，不然空行是没法  focus 到 span 里面去的。
+        expect(element.textContent).toBe(`${ZWSP}pt11pt12pt13`)
     })
 
     test('change line at middle of para', () => {
@@ -615,74 +618,141 @@ describe('change line', () => {
                 {type: 'Text', value: ''},
             ]
         }])
-        expect(element.textContent).toBe('pt11pt12pt13')
+        expect(element.textContent).toBe(`pt11pt12pt13${ZWSP}`)
     })
 
 })
 
 //
 //
-// describe('format range', () => {
-//     test('format content in single node', async () => {
-//         const content = new DocumentContent({
-//             type: 'Paragraph',
-//             content: [
-//                 {type: 'Text', value: '11111'},
-//             ]
-//         })
-//
-//         doc.render()
-//
-//         const range = document.createRange()
-//         const container = within(doc.element!).getByText('11111').firstChild! as Node
-//         range.setStart(container, 1)
-//         range.setEnd(container, 3)
-//
-//         doc.formatRange(range, {bold: true})
-//
-//         expect(view.textContent).toBe('11111')
-//         expect(doc.firstChild.content!.size()).toBe(3)
-//         expect(doc.firstChild.content!.at(0).value.value).toBe('1')
-//         expect(doc.firstChild.content!.at(1).value.value).toBe('11')
-//         expect(doc.firstChild.content!.at(2).value.value).toBe('11')
-//
-//         // TODO 验证样式
-//     })
-//
-//     // TODO 跨越父元素来 format
-// })
-//
-//
-// describe('split text as block', () => {
-//     test('split para', async () => {
-//         const content = new DocumentContent({
-//             type: 'Section',
-//             content: [
-//                 {type: 'Text', value: 'title'},
-//             ],
-//             children: [{
-//                 type: 'Paragraph',
-//                 content: [{
-//                     type: 'Text', value: 'para1'
-//                 }]
-//             }]
-//         })
-//
-//         doc.render()
-//         const range = document.createRange()
-//         const container = within(doc.element!).getByText('para1').firstChild! as Node
-//         range.setStart(container, 1)
-//         range.setEnd(container, 1)
-//         await doc.splitTextAsBlock(range)
-//
-//         expect(doc.firstChild.children!.size()).toBe(2)
-//         expect(doc.firstChild.children!.at(0).content.size()).toBe(1)
-//         expect(doc.firstChild.children!.at(0).content.at(0).value.value).toBe('p')
-//         expect(doc.firstChild.children!.at(1).content.size()).toBe(1)
-//         expect(doc.firstChild.children!.at(1).content.at(0).value.value).toBe('ara1')
-//
-//     })
-// })
+describe('format range', () => {
+    test('format content in single node', async () => {
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Paragraph',
+                content: [
+                    {type: 'Text', value: 'pt11', testid:'pt11'},// <-- here
+                    {type: 'Text', value: 'pt12',},
+                    {type: 'Text', value: 'pt13',  testid:'pt13'}// <-- here
+                ]
+            }]
+        }, BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'pt11')!
+        const to = getByTestID(element, 'pt13')!
+
+        range.setStart(from.firstChild!, 2)
+        range.setEnd(to.firstChild!, 2)
+
+        view.formatRange(range, {bold: true})
+
+        const newData = content.toArrayJSON()
+
+        expect(newData).toMatchObject([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt'},
+                {type: 'Text', value: '11', props: { formats: {bold: true} }},
+                {type: 'Text', value: 'pt12', props: { formats: {bold: true} }},
+                {type: 'Text', value: 'pt', props: { formats: {bold: true} }},
+                {type: 'Text', value: '13'}
+            ]
+        }])
+    })
+
+
+    test('format content across sections', async () => {
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'Section',
+                content: [
+                    {type: 'Text', value: 'section', testid:'section'} // <-- here
+                ],
+                children: [{
+                    type: 'Section',
+                    content: [
+                        {type: 'Text', value: 'section1.1', testid:'section1.1'}
+                    ],
+                    children: [{
+                        type: 'Paragraph',
+                        content: [
+                            {type: 'Text', value: 'pt11'},
+                            {type: 'Text', value: 'pt12'},
+                            {type: 'Text', value: 'pt13'}
+                        ]
+                    }]
+                }]
+            }, {
+                type: 'Section',
+                content: [
+                    {type: 'Text', value: 'section1.2', testid:'section1.2'} // <-- here
+                ],
+                children: [{
+                    type: 'Section',
+                    content: [
+                        {type: 'Text', value: 'section1.2.1', testid:'section1.2.1'}
+                    ],
+                    children: []
+                }]
+            }]
+        }, BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'section')!
+        const to = getByTestID(element, 'section1.2')!
+
+        range.setStart(from.firstChild!, 2)
+        range.setEnd(to.firstChild!, 2)
+
+        view.formatRange(range, {bold: true})
+
+        const newData = content.toArrayJSON()
+
+        expect(newData).toMatchObject([{
+            type: 'Section',
+            content: [
+                {type: 'Text', value: 'se'}, // <-- here
+                {type: 'Text', value: 'ction', props: { formats: {bold: true}}}
+            ],
+            children: [{
+                type: 'Section',
+                content: [
+                    {type: 'Text', value: 'section1.1', props: { formats: {bold: true}}}
+                ],
+                children: [{
+                    type: 'Paragraph',
+                    content: [
+                        {type: 'Text', value: 'pt11', props: { formats: {bold: true}}},
+                        {type: 'Text', value: 'pt12', props: { formats: {bold: true}}},
+                        {type: 'Text', value: 'pt13', props: { formats: {bold: true}}}
+                    ]
+                }]
+            }]
+        }, {
+            type: 'Section',
+            content: [
+                {type: 'Text', value: 'se', props: { formats: {bold: true}}},
+                {type: 'Text', value: 'ction1.2'} // <-- here
+            ],
+            children: [{
+                type: 'Section',
+                content: [
+                    {type: 'Text', value: 'section1.2.1'}
+                ],
+                children: []
+            }]
+        }])
+    })
+})
 
 
 export {}
