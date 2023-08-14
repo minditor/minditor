@@ -2,7 +2,7 @@
 import { atom, Atom } from 'rata'
 import {debounce, idleThrottle, nextJob} from "./util";
 // import {createRangeLikeFromRange, findNodeFromElement} from "./editing";
-import { DocNode } from "./DocNode";
+import {DocNode, DocRange} from "./DocNode";
 import { state as globalState } from './globals'
 import {DocumentContentView} from "./View";
 
@@ -93,7 +93,7 @@ export class ReactiveState {
     public lastActiveDevice: Atom<'mouse'|'keyboard'|null>
     public mousePosition: Atom<{clientX: number, clientY: number}|null>
     public fixedMousePosition: {clientX: number, clientY: number}|null = null
-    public selectionRange: Atom<Range|null>
+    public selectionRange: Atom<DocRange|null>
     public mouseEnteredBlock: Atom<DocNode>
     public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null>
     constructor(public view: DocumentContentView) {
@@ -128,10 +128,11 @@ export class ReactiveState {
                         }
 
                         const range = globalState.selectionRange!
-                        if (range.collapsed) {
-                            rangeClientRect(null)
-                            return
-                        }
+                        // if (range.collapsed) {
+                        //     console.log(getRangeRectsIntersecting(Array.from(range.getClientRects()), docEntry.intersectionRect))
+                        //     rangeClientRect(null)
+                        //     return
+                        // }
 
                         // 有 range 才监听 scroll
                         updateRangeClientRectCallback = idleThrottle(function () {

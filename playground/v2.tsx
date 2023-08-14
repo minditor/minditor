@@ -8,6 +8,7 @@ import { createRoot, createElement } from 'axii'
 import { atom } from 'rata'
 import { plugins as markdownPlugins } from "../src/plugins/markdown";
 import { createRangeTool, defaultFormatWidgets } from '../src/plugins/RangeTool'
+import { createSuggestionTool, defaultBlockSuggestionWidgets } from '../src/plugins/SuggestionTool'
 import {nextTask} from "../src/util";
 
 // CAUTION 只能这样写是因为 data 在当前目录之外，用了 alias。但 alias 不能支持动态 import。
@@ -35,7 +36,8 @@ const doc = new Document(
     {Paragraph, Section, Text},
     [
         // ...markdownPlugins,
-        createRangeTool(defaultFormatWidgets)
+        createRangeTool(defaultFormatWidgets),
+        createSuggestionTool('/', true, defaultBlockSuggestionWidgets)
     ]
 )
 

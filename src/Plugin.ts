@@ -80,6 +80,7 @@ export class Plugin {
             callbacks.add((e: Event, args: PluginRunArgv) => {
                 console.log('dispatching', eventName, e)
                 if (!eventMatchHandle(e)) return
+                console.log("activating", this)
                 this.activated(true)
                 return this.run(args)
             })
@@ -100,7 +101,9 @@ export class Plugin {
 
             callbacks.add((e: Event, args: PluginRunArgv) => {
                 console.log('dispatching', eventName, e)
+                if (e.key === 'Escape') debugger
                 if (!eventMatchHandle(e)) return
+                console.warn('deactivated', this)
                 this.activated(false)
             })
         })
