@@ -180,7 +180,7 @@ export class DocNode {
             docNode.parent(this)
         })
     }
-
+    // 包括自己
     findPath(ancestor: DocNode) {
         return findPath(this, ancestor)
     }

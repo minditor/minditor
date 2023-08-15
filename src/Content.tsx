@@ -153,7 +153,7 @@ export class DocumentContent extends DocNode{
                 startNode.replaceFirstChild(undefined)
             }
 
-            // 2. 删除 range 之间的所有节点。
+            // 2. 删除 range 之间的所有节点。注意 path 里面是包括 startNode 自己的
             const startPath = startNode.findPath(ancestorNode!)!
             const endPath = endNode.findPath(ancestorNode!)!
 
@@ -172,7 +172,10 @@ export class DocumentContent extends DocNode{
                 // 没有 endPath，还要看看 endNode 有没有 children 要处理。
                 if (DocNode.typeHasChildren(endNode)) {
                     const mountNode = startPath.at(-1) ?? startNode
-                    mountNode.replaceNext(endNode.firstChild)
+                    // CAUTION 注意这里是 append。因为前面处理所有 endPath 上剩余的兄弟节点。到这里里的时候，如果
+                    //  endNode 还有 children， children 的渲染是排着 endNode 兄弟节点前面的（因为先序遍历）。所以要用 append。
+                    //  用 replaceNext 会使得之前的兄弟节点又丢失了。
+                    endNode.firstChild && mountNode.append(endNode.firstChild)
                 }
             }
 
