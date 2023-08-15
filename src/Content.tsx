@@ -161,13 +161,19 @@ export class DocumentContent extends DocNode{
                 const startPathNode = startPath.pop()!
                 const endPathNode = endPath.pop()!
 
-                startPathNode.replaceNext(endPathNode)
+                startPathNode.replaceNext(endPathNode.next)
             }
 
-            // 3. 如果还有 endPath，要挂载为 startNode.parent 的兄弟节点。
+            // 3. 如果还有 endPath，说明 endPath 的深度比较深。剩下的节点全部要挂载为 startNode.parent 的兄弟节点。
             if (endPath.length) {
                 const remainedEndNodeRoot = endPath.at(-1)!
                 startNode.replaceNext(remainedEndNodeRoot)
+            } else {
+                // 没有 endPath，还要看看 endNode 有没有 children 要处理。
+                if (DocNode.typeHasChildren(endNode)) {
+                    const mountNode = startPath.at(-1) ?? startNode
+                    mountNode.replaceNext(endNode.firstChild)
+                }
             }
 
             // 4. 合并 startNode 和 endNode 里面的 text content，组成新的 startNode 的 content

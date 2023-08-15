@@ -31,6 +31,7 @@
     "global.d.ts",
     "src",
     "jsx.d.ts",
-    "playground/v2.tsx"
+    "playground/v2.tsx",
+    "../rata/src"
   ]
 }

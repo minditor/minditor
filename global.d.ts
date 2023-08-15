@@ -59,4 +59,6 @@ declare global {
     }
     interface Element extends  ComponentNode {}
   }
+
+  type Atom<T> = (v: T) => T
 }

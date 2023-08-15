@@ -1,10 +1,10 @@
 import {DocumentContent} from "../src/Content";
 import {DocumentContentView} from "../src/View";
-import {Paragraph, Section, Text} from "../src/DocNode";
+import {Paragraph, Section, Text, ListItem} from "../src/DocNode";
 import {getByText} from '@testing-library/dom'
 import {expect, describe, test} from "@jest/globals";
 
-const BuiltinTypes = {Paragraph, Section, Text}
+const BuiltinTypes = {Paragraph, Section, Text, ListItem}
 
 function getByTestID(element: HTMLElement, id: string) {
     return element.querySelector(`[data-testid='${id}']`)
@@ -753,6 +753,176 @@ describe('format range', () => {
         }])
     })
 })
+
+
+describe('list update', () => {
+    test('change line at end of para', () => {
+        const content = new DocumentContent({
+            type: 'Document',
+            children:[{
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: 'l1pt11' },
+                    {type: 'Text', value: 'l1pt12',testid:'l1pt12'}, // <-- here
+                    {type: 'Text', value: 'l1pt13' }
+                ]
+            }, {
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: 'l2pt11', },
+                    {type: 'Text', value: 'l2pt12',testid:'l2pt12'},// <-- here
+                    {type: 'Text', value: 'l2pt13',  }
+                ]
+            }, {
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: 'l3pt11' },
+                    {type: 'Text', value: 'l3pt12' },
+                    {type: 'Text', value: 'l3pt13' }
+                ]
+            }]
+        }, BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'l1pt12')!
+        const to = getByTestID(element, 'l2pt12')!
+        // CAUTION 如果要选中文字的最后，一定要用 firstChild 得到那个 Text 节点才行，不然就会报 out of bound。严格来说上面都应该改成这样。
+        //  只不过刚好 span 里只有一个节点，所以能兼容。
+        range.setStart(from.firstChild!, 2)
+        range.setEnd(to.firstChild!, 2)
+
+        view.updateRange( range, '')
+        const newData = content.toArrayJSON()
+
+        expect(newData).toMatchObject([{
+            type: 'ListItem',
+            content: [
+                {type: 'Text', value: 'l1pt11' },
+                {type: 'Text', value: 'l1'}, // <-- here
+                {type: 'Text', value: 'pt12'},// <-- here
+                {type: 'Text', value: 'l2pt13',  }
+            ]
+        }, {
+            type: 'ListItem',
+            content: [
+                {type: 'Text', value: 'l3pt11' },
+                {type: 'Text', value: 'l3pt12' },
+                {type: 'Text', value: 'l3pt13' }
+            ]
+        }])
+
+        expect(element.textContent).toBe(`1.l1pt11l1pt12l2pt132.l3pt11l3pt12l3pt13`)
+    })
+
+
+    test('update range in nested list', () => {
+        const content = new DocumentContent({
+            type: 'Document',
+            children: [{
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: '222'},
+                ],
+                children: [{
+                    type: 'ListItem',
+                    content: [
+                        {type: 'Text', value: '333'},
+                    ],
+                    children: [{
+                        type: 'ListItem',
+                        content: [
+                            {type: 'Text', value: '666'},
+                        ],
+                        children: [{
+                            type: 'ListItem',
+                            content: [
+                                {type: 'Text', value: '777'},
+                                {type: 'Text', value: '777', testid:'777'}, // <-- from
+                                {type: 'Text', value: '777'}
+                            ],
+                        }]
+                    }]
+                }]
+            }, {
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: 'list2', testid: 'list2'}, // <-- to
+                ],
+                children: [{
+                    type: 'ListItem',
+                    content: [
+                        {type: 'Text', value: '9'},
+                        {type: 'Text', value: '99'},
+                        {type: 'Text', value: '999'}
+                    ],
+                }]
+            }]
+        }, BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, '777')!
+        const to = getByTestID(element, 'list2')!
+
+        range.setStart(from.firstChild!, 2)
+        range.setEnd(to.firstChild!, 2)
+
+        view.updateRange( range, '')
+        const newData = content.toArrayJSON()
+
+        expect(newData).toMatchObject([{
+            type: 'ListItem',
+            content: [
+                {type: 'Text', value: '222'},
+            ],
+            children: [{
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: '333'},
+                ],
+                children: [{
+                    type: 'ListItem',
+                    content: [
+                        {type: 'Text', value: '666'},
+                    ],
+                    children: [{
+                        type: 'ListItem',
+                        content: [
+                            {type: 'Text', value: '777'},
+                            {type: 'Text', value: '77'},
+                            {type: 'Text', value: 'st2'},
+                        ],
+                    }]
+                }]
+            }, {
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: '9'},
+                    {type: 'Text', value: '99'},
+                    {type: 'Text', value: '999'}
+                ],
+            }]
+        }])
+
+        expect(element.textContent).toBe(`1.2221.1.3331.1.1.6661.1.1.1.77777st21.2.999999`)
+    })
+
+
+
+
+
+
+})
+
+
+
+
+
 
 
 export {}

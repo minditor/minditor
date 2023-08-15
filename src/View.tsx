@@ -128,7 +128,7 @@ export class DocumentContentView extends EventDelegator{
         }
     }
     isValidRange(range?: Range) : boolean{
-        return !!(this.findTextNodeFromElement(range?.startContainer) && this.findTextNodeFromElement(range?.endContainer))
+        return !!range?.startContainer && !!range?.endContainer && !!(this.findTextNodeFromElement(range?.startContainer) && this.findTextNodeFromElement(range?.endContainer))
     }
     createDocRange = (range: Range) : DocRange|null => {
         // 非法选区。可能选中了整个节点。
@@ -312,7 +312,7 @@ export class DocumentContentView extends EventDelegator{
         e?.preventDefault()
         e?.stopPropagation()
         if (currentRange!.collapsed) {
-            const docRange = this.createDocRange(currentRange!)
+            const docRange = this.createDocRange(currentRange!)!
             const {startOffset, startText, startNode} = docRange
             if (startOffset === 0 && startText.isFirstContent()) {
                 // 1. 头部。就在当前节点前面 prepend 一个空行或者别的空节点，例如空的 listItem
@@ -336,7 +336,7 @@ export class DocumentContentView extends EventDelegator{
             const newRange = document.createRange()
             newRange.selectNodeContents(newTextDOM)
             newRange.collapse()
-            debugger
+
             this.changeLine(undefined, newRange)
         }
 
@@ -344,7 +344,7 @@ export class DocumentContentView extends EventDelegator{
     deleteContent = (e: Event|undefined, currentRange: Range|undefined) => {
         assert(!!currentRange, 'no range selected')
         this.tryUseDefaultBehavior(e)
-        const docRange = this.createDocRange(currentRange!)
+        const docRange = this.createDocRange(currentRange!)!
         const {startOffset, startText, startNode} = docRange
         if (currentRange!.collapsed) {
             // 删除单个字符，或者进行结构变化
@@ -471,7 +471,7 @@ export class DocumentContentView extends EventDelegator{
         setNativeRange(startContainer, docRange.startOffset, endContainer, docRange.endOffset)
     }
     formatRange(range: Range, formatData: FormatData) {
-        this.doc.formatRange(this.createDocRange(range), formatData)
+        this.doc.formatRange(this.createDocRange(range)!, formatData)
     }
     formatCurrentRange(formatData: FormatData) {
         const currentRange = this.state.contentRange()!

@@ -3,7 +3,7 @@
 import {ANY, DocumentContent} from "../src/Content";
 import { DocumentContentView } from "../src/View";
 import {Document} from "../src/Document";
-import {Paragraph, Section, Text} from "../src/DocNode";
+import {Paragraph, Section, Text, ListItem} from "../src/DocNode";
 import { createRoot, createElement } from 'axii'
 import { atom } from 'rata'
 import { plugins as markdownPlugins } from "../src/plugins/markdown";
@@ -17,6 +17,7 @@ const data = {
     singlePara: (await import('@tests/data/singlePara')).data,
     singleSection: (await import('@tests/data/singleSection')).data,
     // @ts-ignore
+    singleList: (await import('@tests/data/singleList')).data,
     nestedList: (await import('@tests/data/nestedList')).data,
     multiSection: (await import('@tests/data/multiSection')).data,
 }
@@ -31,9 +32,11 @@ const searchObj = Object.fromEntries(
 
 const doc = new Document(
     // data.singlePara,
-    data.multiSection,
+    // data.multiSection,
     // data.singleSection,
-    {Paragraph, Section, Text},
+    // data.singleList,
+    data.nestedList,
+    {Paragraph, Section, Text, ListItem},
     [
         // ...markdownPlugins,
         createRangeTool(defaultFormatWidgets),

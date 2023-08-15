@@ -1,4 +1,4 @@
-import { atom, Atom, reactive, toRaw, computed } from 'rata'
+import { atom, Atom, reactive, toRaw, computed, atomComputed } from 'rata'
 import { Fragment, createElement } from "axii"
 import {assert, deepClone} from "./util";
 import {DocumentContent} from "./Content";
@@ -120,7 +120,7 @@ export class DocNode {
     public level: Atom<number> // level 是从 1 开始算的
     public useAutoSerialNumber = atom(false)
     public serialNumber: Atom<null|number[]> // 格式: [1, 2, 2, 1]
-    public manualSerialNumber = atom(false)
+    public manualSerialNumber: Atom<null|number[]> = atom(null)
     public firstChild?: DocNode
     public content?: Text
     public id: number
@@ -131,12 +131,12 @@ export class DocNode {
             return this.isRoot ? 0 : ((this.parent()?.level?.() ?? 0) + 1)
         })
         // 序号问题
-        this.serialNumber = computed(() => {
+        this.serialNumber = atomComputed(() => {
             if (!this.useAutoSerialNumber()) return null
             if (this.manualSerialNumber()) return this.manualSerialNumber()
-            const index = (this.prev()?.serialNumber()?.at(-1) ?? 0) + 1
+            const index = (this.prev()?.serialNumber()?.data?.at(-1) ?? 0) + 1
 
-            return (this.parent.serialNumber() || []).concat(index)
+            return (this.parent().serialNumber() || []).concat(index)
         })
 
         if ((this.constructor as typeof DocNode).hasContent) {
@@ -439,21 +439,41 @@ export class Text extends DocNode{
     }
 }
 
-// export class ListItem extends DocNode {
-//     static hasChildren = true
-//     static hasContent = true
-//     render({content}) : HTMLElement{
-//         const style = () => {
-//             return {
-//                 paddingLeft: this.level() * 10
-//             }
-//         }
-//         // TODO 序号？
-//         return <div style={style}>
-//             {content}
-//         </div> as HTMLElement
-//     }
-// }
+export class ListItem extends DocNode {
+    static hasChildren = true
+    static hasContent = true
+    static createDefaultNextSibling(docNode: DocNode, content?: Text) {
+        const item = new ListItem({type: 'ListItem'})
+        if(content) item.replaceContent(content)
+        return item
+    }
+    static appendDefaultAsChildren: boolean = false
+    static createDefaultPreviousSibling(docNode: DocNode) {
+        return new ListItem({type: 'ListItem'})
+    }
+    constructor(public data: DocNodeData, parent?: DocNode) {
+        super(data, parent)
+        // 序号问题
+        this.serialNumber = atomComputed(() => {
+            const index = this.prev() instanceof ListItem ? this.prev()?.serialNumber()!.at(-1) + 1 : 1
+            const parentSerialNumber = this.parent() instanceof ListItem ? this.parent().serialNumber() : []
+            console.log("recomputed number", parentSerialNumber.concat(index).join('.'), this.prev())
+
+            return parentSerialNumber.concat(index)
+        })
+    }
+    render({content}:RenderProps, {createElement}: RenderContext) : HTMLElement{
+        const style = () => {
+            return {
+                paddingLeft: this.level() * 20
+            }
+        }
+        return <div style={style}>
+            <span>{() => this.serialNumber().join('.')}.</span>
+            <span>{content}</span>
+        </div> as unknown as HTMLElement
+    }
+}
 
 
 
