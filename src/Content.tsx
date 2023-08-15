@@ -180,8 +180,10 @@ export class DocumentContent extends DocNode{
             if (newStartText) {
                 newStartText.replaceNext(newEnd)
             } else {
-                // 说明 start 是头。
+                // 说明 start 是头。如果没有 newEnd，说明 end 也被删完了。replaceContent 里面会判断，始终保留一个空 Text
                 startNode.replaceContent(newEnd)
+                // 这收要重置 newStartText,保证外部 setCursor 能找到正确的位置
+                newStartText = startNode.content!
             }
         }
 

@@ -4,7 +4,7 @@ import {debounce, idleThrottle, nextJob} from "./util";
 // import {createRangeLikeFromRange, findNodeFromElement} from "./editing";
 import {DocNode, DocRange} from "./DocNode";
 import { state as globalState } from './globals'
-import {DocumentContentView} from "./View";
+import {CONTENT_RANGE_CHANGE, DocumentContentView} from "./View";
 
 type Rect = {
     top: number,
@@ -90,21 +90,20 @@ function getRangeRectsIntersecting(rects: Rect[], targetRect: Rect) {
 
 
 export class ReactiveState {
-    public lastActiveDevice: Atom<'mouse'|'keyboard'|null>
-    public mousePosition: Atom<{clientX: number, clientY: number}|null>
+    public lastActiveDevice: Atom<'mouse'|'keyboard'|null> = atom(null)
+    public mousePosition: Atom<{clientX: number, clientY: number}|null> = atom(null)
     public fixedMousePosition: {clientX: number, clientY: number}|null = null
-    public selectionRange: Atom<DocRange|null>
-    public mouseEnteredBlock: Atom<DocNode>
-    public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null>
+    public contentRange: Atom<DocRange|null> = atom(null)
+    public mouseEnteredBlock: Atom<DocNode|null> = atom(null)
+    public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null> = atom(null)
     constructor(public view: DocumentContentView) {
-        this.mousePosition = this.createUserMousePosition()
-        this.selectionRange = this.createDocSelectionRange()
-        this.lastActiveDevice = this.createLastActiveDevice()
-        this.mouseEnteredBlock = this.createMouseEnteredBlockNode()
-        this.visibleRangeRect = this.createVisibleRangeRect()
+        this.createUserMousePosition()
+        this.createDocSelectionRange()
+        this.createLastActiveDevice()
+        this.createMouseEnteredBlockNode()
+        this.createVisibleRangeRect()
     }
     createVisibleRangeRect() {
-        const rangeClientRect = atom(undefined)
         let updateRangeClientRectCallback: EventListenerOrEventListenerObject
         let stopListenSelectionChange: () => void
 
@@ -118,9 +117,9 @@ export class ReactiveState {
                 if (updateRangeClientRectCallback) boundaryContainer.removeEventListener('scroll', updateRangeClientRectCallback)
 
                 if(!docEntry.isIntersecting) {
-                    rangeClientRect(null)
+                    this.visibleRangeRect(null)
                 } else {
-                    stopListenSelectionChange = this.view.listen('selectionchange', () => {
+                    stopListenSelectionChange = this.view.listen(CONTENT_RANGE_CHANGE, () => {
                         if (updateRangeClientRectCallback) boundaryContainer.removeEventListener('scroll', updateRangeClientRectCallback)
 
                         if (!globalState.selectionRange) {
@@ -135,8 +134,8 @@ export class ReactiveState {
                         // }
 
                         // 有 range 才监听 scroll
-                        updateRangeClientRectCallback = idleThrottle(function () {
-                            rangeClientRect(getRangeRectsIntersecting(Array.from(range.getClientRects()), docEntry.intersectionRect))
+                        updateRangeClientRectCallback = idleThrottle( () => {
+                            this.visibleRangeRect(getRangeRectsIntersecting(Array.from(range.getClientRects()), docEntry.intersectionRect))
                         }, 100)
 
                         // 存在 scroll 要就监听 scroll
@@ -160,51 +159,37 @@ export class ReactiveState {
                 observer.disconnect()
             }
         })
-        return rangeClientRect
     }
     createLastActiveDevice() {
-        const lastActiveDevice = atom(null)
         this.view.listen('mousemove', () => {
-            lastActiveDevice('mouse')
+            this.lastActiveDevice('mouse')
         })
 
         this.view.listen('inputChar', () => {
-            lastActiveDevice('keyboard')
+            this.lastActiveDevice('keyboard')
         })
-
-        return lastActiveDevice
     }
     createUserMousePosition() {
-        const userMousePosition = atom(null)
         const debouncedUpdateMousePosition = idleThrottle((e: MouseEvent) => {
             const {clientX, clientY} = e
-            userMousePosition({clientX, clientY})
+            this.mousePosition({clientX, clientY})
             this.fixedMousePosition = {clientX, clientY}
         }, 200)
 
         this.view.listen('mousemove', debouncedUpdateMousePosition)
-        return userMousePosition
     }
     createDocSelectionRange() {
-        const docSelectionRange = atom(null)
         // FIXME 这里到底是谁负责从 globalKM 里面读？
-        this.view.listen('selectionchange', () => {
+        this.view.listen(CONTENT_RANGE_CHANGE, () => {
             // CAUTION 这里默认了 globalState 里的注册的 selectionchange 一定先发生，所以这里才能直接读
             const range = globalState.selection!.rangeCount ? globalState.selection!.getRangeAt(0) : null
-            // 用户可以通过监听事件的方式来处理自己的逻辑
-            const inputEvent = new CustomEvent('docSelectionChange',  { detail: {data: range}})
-            this.view.element!.dispatchEvent(inputEvent)
-
-            // 也可以直接使用我们的 useSelectionRange reactive 来构建逻辑
-            docSelectionRange(range ? this.view.createDocRange(range) : null)
+            const docRange = range ? this.view.createDocRange(range) : null
+            this.contentRange(docRange)
         })
-
-        return docSelectionRange
     }
     createMouseEnteredBlockNode() {
-        const visualFocusedBlockNode = atom(null)
         const debouncedUpdateNode = debounce((node: DocNode) => {
-            visualFocusedBlockNode(node)
+            this.mouseEnteredBlock(node)
         }, 100)
 
         // TODO 有没有性能问题？mouseenter capture 会一路
@@ -214,8 +199,6 @@ export class ReactiveState {
             //     debouncedUpdateNode(node)
             // }
         })
-
-        return visualFocusedBlockNode
     }
 
 }

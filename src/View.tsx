@@ -30,6 +30,7 @@ export class Observable {
     }
 }
 
+export const CONTENT_RANGE_CHANGE = 'contentrangechange'
 
 export class DocumentContentView extends EventDelegator{
     public element?: HTMLElement
@@ -38,6 +39,7 @@ export class DocumentContentView extends EventDelegator{
     public hostContext = { skipIndicator: {skip: false} }
     public docNodeToBlockUnit = new WeakMap<DocNode, HTMLElement>()
     public blockUnitToHost: WeakMap<HTMLElement, Host> = new WeakMap()
+    public blockUnitToDocNode: WeakMap<HTMLElement, DocNode> = new WeakMap()
     public state: ReactiveState
     constructor(public doc: DocumentContent) {
         super()
@@ -57,11 +59,44 @@ export class DocumentContentView extends EventDelegator{
         this.doc.listen('replaceDocNode', this.patchReplaceDocNode)
         this.doc.listen('updateText', this.patchUpdateText)
 
-        this.listen('selectionchange', this.onSelectionChange)
+        this.listen('selectionchange', this.dispatchContentRangeChange)
 
     }
-    onSelectionChange = () => {
-        console.log('selection change', this.state.selectionRange()!)
+    dispatchContentRangeChange = () => {
+        // 这里已经通过 EventDelegator 检查过了肯定是在 doc 内。这里只是要修正选中了整个节点的情况。
+        // 没有 range 也算是 合法的
+        if (!globalKM.selectionRange || this.isValidRange(globalKM.selectionRange!)) {
+            this.dispatch(new CustomEvent(CONTENT_RANGE_CHANGE))
+            console.log("selection range is valid", globalKM.selectionRange)
+            return
+        }
+
+        // 我们目前只修正选中了整个段落的情况
+        const {startContainer, commonAncestorContainer} = globalKM.selectionRange
+        if (startContainer.nodeType !== Node.TEXT_NODE && startContainer === commonAncestorContainer ) {
+            const docNode = this.findDocNodeFromElement(startContainer)
+            console.log("fix select para", docNode)
+            if (docNode) {
+                this.setRange(new DocRange(
+                    docNode.content as Text,
+                    0,
+                    docNode.content?.lastSibling as Text,
+                    0,
+                ))
+            }
+        }
+
+        // 剩下的非法情况统统修正成到文档最后。
+        const lastText = this.doc.firstChild?.lastDescendant.content?.lastChild as Text
+        this.setRange(new DocRange(
+            lastText,
+            lastText.value.length,
+            lastText,
+            lastText.value.length,
+        ))
+
+        nextTask(() => this.dispatch(new CustomEvent(CONTENT_RANGE_CHANGE)))
+
     }
     defaultBehaviorEvent: Event|undefined
     tryUseDefaultBehavior(event: Event|undefined) {
@@ -69,6 +104,17 @@ export class DocumentContentView extends EventDelegator{
     }
     resetUseDefaultBehavior() {
         this.defaultBehaviorEvent = undefined
+    }
+    findDocNodeFromElement(element: Node) {
+        let pointer: HTMLElement | Node | null = element
+        while(pointer && pointer !== this.element && pointer !== document.body) {
+            const item = this.blockUnitToDocNode.get(pointer as HTMLElement)
+            if (item) {
+                return item
+            } else {
+                pointer = pointer.parentElement
+            }
+        }
     }
     findTextNodeFromElement(element: Node) {
         let pointer: HTMLElement | Node | null = element
@@ -81,7 +127,12 @@ export class DocumentContentView extends EventDelegator{
             }
         }
     }
-    createDocRange = (range: Range) : DocRange => {
+    isValidRange(range?: Range) : boolean{
+        return !!(this.findTextNodeFromElement(range?.startContainer) && this.findTextNodeFromElement(range?.endContainer))
+    }
+    createDocRange = (range: Range) : DocRange|null => {
+        // 非法选区。可能选中了整个节点。
+        assert(this.isValidRange(range), 'range not valid')
         return new DocRange(
             this.findTextNodeFromElement(range.startContainer)!,
             range.startOffset,
@@ -89,10 +140,17 @@ export class DocumentContentView extends EventDelegator{
             range.endOffset,
         )
     }
-    isDefaultRangeCollapseAcceptable({startNode, endNode, startText, startOffset}: DocRange) {
-        // 理论上 startNode 和 endNode 是在 paragraph/title 里面应该都可以？？？
+    isDefaultRangeCollapseAcceptable({startNode, endNode, startText, startOffset, endOffset, endText}: DocRange) {
+        // 理论上 startNode 和 endNode 是在 paragraph/title 里面应该都可以。看是不能从头删到尾，这样会把空的 Text span 节点 也删掉。
         // if (startNode === endNode && !(startText.isFirstContent() && !startText.next && startOffset === 0 && startText.value.length ===1)) return true
-        if (startNode === endNode) return true
+        console.warn(
+            startNode === endNode,
+            startNode.isContentEmpty()
+        )
+        // debugger
+        // startNode.isContentEmpty()
+
+        if (startNode === endNode && !startNode.isContentEmpty()) return true
 
         // TODO 还有些跨节点的，但是标签相同的场景应该也是可以。
         return false
@@ -313,7 +371,7 @@ export class DocumentContentView extends EventDelegator{
                 }
             }
         } else {
-            const newStartText = this.doc.updateRange(this.createDocRange(this.state.selectionRange()!)!, '')
+            const newStartText = this.doc.updateRange(this.state.contentRange()!, '')
             if (e?.defaultPrevented) {
                 if (startOffset !== 0) {
                     this.setCursor(startText, Infinity)
@@ -353,6 +411,7 @@ export class DocumentContentView extends EventDelegator{
         host.render()
 
         this.blockUnitToHost.set(contentDOMNode, host)
+        this.blockUnitToDocNode.set(contentDOMNode, docNode)
         this.docNodeToBlockUnit.set(docNode, contentDOMNode)
 
         if ((docNode.constructor as typeof DocNode).hasChildren) {
@@ -415,7 +474,7 @@ export class DocumentContentView extends EventDelegator{
         this.doc.formatRange(this.createDocRange(range), formatData)
     }
     formatCurrentRange(formatData: FormatData) {
-        const currentRange = this.state.selectionRange()!
+        const currentRange = this.state.contentRange()!
         this.doc.formatRange(currentRange, formatData)
         // 重置 range
         this.setRange(currentRange)

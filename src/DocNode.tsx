@@ -191,7 +191,7 @@ export class DocNode {
         if (startText === endText) {
 
             startText.value = startText.value.slice(0, startOffset) + textToInsert + endText.value.slice(endOffset)
-
+            newStartText = startText
         } else {
             startText.value = startText.value.slice(0, startOffset) + textToInsert
             endText.value = endText.value.slice(endOffset)
@@ -199,16 +199,18 @@ export class DocNode {
             const newEnd = endText.value? endText : endText.next
 
             if (newStartText) {
-                newStartText.replaceNext(newEnd)
+                newStartText.replaceNext(newEnd as DocNode)
             } else {
                 // 说明 start 是头。
                 startNode.replaceContent(newEnd)
+                // 因为可能删到尾部，但 replaceContent 会保证始终有个 text
+                newStartText = startNode.content!
             }
         }
         return newStartText!
     }
     isContentEmpty() {
-        return !!this.content!.value && !this.content!.next
+        return !this.content!.value && !this.content!.next
     }
     append(next: DocNode) {
         assert(!this.isRoot, 'root cannot append')
