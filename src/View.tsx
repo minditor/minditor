@@ -52,12 +52,13 @@ export class DocumentContentView extends EventDelegator{
         this.doc.listen('insertContentBefore', this.patchInsertContentBefore)
         this.doc.listen('mergeByPreviousSiblingInTree', this.patchMergeByPreviousSiblingInTree)
         this.doc.listen('spliceContent', this.patchSpliceContent)
-        // TODO 要不要直接就改成 prepend/append ?
         this.doc.listen('prependPreviousSibling', this.patchPrependPreviousSibling)
         this.doc.listen('appendNextSibling', this.patchAppendNextSibling)
         this.doc.listen('removeDocNode', this.patchRemoveDocNode)
         this.doc.listen('replaceDocNode', this.patchReplaceDocNode)
         this.doc.listen('updateText', this.patchUpdateText)
+        // level 变化不需要做任何事情。
+        // this.doc.listen('changeLevel', this.patchChangeLevel)
 
         this.listen('selectionchange', this.dispatchContentRangeChange)
 
@@ -387,7 +388,29 @@ export class DocumentContentView extends EventDelegator{
         }
         this.resetUseDefaultBehavior()
     }
-    changeLevel() {
+    changeLevel = (e: KeyboardEvent) => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        // console.log("change level", !this.state.contentRange(), this.state.contentRange()?.collapsed)
+        if(!this.state.contentRange()|| !this.state.contentRange()?.collapsed) return
+
+        const toParent = e.shiftKey
+        const  {startNode, startOffset} = this.state.contentRange()
+        if (toParent) {
+            if(!startNode.parent() || !DocNode.typeHasChildren(startNode)) {
+                console.log("no children")
+                return
+            }
+        } else {
+            if (!startNode.prev() || !DocNode.typeHasChildren(startNode.prev())) {
+                console.log("no sibling")
+                return
+            }
+        }
+
+        this.doc.changeLevel(startNode, toParent)
+        this.setCursor(startNode, startOffset)
 
     }
     createTextDOMNode(textNode: DocNode) {

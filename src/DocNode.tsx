@@ -167,8 +167,11 @@ export class DocNode {
         return <span>should not render</span> as unknown as HTMLElement
     }
     replaceFirstChild(newFirstChild: DocNode|undefined) {
-        this.firstChild = newFirstChild
+        const originPrev = newFirstChild?.prev()
+        if (originPrev) originPrev.next = undefined
+
         newFirstChild?.prev(undefined)
+        this.firstChild = newFirstChild
         forEachNode(this.firstChild, (docNode: DocNode) => {
             docNode.parent(this)
         })
@@ -225,12 +228,10 @@ export class DocNode {
     append(next: DocNode) {
         assert(!this.isRoot, 'root cannot append')
         assert(!!next, 'can not append empty next node')
+        // CAUTION 可能是抢夺了比人的节点。所以这里要处理一下
+        next.remove()
         const originNext = this.next
         this.next = next
-        // CAUTION 可能是抢夺了比人的节点。所以这里要处理一下
-        if (next?.prev()) {
-            next.prev().next = undefined
-        }
         next?.prev(this)
 
         forEachNode(next, (newDocNode: DocNode) => newDocNode.parent(this.parent()))
@@ -254,8 +255,11 @@ export class DocNode {
 
     replaceNext(next?: DocNode,) {
         assert(!this.isRoot, 'root cannot replaceNext')
-        this.next = next
+        const originPrev = next?.prev()
+        if (originPrev) originPrev.next = undefined
         next?.prev(this)
+        this.next = next
+
         forEachNode(next, (newDocNode: DocNode) => newDocNode.parent(this.parent()))
     }
     remove() {

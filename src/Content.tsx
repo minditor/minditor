@@ -247,6 +247,24 @@ export class DocumentContent extends DocNode{
         this.dispatch('appendNextSibling', { args: [docNode], result: newDocNode })
         return newDocNode
     }
+    changeLevel(docNode: DocNode, toParent: boolean) {
+        if (toParent) {
+            const parent = docNode.parent()
+            const next = docNode.next
+            docNode.replaceNext(undefined)
+            docNode.lastChild?.replaceNext(next)
+            // 会自动抢夺
+            parent.append(docNode)
+        } else {
+            if(docNode.prev().lastChild) {
+                docNode.prev().lastChild.replaceNext(docNode)
+            } else {
+                docNode.prev().replaceFirstChild(docNode)
+            }
+        }
+        this.dispatch('changeLevel', { args: [docNode, toParent], result: docNode })
+        return docNode
+    }
     removeDocNode(docNode: DocNode) {
         if (docNode.prev()) {
             docNode.prev().replaceNext(docNode.next)
