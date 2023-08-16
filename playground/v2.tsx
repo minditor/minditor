@@ -4,11 +4,14 @@ import {ANY, DocumentContent} from "../src/Content";
 import { DocumentContentView } from "../src/View";
 import {Document} from "../src/Document";
 import {Paragraph, Section, Text, ListItem} from "../src/DocNode";
+import { Image, ImageSuggestionWidget } from "../src/components/Image";
+import { Code, CodeSuggestionWidget} from "../src/components/Code";
 import { createRoot, createElement } from 'axii'
 import { atom } from 'rata'
 import { plugins as markdownPlugins } from "../src/plugins/markdown";
 import { createRangeTool, defaultFormatWidgets } from '../src/plugins/RangeTool'
 import { createSuggestionTool, defaultBlockSuggestionWidgets } from '../src/plugins/SuggestionTool'
+
 import {nextTask} from "../src/util";
 
 // CAUTION 只能这样写是因为 data 在当前目录之外，用了 alias。但 alias 不能支持动态 import。
@@ -20,6 +23,7 @@ const data = {
     singleList: (await import('@tests/data/singleList')).data,
     nestedList: (await import('@tests/data/nestedList')).data,
     multiSection: (await import('@tests/data/multiSection')).data,
+    misc: (await import('@tests/data/misc')).data,
 }
 
 const searchObj = Object.fromEntries(
@@ -35,12 +39,16 @@ const doc = new Document(
     // data.multiSection,
     // data.singleSection,
     // data.singleList,
-    data.nestedList,
-    {Paragraph, Section, Text, ListItem},
+    // data.nestedList,
+    data.misc,
+    {Paragraph, Section, Text, ListItem, Image, Code},
     [
         ...markdownPlugins,
         createRangeTool(defaultFormatWidgets),
-        createSuggestionTool('/', true, defaultBlockSuggestionWidgets)
+        createSuggestionTool('/', true, defaultBlockSuggestionWidgets.concat(
+            ImageSuggestionWidget,
+            CodeSuggestionWidget
+        ))
     ]
 )
 

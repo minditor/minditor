@@ -52,12 +52,12 @@ function findClosestElement(target: Element|Node) : HTMLElement {
 
 
 
-function getRectIntersecting(rectA: Rect, rectB: Rect) {
+function getRectIntersecting(rectA: Rect, rectB: Rect, offset: number) {
     const rect = {
-        left : Math.max(rectA.left, rectB.left),
-        top:Math.max(rectA.top, rectB.top),
-        right: Math.min(rectA.right, rectB.right),
-        bottom: Math.min(rectA.bottom, rectB.bottom),
+        left : Math.max(rectA.left, rectB.left - offset),
+        top:Math.max(rectA.top, rectB.top - offset),
+        right: Math.min(rectA.right, rectB.right + offset),
+        bottom: Math.min(rectA.bottom, rectB.bottom + offset),
         width: 0,
         height: 0,
     }
@@ -67,12 +67,12 @@ function getRectIntersecting(rectA: Rect, rectB: Rect) {
         rect.height = rect.bottom - rect.top
         return rect
     } else {
-        console.warn('no intersecting rect')
+        console.warn('no intersecting rect', rectA, rectB)
     }
 }
 
-
-function getRangeRectsIntersecting(rects: Rect[], targetRect: Rect) {
+// CAUTION 第三参数 offset 是用来修正有时候 intersectingRect 不准确的问题。非常重要
+function getRangeRectsIntersecting(rects: Rect[], targetRect: Rect, offset = 30) {
     // CAUTION 这里为了简化计算，所以直接算出一个 combinedRect
     const head = rects[0]
     const tail = rects.at(-1)!
@@ -85,7 +85,7 @@ function getRangeRectsIntersecting(rects: Rect[], targetRect: Rect) {
     }
 
 
-    return getRectIntersecting(combinedRect, targetRect)
+    return getRectIntersecting(combinedRect, targetRect, offset)
 }
 
 
@@ -116,6 +116,8 @@ export class ReactiveState {
                 if (stopListenSelectionChange) stopListenSelectionChange()
                 if (updateRangeClientRectCallback) boundaryContainer.removeEventListener('scroll', updateRangeClientRectCallback)
 
+                console.log("isIntersecting", docEntry.isIntersecting)
+                // FIXME 保证一定要产生监听？不然会出现时有时没有的情况，改成这样了还是有 bug。还是出现了 rsecting @ ReactiveS
                 if(!docEntry.isIntersecting) {
                     this.visibleRangeRect(null)
                 } else {
@@ -184,6 +186,7 @@ export class ReactiveState {
             // CAUTION 这里默认了 globalState 里的注册的 selectionchange 一定先发生，所以这里才能直接读
             const range = globalState.selection!.rangeCount ? globalState.selection!.getRangeAt(0) : null
             const docRange = range ? this.view.createDocRange(range) : null
+            console.log("setting content range", range, docRange)
             this.contentRange(docRange)
         })
     }

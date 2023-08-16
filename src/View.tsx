@@ -40,6 +40,7 @@ export class DocumentContentView extends EventDelegator{
     public docNodeToBlockUnit = new WeakMap<DocNode, HTMLElement>()
     public blockUnitToHost: WeakMap<HTMLElement, Host> = new WeakMap()
     public blockUnitToDocNode: WeakMap<HTMLElement, DocNode> = new WeakMap()
+    public isolatedComponentBlockUnit: WeakSet<HTMLElement> = new WeakSet()
     public state: ReactiveState
     constructor(public doc: DocumentContent) {
         super()
@@ -63,14 +64,30 @@ export class DocumentContentView extends EventDelegator{
         this.listen('selectionchange', this.dispatchContentRangeChange)
 
     }
+    isRangeInIsolatedComponent(range) {
+        let start = range.commonAncestorContainer
+        while(start && start !== this.element && start !== document.body && start) {
+            if (this.isolatedComponentBlockUnit.has(start)) return true
+            start = start.parentElement
+        }
+        return false
+    }
     dispatchContentRangeChange = () => {
         // 这里已经通过 EventDelegator 检查过了肯定是在 doc 内。这里只是要修正选中了整个节点的情况。
         // 没有 range 也算是 合法的
+
+        // 1. component 里面不管
+        if (globalKM.selectionRange && this.isRangeInIsolatedComponent(globalKM.selectionRange)) {
+            return
+        }
+
         if (!globalKM.selectionRange || this.isValidRange(globalKM.selectionRange!)) {
             console.log("selection range is valid", globalKM.selectionRange)
             nextTask(() => this.dispatch(new CustomEvent(CONTENT_RANGE_CHANGE)))
             return
         }
+
+
 
         console.warn("selection range is invalid")
         // 我们目前只修正选中了整个段落的情况
@@ -440,6 +457,10 @@ export class DocumentContentView extends EventDelegator{
         this.blockUnitToHost.set(contentDOMNode, host)
         this.blockUnitToDocNode.set(contentDOMNode, docNode)
         this.docNodeToBlockUnit.set(docNode, contentDOMNode)
+        if (DocNode.typeIsIsolatedComponent(docNode)) {
+            this.isolatedComponentBlockUnit.add(contentDOMNode)
+        }
+
 
         if ((docNode.constructor as typeof DocNode).hasChildren) {
             fragment.append(
@@ -469,7 +490,8 @@ export class DocumentContentView extends EventDelegator{
     render() {
 
         this.element = (
-            <div contenteditable
+            <div
+                contenteditable
                 onKeydown={[
                     onNotComposition(onSingleKey(withCurrentRange(this.inputCharacter))),
                     onNotComposition(onEnterKey(withCurrentRange(this.changeLine))),
@@ -482,7 +504,7 @@ export class DocumentContentView extends EventDelegator{
         this.renderBlockUnitList()
 
         this.bindElement(this.element!)
-
+        // FIXME 好像还是得知道具体的 append to document 的时机，不然有时候 IntersectionObserver 可能会出问题
         return this.element
     }
     setCursor(docNode: DocNode, offset: number) {
@@ -512,6 +534,15 @@ export class DocumentContentView extends EventDelegator{
 }
 
 const onNotComposition = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
+const onNotInIsolated = eventAlias((e: KeyboardEvent) => {
+    let start:HTMLElement = e.target as HTMLElement
+    debugger
+    while(start && start !== document.body) {
+        if (start.dataset?.isolated) return false
+        start = start.parentElement
+    }
+    return true
+})
 const onSingleKey = eventAlias((e: KeyboardEvent) => e.key.length === 1)
 
 

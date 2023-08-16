@@ -80,6 +80,10 @@ function typeHasContent(docNode: DocNode) : boolean{
     return !!(docNode.constructor as typeof DocNode).hasContent
 }
 
+function typeIsIsolatedComponent(docNode: DocNode) : boolean{
+    return !!(docNode.constructor as typeof DocNode).isIsolatedComponent
+}
+
 // 注意这个遍历是包括 start 和 end
 function forEachInRange<T extends DocNode>(start: T, end: T, handle: (d: T) => any) {
     let current: T|null|undefined = start
@@ -101,7 +105,9 @@ export class DocNode {
     static id = 0
     static typeHasChildren = typeHasChildren
     static typeHasContent = typeHasContent
+    static typeIsIsolatedComponent = typeIsIsolatedComponent
     static ParagraphType?: typeof DocNode
+    static isIsolatedComponent: boolean = false
     static createDefaultParagraph = (content? : Text) => {
         const newPara = new DocNode.ParagraphType!({type: 'Paragraph', content: [{type: 'Text', value:''}]})
         if (content) newPara.replaceContent(content)
@@ -325,6 +331,9 @@ export class DocNode {
                 null:
                 this.parent()
     }
+    get nextSiblingInTree() : DocNode|undefined {
+        return this.next ?? this.parent()?.isRoot ? undefined : this.parent()?.nextSiblingInTree
+    }
     get lastSibling(): DocNode {
         assert(!this.isRoot, 'root cannot call lastSibling')
         return last(this)
@@ -501,6 +510,13 @@ export class ListItem extends DocNode {
             <span>{content}</span>
         </div> as unknown as HTMLElement
     }
+}
+
+
+export class IsolatedComponent extends DocNode {
+    static isIsolatedComponent = true
+    static hasChildren = false
+    static hasContent = false
 }
 
 

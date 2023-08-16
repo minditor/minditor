@@ -11,7 +11,7 @@ function onInputKey(key: string) {
 }
 
 export class SuggestionWidget {
-    constructor(public document: Document) {}
+    constructor(public document: Document, public parent: Plugin) {}
     // render icon。上面可以自定义 click 事件
     render(): JSX.Element {
         return <span>icon</span>
@@ -33,7 +33,7 @@ export function createSuggestionTool(triggerChar: string, atFront: boolean, Sugg
         constructor(public document: Document) {
             super(document);
             this.suggestionWidgets = SuggestionClasses.map(SuggestionClass => {
-                return new SuggestionClass(this.document)
+                return new SuggestionClass(this.document, this)
             })
         }
         render() {
@@ -70,7 +70,7 @@ export function createSuggestionTool(triggerChar: string, atFront: boolean, Sugg
     }
 }
 
-export function createSuggestionWidget(icon: JSX.Element, itemName: string) {
+export function createSuggestionWidget(icon: JSX.Element, itemName: string) : typeof SuggestionWidget{
     return class FormatWidget extends SuggestionWidget {
         static displayName =`${itemName}RangeWidget`
         insertItem = () =>{
@@ -87,7 +87,6 @@ export function createSuggestionWidget(icon: JSX.Element, itemName: string) {
 }
 
 export const defaultBlockSuggestionWidgets = [
-    createSuggestionWidget(<span>insert image</span>, 'image'),
     createSuggestionWidget(<span>insert code</span>, 'code'),
     createSuggestionWidget(<span>insert table</span>, 'table'),
 ]
