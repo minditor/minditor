@@ -66,11 +66,12 @@ export class DocumentContentView extends EventDelegator{
         // 这里已经通过 EventDelegator 检查过了肯定是在 doc 内。这里只是要修正选中了整个节点的情况。
         // 没有 range 也算是 合法的
         if (!globalKM.selectionRange || this.isValidRange(globalKM.selectionRange!)) {
-            this.dispatch(new CustomEvent(CONTENT_RANGE_CHANGE))
             console.log("selection range is valid", globalKM.selectionRange)
+            nextTask(() => this.dispatch(new CustomEvent(CONTENT_RANGE_CHANGE)))
             return
         }
 
+        console.warn("selection range is invalid")
         // 我们目前只修正选中了整个段落的情况
         const {startContainer, commonAncestorContainer} = globalKM.selectionRange
         if (startContainer.nodeType !== Node.TEXT_NODE && startContainer === commonAncestorContainer ) {
@@ -87,7 +88,7 @@ export class DocumentContentView extends EventDelegator{
         }
 
         // 剩下的非法情况统统修正成到文档最后。
-        const lastText = this.doc.firstChild?.lastDescendant.content?.lastChild as Text
+        const lastText = this.doc.lastDescendant.content?.lastSibling as Text
         this.setRange(new DocRange(
             lastText,
             lastText.value.length,
@@ -144,8 +145,11 @@ export class DocumentContentView extends EventDelegator{
         // 理论上 startNode 和 endNode 是在 paragraph/title 里面应该都可以。看是不能从头删到尾，这样会把空的 Text span 节点 也删掉。
         // if (startNode === endNode && !(startText.isFirstContent() && !startText.next && startOffset === 0 && startText.value.length ===1)) return true
         console.warn(
+            "checking range acceptable",
             startNode === endNode,
-            startNode.isContentEmpty()
+            startNode.isContentEmpty(),
+            startText.value,
+            startText.next
         )
         // debugger
         // startNode.isContentEmpty()
@@ -346,40 +350,40 @@ export class DocumentContentView extends EventDelegator{
         this.tryUseDefaultBehavior(e)
         const docRange = this.createDocRange(currentRange!)!
         const {startOffset, startText, startNode} = docRange
+        let newFocusDocNode: DocNode
+        let newFocusOffset: number = Infinity
         if (currentRange!.collapsed) {
             // 删除单个字符，或者进行结构变化
             if (startOffset === 0 && startText.isFirstContent()) {
                 // 1. 如果自己身的结构可以破坏，不影响其他节点。那么就只破坏自身，例如 Section 的 title、list 等
                 if(DocNode.typeHasChildren(startNode)) {
-                    const newPara = this.doc.unwrap(startText.parent())
-                    this.setCursor(newPara, 0)
+                    newFocusDocNode = this.doc.unwrap(startText.parent())
+                    newFocusOffset = 0
                 } else {
                     // 2. 如果自身的结构不能破坏。那就就是和前一个节点的内容合并了。这是 Para 合到 section title 或者 listItem 里面。
                     this.doc.mergeByPreviousSiblingInTree(startNode)
                     // startText 还在
-                    this.setCursor(startText, 0)
+                    newFocusDocNode = startText
+                    newFocusOffset = 0
                 }
 
             } else {
                 // 删除单个字符
                 if(startOffset === 0) {
                     const prevText = startText.prev()
-                    // 如果是 0 的位置，相当于选中上一个节点的最后一个字符进行删除。
-                    this.doc.updateRange(new DocRange(prevText, prevText.value.length-1, prevText, prevText.value.length), '')
+                    // 如果是 0 的位置，相当于选中上一个节点的最后一个字符进行删除。这里肯定有上一个字符，因为上面判断 isFirstContent()
+                    newFocusDocNode = this.doc.updateRange(new DocRange(prevText, prevText.value.length-1, startText, 0), '')
                 } else {
-                    this.doc.updateRange(docRange.derive({ startOffset: startOffset - 1}), '')
+                    // 这里包括了是 1 的位置，然后删光了的情况。
+                    newFocusDocNode = this.doc.updateRange(docRange.derive({ startOffset: startOffset - 1}), '')
+                    console.log(startOffset, newFocusDocNode)
                 }
             }
         } else {
-            const newStartText = this.doc.updateRange(this.state.contentRange()!, '')
-            if (e?.defaultPrevented) {
-                if (startOffset !== 0) {
-                    this.setCursor(startText, Infinity)
-                } else {
-                    // TODO 如果不是 0，就一定有 newStartText ???
-                    this.setCursor(newStartText, Infinity)
-                }
-            }
+            newFocusDocNode = this.doc.updateRange(this.state.contentRange()!, '')
+        }
+        if (e?.defaultPrevented) {
+            this.setCursor(newFocusDocNode, newFocusOffset)
         }
         this.resetUseDefaultBehavior()
     }
@@ -463,7 +467,7 @@ export class DocumentContentView extends EventDelegator{
         const startContainer = this.textNodeToElement.get(firstText)!.firstChild!
         const startOffset = offset === Infinity ? firstText.value.length : offset
         setNativeCursor(startContainer, startOffset)
-        console.log(firstText, this.textNodeToElement.get(firstText)!.firstChild)
+        console.log("setting cursor", firstText, startContainer, startOffset)
     }
     setRange(docRange: DocRange) {
         const startContainer = this.textNodeToElement.get(docRange.startText)!.firstChild!

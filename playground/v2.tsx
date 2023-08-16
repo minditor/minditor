@@ -38,7 +38,7 @@ const doc = new Document(
     data.nestedList,
     {Paragraph, Section, Text, ListItem},
     [
-        // ...markdownPlugins,
+        ...markdownPlugins,
         createRangeTool(defaultFormatWidgets),
         createSuggestionTool('/', true, defaultBlockSuggestionWidgets)
     ]

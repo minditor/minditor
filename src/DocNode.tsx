@@ -114,6 +114,8 @@ export class DocNode {
     static createDefaultPreviousSibling(docNode: DocNode) {
         return DocNode.createDefaultParagraph()
     }
+    // 默认往前 prepend 是会变成前面节点的 children 的。
+    static prependDefaultAsSibling: boolean =false
     public parent: Atom<DocNode> =  atom(undefined)
     public prev: Atom<DocNode> = atom(undefined)
     public next?: DocNode
@@ -141,7 +143,7 @@ export class DocNode {
 
         if ((this.constructor as typeof DocNode).hasContent) {
             // 节点一定有 content。空行也有。
-            this.content = data.content? this.buildContentList(data.content): new Text()
+            this.content = data.content? this.buildContentList(data.content): new Text({type: 'Text', value: ''}, this)
         }
     }
     buildContentList(data: DocNodeData[]) {
@@ -185,18 +187,25 @@ export class DocNode {
         return findPath(this, ancestor)
     }
     updateRange({startText, endText, startNode, endNode, startOffset, endOffset}: DocRange, textToInsert: string) {
-        // TODO update content
         assert(startNode === this && endNode === this, `not this node range, use DocumentContent to updateRange`)
         let newStartText: Text
         if (startText === endText) {
 
             startText.value = startText.value.slice(0, startOffset) + textToInsert + endText.value.slice(endOffset)
-            newStartText = startText
+            if (!startText.value) {
+                const prev = startText.prev()
+                startText.remove()
+                // 如果没有 Prev 说明是第一个节点。那么应该focus 到变化后的第一个节点。DocNode 保证了 Content 一定会有一个节点。
+                newStartText = prev || this.content
+            } else {
+                newStartText = startText
+            }
         } else {
             startText.value = startText.value.slice(0, startOffset) + textToInsert
             endText.value = endText.value.slice(endOffset)
             newStartText = startText.value ? startText : startText.prev()
             const newEnd = endText.value? endText : endText.next
+            if (!endText.value) endText.remove()
 
             if (newStartText) {
                 newStartText.replaceNext(newEnd as DocNode)
@@ -210,6 +219,7 @@ export class DocNode {
         return newStartText!
     }
     isContentEmpty() {
+        console.log("checking empty", this.content!.value, this.content!.next)
         return !this.content!.value && !this.content!.next
     }
     append(next: DocNode) {
@@ -251,7 +261,6 @@ export class DocNode {
     remove() {
         assert(!this.isRoot, 'root cannot remove')
         if (this.prev()) {
-            // CAUTION 这里一定要注意第二个参数。不传会引起指针混乱。
             this.prev().replaceNext(this.next)
         } else if (this.parent()){
             this.parent()?.replaceFirstChild(this.next)
@@ -382,7 +391,7 @@ export class Text extends DocNode{
     public value: string = ''
     public props
     public testid?: string
-    constructor(public data: DocNodeData = { type: 'Text' }, parent?: DocNode) {
+    constructor(public data: DocNodeData = { type: 'Text', value:'' }, parent?: DocNode) {
         super(data, parent)
         const { value = '', props = {}} = data
         this.value = value
@@ -401,6 +410,19 @@ export class Text extends DocNode{
     }
     clone() {
         return new Text(deepClone(this.toJSON()))
+    }
+    remove() {
+        if (this.prev()) {
+            this.prev().replaceNext(this.next)
+        } else if (this.parent()){
+            this.parent()?.replaceContent(this.next)
+        } else {
+            this.next?.prev(undefined)
+        }
+        this.prev(undefined)
+        this.parent(undefined)
+        this.next = undefined
+        return this
     }
     render( { }: RenderProps, {createElement, Fragment}: RenderContext): HTMLElement{
         // TODO format to style
@@ -447,6 +469,7 @@ export class ListItem extends DocNode {
         if(content) item.replaceContent(content)
         return item
     }
+    static prependDefaultAsSibling: boolean = true
     static appendDefaultAsChildren: boolean = false
     static createDefaultPreviousSibling(docNode: DocNode) {
         return new ListItem({type: 'ListItem'})
@@ -465,11 +488,12 @@ export class ListItem extends DocNode {
     render({content}:RenderProps, {createElement}: RenderContext) : HTMLElement{
         const style = () => {
             return {
-                paddingLeft: this.level() * 20
+                paddingLeft: this.level() * 20,
+                paddingRight: 20
             }
         }
         return <div style={style}>
-            <span>{() => this.serialNumber().join('.')}.</span>
+            <span contenteditable={false}>{() => this.serialNumber().join('.')}.</span>
             <span>{content}</span>
         </div> as unknown as HTMLElement
     }
@@ -492,7 +516,7 @@ export class DocRange {
     constructor(public startText: Text, public startOffset: number, public endText: Text, public endOffset: number) {
         // CAUTION 必须在 constructor 里面固定这三个信息，因为之后这些对象的引用都可能会变
         this.commonAncestorNode = this.getCommonAncestorNode()!
-        console.assert(!!this.commonAncestorNode, 'can not find ancestor')
+        assert(!!this.commonAncestorNode, 'can not find ancestor')
         this.startNode = this.startText.parent()
         this.endNode = this.endText.parent()
     }

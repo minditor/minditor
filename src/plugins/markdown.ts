@@ -1,6 +1,6 @@
 import {onSpaceKeyDown, Atom} from 'axii'
 import {reverseMatchStrPair, reversMatchStr} from "../helper";
-import {DocNode, Section, Text} from "../DocNode";
+import {DocNode, Section, Text, ListItem} from "../DocNode";
 import {DocumentContent} from "../Content";
 import {DocumentContentView} from "../View";
 import {PluginRunArgv, Plugin} from "../Plugin";
@@ -99,7 +99,7 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
 //     }, blockNode)
 // }
 
-// TODO level 实现，这个时候要往上插入，删除当前节点。
+
 function createSectionBlock(content: DocumentContent,  para: DocNode, title: string, level: number) {
     const newSection = new Section({type: 'Section'})
     newSection.replaceContent(para.content)
@@ -107,7 +107,6 @@ function createSectionBlock(content: DocumentContent,  para: DocNode, title: str
     // 处理掉前面的 # 号以及空格 TODO 处理的更优雅一点？
     newSection.content.value = newSection.content.value.slice(level + 1)
 
-    // FIXME 全部要改成 content 的操作，才能被 View patch。
     const previousSiblingInTree = para.previousSiblingInTree
     if (!previousSiblingInTree) {
         // 头部。
@@ -125,6 +124,17 @@ function createSectionBlock(content: DocumentContent,  para: DocNode, title: str
     }
 
     return newSection
+}
+
+function createListBlock(content: DocumentContent,  para: DocNode) {
+    console.log("create list block")
+    const newListItem = new ListItem({type: 'ListItem'})
+    newListItem.replaceContent(para.content)
+    // 处理掉前面的 - 和空格
+    newListItem.content.value = newListItem.content.value.slice(2)
+    content.replaceDocNode(newListItem, para)
+
+    return newListItem
 }
 
 
@@ -159,4 +169,6 @@ const sectionMaxLevel = 3
 for(let i = sectionMaxLevel; i> 0; i-- ) {
     plugins.push(createBlockCommands('#'.repeat(i), (content: DocumentContent, node: DocNode, title: string) => createSectionBlock(content, node, title, i), true))
 }
+
+plugins.push(createBlockCommands('-', (content: DocumentContent, node: DocNode, title: string) => createListBlock(content, node), true))
 

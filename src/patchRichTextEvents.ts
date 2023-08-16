@@ -261,6 +261,7 @@ function adjustOffset0Text() {
 function adjustSelection() {
     if (!globalKM.selectionRange) return
     if (globalKM.selectionRange.collapsed) {
+        console.warn("offset 0 adjusting")
         adjustOffset0Text()
     } else {
         adjustIsolatedNode()

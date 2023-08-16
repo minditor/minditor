@@ -215,10 +215,11 @@ export class DocumentContent extends DocNode{
     prependDefaultPreviousSibling(docNode: DocNode) {
         const createPreviousSibling = (docNode.constructor as typeof DocNode).createDefaultPreviousSibling ?? DocNode.createDefaultPreviousSibling
         const newDocNode = createPreviousSibling(docNode)
-        return this.prependPreviousSibling(docNode, newDocNode)
+        return this.prependPreviousSibling(docNode, newDocNode, (docNode.constructor as typeof DocNode).prependDefaultAsSibling )
+
     }
-    prependPreviousSibling(docNode: DocNode, newDocNode: DocNode) {
-        if (docNode.previousSiblingInTree) {
+    prependPreviousSibling(docNode: DocNode, newDocNode: DocNode, asSibling: boolean) {
+        if (docNode.previousSiblingInTree && !asSibling) {
             docNode.previousSiblingInTree?.append(newDocNode)
         } else {
             docNode.prepend(newDocNode)
