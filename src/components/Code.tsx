@@ -22,7 +22,6 @@ export class Code extends IsolatedComponent {
         return highlight.highlight(this.element?.innerText||this.value, { language: this.props.language }).value
     }
     onBlur = () => {
-        console.log("1231231231")
         this.element!.innerHTML = this.getHighlightCode()
     }
     toJSON() {
@@ -41,7 +40,6 @@ export class Code extends IsolatedComponent {
             contenteditable={false}
             onFocusout={this.onBlur}
             onKeydown={e => {
-                console.warn(1111111, e)
                 e.stopPropagation()
             }}
         >

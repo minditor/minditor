@@ -375,14 +375,12 @@ export class DocumentContentView extends EventDelegator{
             if (startOffset === 0 && startText.isFirstContent()) {
                 // 1. 如果自己身的结构可以破坏，不影响其他节点。那么就只破坏自身，例如 Section 的 title、list 等
                 if(DocNode.typeHasChildren(startNode)) {
-                    newFocusDocNode = this.doc.unwrap(startText.parent())
+                    newFocusDocNode = this.doc.unwrap(startNode)
                     newFocusOffset = 0
                 } else {
                     // 2. 如果自身的结构不能破坏。那就就是和前一个节点的内容合并了。这是 Para 合到 section title 或者 listItem 里面。
-                    this.doc.mergeByPreviousSiblingInTree(startNode)
-                    // startText 还在
-                    newFocusDocNode = startText
-                    newFocusOffset = 0
+                    newFocusDocNode = this.doc.mergeByPreviousSiblingInTree(startNode)
+                    newFocusOffset = startText === newFocusDocNode ? 0 : Infinity
                 }
 
             } else {
@@ -400,6 +398,7 @@ export class DocumentContentView extends EventDelegator{
         } else {
             newFocusDocNode = this.doc.updateRange(this.state.contentRange()!, '')
         }
+
         if (e?.defaultPrevented) {
             this.setCursor(newFocusDocNode, newFocusOffset)
         }

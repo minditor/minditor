@@ -202,15 +202,19 @@ export class DocumentContent extends DocNode{
     }
     mergeByPreviousSiblingInTree(docNode: DocNode) {
         const previousSiblingInTree = docNode.previousSiblingInTree
+        let newFocusNode: Text
         if (previousSiblingInTree) {
             assert(!DocNode.typeHasChildren(docNode), 'cannot merge type with children, unwrap it first.')
             docNode.remove()
-            previousSiblingInTree.content?.lastSibling.replaceNext(docNode.content)
-            docNode.replaceFirstChild(undefined)
+            if (!docNode.isContentEmpty()) {
+                previousSiblingInTree.content?.lastSibling.replaceNext(docNode.content)
+            }
+
+            newFocusNode = previousSiblingInTree.content?.lastSibling as Text
         }
 
         this.dispatch('mergeByPreviousSiblingInTree', { args: [docNode], result: previousSiblingInTree })
-        return previousSiblingInTree
+        return newFocusNode
     }
     prependDefaultPreviousSibling(docNode: DocNode) {
         const createPreviousSibling = (docNode.constructor as typeof DocNode).createDefaultPreviousSibling ?? DocNode.createDefaultPreviousSibling

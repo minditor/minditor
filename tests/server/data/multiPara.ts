@@ -1,26 +1,24 @@
 export const data = {
-    type: 'Doc',
+    type: 'Document',
     content: [{ type: 'Text', value: 'test title'} ],
     children: [{
-        type: 'Para',
+        type: 'Paragraph',
         content: [
             {type: 'Text', value: 'p1123'},
             {type: 'Text', value: 'p1456'},
             {type: 'Text', value: 'p1789'}
         ]
     }, {
-        type: 'Para',
+        type: 'Paragraph',
         content: [
             {type: 'Text', value: 'p2123'},
             {type: 'Text', value: 'p2456'},
             {type: 'Text', value: 'p2789'}
         ]
     }, {
-        type: 'Para',
+        type: 'Paragraph',
         content: [
-            {type: 'Text', value: 'p3123'},
-            {type: 'Text', value: 'p3456'},
-            {type: 'Text', value: 'p3789'}
+            {type: 'Text', value: 'p'},
         ]
     }]
 }

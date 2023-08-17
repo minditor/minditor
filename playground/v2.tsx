@@ -18,6 +18,7 @@ import {nextTask} from "../src/util";
 const data = {
     // @ts-ignore @vite-ignore
     singlePara: (await import('@tests/data/singlePara')).data,
+    multiPara: (await import('@tests/data/multiPara')).data,
     singleSection: (await import('@tests/data/singleSection')).data,
     // @ts-ignore
     singleList: (await import('@tests/data/singleList')).data,
@@ -36,11 +37,12 @@ const searchObj = Object.fromEntries(
 
 const doc = new Document(
     // data.singlePara,
+    data.multiPara,
     // data.multiSection,
     // data.singleSection,
     // data.singleList,
     // data.nestedList,
-    data.misc,
+    // data.misc,
     {Paragraph, Section, Text, ListItem, Image, Code},
     [
         ...markdownPlugins,
