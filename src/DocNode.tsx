@@ -238,6 +238,7 @@ export class DocNode {
         } else if (this.parent()) {
             if (this.parent().firstChild === this) this.parent().firstChild = undefined
         }
+        DocNode.forEach(this, (sibling: DocNode) => sibling.parent(undefined))
     }
     append(next: DocNode) {
         assert(!this.isRoot, 'root cannot append')
@@ -249,8 +250,9 @@ export class DocNode {
         next?.prev(this)
 
         forEachNode(next, (newDocNode: DocNode) => newDocNode.parent(this.parent()))
-        this.next.lastSibling.next = originNext
+        // CAUTION 下面这个两个语句顺序别高论了，不然造成了自身的 prev 的循环引用。
         originNext?.prev(this.next.lastSibling)
+        this.next.lastSibling.next = originNext
     }
     prepend(prev: DocNode) {
         assert(!this.isRoot, 'root cannot prepend')
@@ -278,10 +280,12 @@ export class DocNode {
     }
     remove() {
         assert(!this.isRoot, 'root cannot remove')
-        if (this.prev()) {
-            this.prev().replaceNext(this.next)
-        } else if (this.parent()){
-            this.parent()?.replaceFirstChild(this.next)
+        const prev = this.prev()
+        const parent = this.parent()
+        if (prev) {
+            prev.replaceNext(this.next)
+        } else if (parent){
+            parent.replaceFirstChild(this.next)
         } else {
             this.next?.prev(undefined)
         }
@@ -305,7 +309,7 @@ export class DocNode {
         }
     }
     toJSON() {
-        const result: DocNodeData = {type: this.data.type, id: this.id}
+        const result: DocNodeData = {type: this.data.type, id: this.id, prev: this.prev()?.id}
         if ((this.constructor as typeof DocNode).hasContent) {
             result.content = DocNode.map(this.content!, listNode => listNode.toJSON())
         }

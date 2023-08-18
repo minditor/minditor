@@ -30,6 +30,8 @@ export class Observable {
     }
 }
 
+const ZWSP =  '​'
+
 export const CONTENT_RANGE_CHANGE = 'contentrangechange'
 
 export class DocumentContentView extends EventDelegator{
@@ -81,6 +83,13 @@ export class DocumentContentView extends EventDelegator{
         if (globalKM.selectionRange && this.isRangeInIsolatedComponent(globalKM.selectionRange)) {
             return
         }
+        // 2. 正对插入了 ZWSP 的情况的修正。
+        const {startContainer, commonAncestorContainer, startOffset} = globalKM.selectionRange!
+
+        if (startContainer.nodeType === Node.TEXT_NODE && startOffset === 1 && startContainer.parentElement?.innerHTML === ZWSP) {
+            console.log("set range before ZWSP")
+            setNativeCursor(startContainer as HTMLElement, 0)
+        }
 
         if (!globalKM.selectionRange || this.isValidRange(globalKM.selectionRange!)) {
             console.log("selection range is valid", globalKM.selectionRange)
@@ -88,11 +97,11 @@ export class DocumentContentView extends EventDelegator{
             return
         }
 
-
-
         console.warn("selection range is invalid")
+
+        console.log(startContainer.nodeType , startOffset, startContainer.parentElement?.innerHTML)
         // 我们目前只修正选中了整个段落的情况
-        const {startContainer, commonAncestorContainer} = globalKM.selectionRange
+
         if (startContainer.nodeType !== Node.TEXT_NODE && startContainer === commonAncestorContainer ) {
             const docNode = this.findDocNodeFromElement(startContainer)
             console.log("fix select para", docNode)
@@ -104,16 +113,17 @@ export class DocumentContentView extends EventDelegator{
                     0,
                 ))
             }
-        }
+        } else {
+            // 剩下的非法情况统统修正成到文档最后。
+            const lastText = this.doc.lastDescendant.content?.lastSibling as Text
 
-        // 剩下的非法情况统统修正成到文档最后。
-        const lastText = this.doc.lastDescendant.content?.lastSibling as Text
-        this.setRange(new DocRange(
-            lastText,
-            lastText.value.length,
-            lastText,
-            lastText.value.length,
-        ))
+            this.setRange(new DocRange(
+                lastText,
+                lastText.value.length,
+                lastText,
+                lastText.value.length,
+            ))
+        }
 
         nextTask(() => this.dispatch(new CustomEvent(CONTENT_RANGE_CHANGE)))
 

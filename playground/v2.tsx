@@ -37,12 +37,12 @@ const searchObj = Object.fromEntries(
 
 const doc = new Document(
     // data.singlePara,
-    data.multiPara,
+    // data.multiPara,
     // data.multiSection,
     // data.singleSection,
     // data.singleList,
     // data.nestedList,
-    // data.misc,
+    data.misc,
     {Paragraph, Section, Text, ListItem, Image, Code},
     [
         ...markdownPlugins,

@@ -83,55 +83,28 @@ export class DocumentContent extends DocNode{
         assert(DocNode.typeHasChildren(docNode), 'doc node type do not have children, cannot unwrap')
 
         const previousSiblingInTree = docNode.previousSiblingInTree
-        const originDocNodePrev = docNode.prev()
+        docNode.remove()
 
         const ParagraphType = DocNode.ParagraphType!
         const newPara = new ParagraphType({type: 'Paragraph'}, docNode.parent())
         newPara.replaceContent(docNode.content!)
+        newPara.replaceNext(docNode.firstChild)
         // newPara 要变成上一个节点的兄弟节点，如果有 previousSiblingInTree 说明不是全篇第一个节点。
         if (previousSiblingInTree) {
-
-            // 1. 把原本的 content 处理成 Paragraph，变成 previousSibling 的 next
-            // FIXME 这里不一定可以合并，例如 listItem unwrap 以后，应该是变成顶层 listItem 的 sibling
-            //  这里还挺复杂的，如果 listItem 是第一个，上面就是 Section，那么 unwrap 就应该还是 section 下第一个节点。
-            //  如果不是第一个，那么就得往上找到第一个能被作为 children 的 parent。并插入在当前位置。
-
-            previousSiblingInTree.append(newPara)
-
-            // 2. 开始处理自己的 child，如果是 para，就也要往前合并
-            const docNodeChildLevel = docNode.level() + 1 // CAUTION 一定要记住，不然后面就不对了
-            docNode.remove()
-            if (originDocNodePrev) {
-                // 原来前面还有节点，那么自己内容被合并到前面节点的里面去。
-                let childLeft: DocNode|undefined
-                DocNode.forEach(docNode.firstChild, (childDocNode) => {
-                    if (childDocNode instanceof ParagraphType) {
-                        // CAUTION 注意这里一定要 remove。不然 append 是会把后面的链一起处理
-                        newPara.lastSibling.append(childDocNode.remove())
-                    } else {
-                        // 记录一下剩下没处理的
-                        if (!childLeft) childLeft = childDocNode
-                    }
-                })
-
-                if(childLeft) {
-                    const acceptableSibling = newPara.lastSibling.findParentByLevel(docNodeChildLevel - newPara.level())
-                    acceptableSibling.append(childLeft)
-                }
-
-
+            // 前一个节点可能会是一个没有  children 的 section，这时候变成它的 children.
+            if (DocNode.typeHasChildren(previousSiblingInTree)
+                && !previousSiblingInTree.firstChild
+                && !(previousSiblingInTree.constructor as typeof DocNode).ChildType
+            ){
+                previousSiblingInTree.replaceFirstChild(newPara)
             } else {
-                // 原来就是某个几点下的第一节点
-                newPara.replaceNext(docNode.firstChild)
+                previousSiblingInTree.append(newPara)
             }
 
         } else {
             // 自己就是根节点下第一个节点
-            newPara.replaceNext(docNode.firstChild)
-            docNode.next && newPara.lastSibling.append(docNode.next)
             this.replaceFirstChild(newPara)
         }
-
 
         this.dispatch('unwrap', {args: [docNode], result: newPara})
         return newPara
