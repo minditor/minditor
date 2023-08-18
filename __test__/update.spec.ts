@@ -553,7 +553,7 @@ describe('change line', () => {
         const from = getByTestID(element, 's12')!
         range.setStart(from, 1)
         range.setEnd(from, 1)
-
+        
         view.changeLine(undefined, range)
         const newData = content.toArrayJSON()
 

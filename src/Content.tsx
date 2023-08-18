@@ -78,10 +78,7 @@ export class DocumentContent extends DocNode{
         refText.prepend(newText)
         this.dispatch('insertContentBefore', {args: [newText, refText]})
     }
-    // insertBlockNodeAfter(newDocNode: DocNode, refDocNode: DocNode) {
-    //     refDocNode.append(newDocNode)
-    //     this.dispatch('insertContentAfter', {args: [newText, refText]})
-    // }
+
     unwrap(docNode: DocNode) {
         assert(DocNode.typeHasChildren(docNode), 'doc node type do not have children, cannot unwrap')
 
@@ -95,6 +92,10 @@ export class DocumentContent extends DocNode{
         if (previousSiblingInTree) {
 
             // 1. 把原本的 content 处理成 Paragraph，变成 previousSibling 的 next
+            // FIXME 这里不一定可以合并，例如 listItem unwrap 以后，应该是变成顶层 listItem 的 sibling
+            //  这里还挺复杂的，如果 listItem 是第一个，上面就是 Section，那么 unwrap 就应该还是 section 下第一个节点。
+            //  如果不是第一个，那么就得往上找到第一个能被作为 children 的 parent。并插入在当前位置。
+
             previousSiblingInTree.append(newPara)
 
             // 2. 开始处理自己的 child，如果是 para，就也要往前合并
@@ -202,7 +203,7 @@ export class DocumentContent extends DocNode{
     }
     mergeByPreviousSiblingInTree(docNode: DocNode) {
         const previousSiblingInTree = docNode.previousSiblingInTree
-        let newFocusNode: Text
+        let newFocusNode: Text = docNode.content!
         if (previousSiblingInTree) {
             assert(!DocNode.typeHasChildren(docNode), 'cannot merge type with children, unwrap it first.')
             docNode.remove()

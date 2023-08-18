@@ -64,8 +64,8 @@ export class DocumentContentView extends EventDelegator{
         this.listen('selectionchange', this.dispatchContentRangeChange)
 
     }
-    isRangeInIsolatedComponent(range) {
-        let start = range.commonAncestorContainer
+    isRangeInIsolatedComponent(range: Range) {
+        let start:HTMLElement|null = range.commonAncestorContainer as HTMLElement
         while(start && start !== this.element && start !== document.body && start) {
             if (this.isolatedComponentBlockUnit.has(start)) return true
             start = start.parentElement
@@ -533,15 +533,7 @@ export class DocumentContentView extends EventDelegator{
 }
 
 const onNotComposition = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
-const onNotInIsolated = eventAlias((e: KeyboardEvent) => {
-    let start:HTMLElement = e.target as HTMLElement
-    debugger
-    while(start && start !== document.body) {
-        if (start.dataset?.isolated) return false
-        start = start.parentElement
-    }
-    return true
-})
+
 const onSingleKey = eventAlias((e: KeyboardEvent) => e.key.length === 1)
 
 

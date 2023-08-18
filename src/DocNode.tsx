@@ -103,6 +103,7 @@ export class DocNode {
     static findPath = findPath
     static last = last
     static id = 0
+    public static ChildType?: any
     static typeHasChildren = typeHasChildren
     static typeHasContent = typeHasContent
     static typeIsIsolatedComponent = typeIsIsolatedComponent
@@ -231,23 +232,32 @@ export class DocNode {
         console.log("checking empty", this.content!.value, this.content!.next)
         return !this.content!.value && !this.content!.next
     }
+    unlink() {
+        if (this.prev()) {
+            // CAUTION 注意这个时候可能外部已经不指向自己了，所以这里要增加这个判断
+            if (this.prev().next === this) this.prev().next = undefined
+        } else if (this.parent()) {
+            if (this.parent().content === this) this.parent().content = undefined
+        }
+    }
     append(next: DocNode) {
         assert(!this.isRoot, 'root cannot append')
         assert(!!next, 'can not append empty next node')
         // CAUTION 可能是抢夺了比人的节点。所以这里要处理一下
-        next.remove()
+        next.unlink()
         const originNext = this.next
         this.next = next
         next?.prev(this)
 
         forEachNode(next, (newDocNode: DocNode) => newDocNode.parent(this.parent()))
-        this.next?.lastSibling.replaceNext(originNext)
+        this.next.lastSibling.next = originNext
+        originNext?.prev(this.next.lastSibling)
     }
     prepend(prev: DocNode) {
         assert(!this.isRoot, 'root cannot prepend')
         assert(!!prev, 'can not append empty next node')
 
-
+        prev.unlink()
         if (this.prev()) {
             this.prev().append(prev)
         } else {
@@ -482,6 +492,7 @@ export class ListItem extends DocNode {
         if(content) item.replaceContent(content)
         return item
     }
+    static ChildType = ListItem
     static prependDefaultAsSibling: boolean = true
     static appendDefaultAsChildren: boolean = false
     static createDefaultPreviousSibling(docNode: DocNode) {
