@@ -1,9 +1,5 @@
-import { atom, Atom, computed, LinkedList } from 'rata'
-import { Fragment } from "axii"
-import {assert, deepFlatten, unwrapChildren} from "./util";
+import {assert} from "./util";
 import {DocNode, ViewNode, DocNodeData, DocRange, Text, Paragraph} from "./DocNode";
-import {Document} from "./Document";
-import {Doc} from "./editing";
 
 
 type CallbackType = (...arg: any[]) => any

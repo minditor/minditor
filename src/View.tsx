@@ -500,15 +500,16 @@ export class DocumentContentView extends EventDelegator{
     renderBlockUnitList() {
         const blockUnitFragments = DocNode.map(this.doc.firstChild, node => this.createBlockUnitFragment(node))
         // CAUTION 为了性能，暂时决定不 reactive 化，因为操作 blockUnit 本来就是 dom 了，操作这个链表和操作 dom 是一样的。
+
         blockUnitFragments.forEach(fragment => {
-            this.element!.appendChild(fragment)
             if (fragment instanceof DocumentFragment) {
                 for(let child of Array.from(fragment.children)) {
-                    this.childDelegators.block?.bindElement(child as HTMLElement)
+                    this.childDelegators.block.bindElement(child as HTMLElement)
                 }
             } else {
-                this.childDelegators.block?.bindElement(fragment)
+                this.childDelegators.block.bindElement(fragment)
             }
+            this.element!.appendChild(fragment)
         })
     }
 

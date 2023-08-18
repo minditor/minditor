@@ -8,7 +8,7 @@ export class Document {
     public view: DocumentContentView
     public content: DocumentContent
     public plugins: Plugin[] = []
-    constructor(data: DocNodeData[], docNodeTypes: {[k: string]: (typeof DocNode|typeof Text)}, public Plugins: (typeof Plugin)[]) {
+    constructor(public container: HTMLElement, data: DocNodeData[], docNodeTypes: {[k: string]: (typeof DocNode|typeof Text)}, public Plugins: (typeof Plugin)[]) {
         this.content = new DocumentContent(data, docNodeTypes)
         this.view = new DocumentContentView(this.content)
     }
@@ -17,6 +17,15 @@ export class Document {
         this.plugins.push(plugin)
     }
     render() {
+        const element = this.renderDoc()
+        const pluginViews = this.renderPluginViews()
+        // 注意这里
+        if (!this.container.style.position) this.container.style.position = 'relative'
+
+        this.container.appendChild(element)
+        this.container.appendChild(pluginViews)
+    }
+    renderDoc() {
         assert(!this.element, 'document should not rerender')
         this.element = this.view.render()
 

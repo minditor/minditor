@@ -1,6 +1,6 @@
 // @ts-ignore
 import { atom, Atom } from 'rata'
-import {debounce, idleThrottle, nextJob} from "./util";
+import {assert, debounce, idleThrottle, nextJob} from "./util";
 // import {createRangeLikeFromRange, findNodeFromElement} from "./editing";
 import {DocNode, DocRange} from "./DocNode";
 import { state as globalState } from './globals'
@@ -94,7 +94,8 @@ export class ReactiveState {
     public mousePosition: Atom<{clientX: number, clientY: number}|null> = atom(null)
     public fixedMousePosition: {clientX: number, clientY: number}|null = null
     public contentRange: Atom<DocRange|null> = atom(null)
-    public mouseEnteredBlock: Atom<DocNode|null> = atom(null)
+    public mouseEnteredBlockUnit: Atom<HTMLElement|null> = atom(null)
+    public mouseEnteredBlockDocNode: Atom<DocNode|null> = atom(null)
     public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null> = atom(null)
     constructor(public view: DocumentContentView) {
         this.createUserMousePosition()
@@ -191,16 +192,14 @@ export class ReactiveState {
         })
     }
     createMouseEnteredBlockNode() {
-        const debouncedUpdateNode = debounce((node: DocNode) => {
-            this.mouseEnteredBlock(node)
-        }, 100)
-
-        // TODO 有没有性能问题？mouseenter capture 会一路
         this.view.listen('block:mouseenter', (e: MouseEvent) => {
-            // const node = this.view.findNodeFromElement(e.target as HTMLElement)
-            // if (node?.constructor.display === 'block') {
-            //     debouncedUpdateNode(node)
-            // }
+            const docNode = this.view.blockUnitToDocNode.get(e.target as HTMLElement)
+            assert(!!docNode, 'can not find docNode from element')
+            this.mouseEnteredBlockDocNode(docNode)
+        })
+
+        this.view.listen('mouseleave', () => {
+            this.mouseEnteredBlockDocNode(null)
         })
     }
 

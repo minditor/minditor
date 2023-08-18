@@ -29,8 +29,8 @@ export class Plugin {
     run(args: PluginRunArgv) : any{
 
     }
-    render() {
-        return undefined
+    render(): JSX.Element|null {
+        return null
     }
     renderPluginView() {
         assert(!this.host, 'plugin view should only render once')

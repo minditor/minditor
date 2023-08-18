@@ -11,6 +11,7 @@ import { atom } from 'rata'
 import { plugins as markdownPlugins } from "../src/plugins/markdown";
 import { createRangeTool, defaultFormatWidgets } from '../src/plugins/RangeTool'
 import { createSuggestionTool, defaultBlockSuggestionWidgets } from '../src/plugins/SuggestionTool'
+import { BlockTool } from "../src/plugins/BlockTool";
 
 import {nextTask} from "../src/util";
 
@@ -36,6 +37,7 @@ const searchObj = Object.fromEntries(
 // const { data } = await import(`../../tests/server/data/${'singlePara'}`)
 
 const doc = new Document(
+    document.getElementById('root')!,
     // data.singlePara,
     // data.multiPara,
     // data.multiSection,
@@ -50,12 +52,12 @@ const doc = new Document(
         createSuggestionTool('/', true, defaultBlockSuggestionWidgets.concat(
             ImageSuggestionWidget,
             CodeSuggestionWidget
-        ))
+        )),
+        BlockTool
     ]
 )
 
-document.getElementById('root')!.appendChild(doc.render())
-document.getElementById('root')!.appendChild(doc.renderPluginViews())
+doc.render()
 
 // state preview
 const stateRoot = createRoot(document.getElementById('state')!)
