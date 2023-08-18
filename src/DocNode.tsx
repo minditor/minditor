@@ -173,25 +173,6 @@ export class DocNode {
     render(props: RenderProps, context: RenderContext) : HTMLElement{
         return <span>should not render</span> as unknown as HTMLElement
     }
-    replaceFirstChild(newFirstChild: DocNode|undefined) {
-        const originPrev = newFirstChild?.prev()
-        if (originPrev) originPrev.next = undefined
-
-        newFirstChild?.prev(undefined)
-        this.firstChild = newFirstChild
-        forEachNode(this.firstChild, (docNode: DocNode) => {
-            docNode.parent(this)
-        })
-    }
-    replaceContent(newContent?: Text) {
-        // 抢夺
-        if (newContent?.parent()) newContent.parent().replaceContent(undefined)
-        // CAUTION 无论如何都有一个 Text
-        this.content = newContent ?? new Text()
-        forEachNode(this.content, (docNode: Text) => {
-            docNode.parent(this)
-        })
-    }
     // 包括自己
     findPath(ancestor: DocNode) {
         return findPath(this, ancestor)
@@ -228,6 +209,24 @@ export class DocNode {
         }
         return newStartText!
     }
+    replaceFirstChild(newFirstChild: DocNode|undefined) {
+        newFirstChild?.unlink()
+        newFirstChild?.prev(undefined)
+        this.firstChild = newFirstChild
+        forEachNode(this.firstChild, (docNode: DocNode) => {
+            docNode.parent(this)
+        })
+    }
+    replaceContent(newContent?: Text) {
+        // 抢夺
+        newContent?.unlink()
+        // CAUTION 无论如何都有一个 Text
+        this.content = newContent ?? new Text()
+        forEachNode(this.content, (docNode: Text) => {
+            docNode.parent(this)
+        })
+    }
+
     isContentEmpty() {
         console.log("checking empty", this.content!.value, this.content!.next)
         return !this.content!.value && !this.content!.next
@@ -237,7 +236,7 @@ export class DocNode {
             // CAUTION 注意这个时候可能外部已经不指向自己了，所以这里要增加这个判断
             if (this.prev().next === this) this.prev().next = undefined
         } else if (this.parent()) {
-            if (this.parent().content === this) this.parent().content = undefined
+            if (this.parent().firstChild === this) this.parent().firstChild = undefined
         }
     }
     append(next: DocNode) {
@@ -271,8 +270,7 @@ export class DocNode {
 
     replaceNext(next?: DocNode,) {
         assert(!this.isRoot, 'root cannot replaceNext')
-        const originPrev = next?.prev()
-        if (originPrev) originPrev.next = undefined
+        next?.unlink()
         next?.prev(this)
         this.next = next
 
@@ -297,6 +295,7 @@ export class DocNode {
         if (!newDocNode) {
             this.remove()
         } else {
+            newDocNode.unlink()
             if (this.prev()) {
                 this.prev().replaceNext(newDocNode)
             } else {
@@ -463,6 +462,14 @@ export class Text extends DocNode{
         //     <span data-type-text _uuid style={style}>{value}</span>
         //     <span contenteditable={false} dangerouslySetInnerHTML={{__html: '&ZeroWidthSpace;'}}></span>
         // </>
+    }
+    unlink() {
+        if (this.prev()) {
+            // CAUTION 注意这个时候可能外部已经不指向自己了，所以这里要增加这个判断
+            if (this.prev().next === this) this.prev().next = undefined
+        } else if (this.parent()) {
+            if (this.parent().content === this) this.parent().content = undefined
+        }
     }
     prepend(prev: Text) {
         assert(!!prev, 'cannot prepend empty text')
