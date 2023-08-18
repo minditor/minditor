@@ -43,15 +43,17 @@ export function createRangeTool(RangeWidgetClasses: (typeof RangeWidget)[] ) {
                         top: visibleRangeRect().top - 100,
                         // left: visibleRangeRect().left - boundaryRect.left,
                         left: visibleRangeRect().left,
-                        background:'#ccc',
-                        boxShadow: '2px 2px 2px #ccc',
+                        padding: 10,
+                        borderRadius: 4,
+                        background: '#fff',
+                        border:'1px solid #eee',
+                        boxShadow: '2px 2px 5px #dedede',
                         transition: 'all'
                     }
                 }
             }
 
             return  <div style={style}>
-                <div>x</div>
                 <div>
                     {this.rangeWidgets.map((widget: RangeWidget) => {
                         return widget.render()

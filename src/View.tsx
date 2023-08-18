@@ -40,7 +40,8 @@ export class DocumentContentView extends EventDelegator{
     public docNodeToBlockUnit = new WeakMap<DocNode, HTMLElement>()
     public blockUnitToHost: WeakMap<HTMLElement, Host> = new WeakMap()
     public blockUnitToDocNode: WeakMap<HTMLElement, DocNode> = new WeakMap()
-    public isolatedComponentBlockUnit: WeakSet<HTMLElement> = new WeakSet()
+    public isolatedComponentToBlockUnit: WeakMap<DocNode, HTMLElement > = new WeakMap()
+    public blockUnitToIsolatedComponent: WeakMap<HTMLElement,DocNode  > = new WeakMap()
     public state: ReactiveState
     constructor(public doc: DocumentContent) {
         super()
@@ -67,7 +68,7 @@ export class DocumentContentView extends EventDelegator{
     isRangeInIsolatedComponent(range: Range) {
         let start:HTMLElement|null = range.commonAncestorContainer as HTMLElement
         while(start && start !== this.element && start !== document.body && start) {
-            if (this.isolatedComponentBlockUnit.has(start)) return true
+            if (this.blockUnitToIsolatedComponent.get(start)) return true
             start = start.parentElement
         }
         return false
@@ -291,6 +292,9 @@ export class DocumentContentView extends EventDelegator{
         this.setCursor(newDocNode.content!, 0)
     }
     patchRemoveDocNode = ({ args: [docNode]} : {args: [DocNode]}) => {
+        // 结构破坏
+        this.defaultBehaviorEvent?.stopPropagation()
+        this.defaultBehaviorEvent?.preventDefault()
         const blockUnit = this.docNodeToBlockUnit.get(docNode)!
         const oldHost = this.blockUnitToHost.get(blockUnit)!
         oldHost.destroy()
@@ -368,19 +372,29 @@ export class DocumentContentView extends EventDelegator{
         this.tryUseDefaultBehavior(e)
         const docRange = this.createDocRange(currentRange!)!
         const {startOffset, startText, startNode} = docRange
-        let newFocusDocNode: DocNode
-        let newFocusOffset: number = Infinity
+        let newFocusDocNode: DocNode = startText
+        let newFocusOffset: number = startOffset
+
         if (currentRange!.collapsed) {
             // 删除单个字符，或者进行结构变化
             if (startOffset === 0 && startText.isFirstContent()) {
+                // 结构破坏必须组织默认事件
                 // 1. 如果自己身的结构可以破坏，不影响其他节点。那么就只破坏自身，例如 Section 的 title、list 等
                 if(DocNode.typeHasChildren(startNode)) {
                     newFocusDocNode = this.doc.unwrap(startNode)
                     newFocusOffset = 0
-                } else {
-                    // 2. 如果自身的结构不能破坏。那就就是和前一个节点的内容合并了。这是 Para 合到 section title 或者 listItem 里面。
-                    newFocusDocNode = this.doc.mergeByPreviousSiblingInTree(startNode)
-                    newFocusOffset = startText === newFocusDocNode ? 0 : Infinity
+                } else if (startNode.previousSiblingInTree){
+                    // 2. 如果自身的结构不能破坏。那就要考虑是删除前一个节点还是自己和前一个节点的内容合并了。
+                    if (this.isolatedComponentToBlockUnit.get(startNode.previousSiblingInTree)) {
+                        // 2.1. 删除的情况是前一个节点是 component
+                        this.doc.removeDocNode(startNode.previousSiblingInTree)
+                        newFocusDocNode = startText
+                        newFocusOffset = 0
+                    } else {
+                        // 2.2. 合并的情况是 Para 合到 section title 或者 listItem 里面。
+                        newFocusDocNode = this.doc.mergeByPreviousSiblingInTree(startNode)
+                        newFocusOffset = startText === newFocusDocNode ? 0 : Infinity
+                    }
                 }
 
             } else {
@@ -456,8 +470,10 @@ export class DocumentContentView extends EventDelegator{
         this.blockUnitToHost.set(contentDOMNode, host)
         this.blockUnitToDocNode.set(contentDOMNode, docNode)
         this.docNodeToBlockUnit.set(docNode, contentDOMNode)
+
         if (DocNode.typeIsIsolatedComponent(docNode)) {
-            this.isolatedComponentBlockUnit.add(contentDOMNode)
+            this.isolatedComponentToBlockUnit.set(docNode, contentDOMNode)
+            this.blockUnitToIsolatedComponent.set(contentDOMNode, docNode)
         }
 
 
@@ -487,9 +503,9 @@ export class DocumentContentView extends EventDelegator{
     }
 
     render() {
-
         this.element = (
             <div
+                spellcheck={false}
                 contenteditable
                 onKeydown={[
                     onNotComposition(onSingleKey(withCurrentRange(this.inputCharacter))),
@@ -502,8 +518,12 @@ export class DocumentContentView extends EventDelegator{
         ) as unknown as HTMLElement
         this.renderBlockUnitList()
 
-        this.bindElement(this.element!)
         // FIXME 好像还是得知道具体的 append to document 的时机，不然有时候 IntersectionObserver 可能会出问题
+        nextTask(() => {
+            this.bindElement(this.element!)
+        })
+
+
         return this.element
     }
     setCursor(docNode: DocNode, offset: number) {

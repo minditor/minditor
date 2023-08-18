@@ -52,8 +52,11 @@ export function createSuggestionTool(triggerChar: string, atFront: boolean, Sugg
                     top: visibleRangeRect().bottom + 10,
                     // left: visibleRangeRect().left - boundaryRect.left,
                     left: visibleRangeRect().left,
-                    background:'#ccc',
-                    boxShadow: '2px 2px 2px #ccc',
+                    padding: 10,
+                    borderRadius: 4,
+                    background: '#fff',
+                    border:'1px solid #eee',
+                    boxShadow: '2px 2px 5px #dedede',
                     transition: 'all'
                 }
             }
