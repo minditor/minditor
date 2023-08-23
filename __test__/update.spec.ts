@@ -319,7 +319,7 @@ describe('delete at content head', () => {
         expect(element.textContent).toBe('sectionpt11pt12pt13')
     })
 
-    test('delete in head with previous sibling in tree', () => {
+    test('delete at head with previous sibling in tree', () => {
         const content = new DocumentContent({
             type: 'Document',
             children:[{
@@ -445,6 +445,103 @@ describe('delete at content head', () => {
             ]
         }])
         expect(element.textContent).toBe('pt11pt12pt13pt21pt22pt23')
+    })
+
+    test('delete at list head, should unwrap as new para', ()=>{
+        const content = new DocumentContent({
+            type: 'Document',
+            children: [{
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: 'l11'},
+                    {type: 'Text', value: 'l12'},
+                    {type: 'Text', value: 'l13'}
+                ],
+                children: [
+                    {
+                        type: 'ListItem',
+                        content: [
+                            {type: 'Text', value: 'l111'},
+                            {type: 'Text', value: 'l112'},
+                            {type: 'Text', value: 'l113'}
+                        ]
+                    }
+                ]
+            }, {
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: 'l21'},
+                    {type: 'Text', value: 'l22'},
+                    {type: 'Text', value: 'l23'}
+                ],
+                children: [{
+                    type: 'ListItem',
+                    content: [
+                        {type: 'Text', value: 'l213', testid: 'l213'}, // <-- here
+                        {type: 'Text', value: 'l212'},
+                        {type: 'Text', value: 'l213'}
+                    ]
+                }]
+            }, {
+                type: 'ListItem',
+                content: [
+                    {type: 'Text', value: 'l31'},
+                    {type: 'Text', value: 'l32'},
+                    {type: 'Text', value: 'l33'}
+                ]
+            }]
+        }, BuiltinTypes)
+
+        const view = new DocumentContentView(content)
+        const element = view.render()
+
+        const range = document.createRange()
+        const from = getByTestID(element, 'l213')!
+        range.setStart(from, 0)
+        range.setEnd(from, 0)
+
+        view.deleteContent(undefined, range)
+        const newData = content.toArrayJSON()
+        expect(newData).toMatchObject([{
+            type: 'ListItem',
+            content: [
+                {type: 'Text', value: 'l11'},
+                {type: 'Text', value: 'l12'},
+                {type: 'Text', value: 'l13'}
+            ],
+            children: [
+                {
+                    type: 'ListItem',
+                    content: [
+                        {type: 'Text', value: 'l111'},
+                        {type: 'Text', value: 'l112'},
+                        {type: 'Text', value: 'l113'}
+                    ]
+                }
+            ]
+        }, {
+            type: 'ListItem',
+            content: [
+                {type: 'Text', value: 'l21'},
+                {type: 'Text', value: 'l22'},
+                {type: 'Text', value: 'l23'}
+            ]
+        }, {
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'l213'}, // <-- here
+                {type: 'Text', value: 'l212'},
+                {type: 'Text', value: 'l213'}
+            ]
+        }, {
+            type: 'ListItem',
+            content: [
+                {type: 'Text', value: 'l31'},
+                {type: 'Text', value: 'l32'},
+                {type: 'Text', value: 'l33'}
+            ]
+        }])
+        expect(element.textContent).toBe('1.l11l12l131.1.l111l112l1132.l21l22l23l213l212l2131.l31l32l33')
     })
 })
 
