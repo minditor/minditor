@@ -17,7 +17,8 @@ export default {
     alias: {
       'rata': fileURLToPath(new URL('../../rata/src/index.ts', import.meta.url)),
       'axii': fileURLToPath(new URL('../../rata/playground/framework/src/index.ts', import.meta.url)),
-      '@tests/data': fileURLToPath(new URL('../tests/server/data', import.meta.url))
+      '@tests/data': fileURLToPath(new URL('../tests/server/data', import.meta.url)),
+      'minditor': fileURLToPath(new URL('../src', import.meta.url))
     }
   }
 }

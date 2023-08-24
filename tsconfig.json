@@ -23,6 +23,7 @@
     "paths": {
       "rata": ["../rata/src"],
       "axii": ["../rata/playground/framework/src"],
+      "minditor": ["./src"],
     },
     "allowSyntheticDefaultImports": true,
     "declaration": true,
@@ -32,6 +33,6 @@
     "src",
     "jsx.d.ts",
     "playground/v2.tsx",
-    "../rata/src"
+    "playground/rangeTool.tsx",
   ]
 }

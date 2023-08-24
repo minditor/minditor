@@ -1,1 +1,3 @@
-export { Doc } from './editing'
+export { Document } from './Document'
+export {DocumentContent} from './Content'
+export {DocumentContentView} from './View'

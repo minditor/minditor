@@ -2,6 +2,7 @@ import {DocNode, DocNodeData, IsolatedComponent, RenderContext, RenderProps} fro
 import { atom } from 'rata'
 import {createElement} from 'axii'
 import {SuggestionWidget} from "../plugins/SuggestionTool";
+import ImageIcon  from "../icons/Image";
 
 export class Image extends IsolatedComponent {
     public value: Atom<string>
@@ -42,8 +43,9 @@ export class ImageSuggestionWidget extends SuggestionWidget {
         }
     }
     render() {
-        return <div >
+        return <span>
+            <ImageIcon size={16}/>
             <input type="file" id="file-upload" accept="image/*" onChange={this.insertImage}/>
-        </div>
+        </span>
     }
 }

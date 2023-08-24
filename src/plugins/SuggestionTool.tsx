@@ -2,7 +2,10 @@
 import {onESCKey, createElement, createHost} from 'axii'
 import {Plugin, PluginRunArgv} from "../Plugin";
 import {Document} from "../Document";
-import {RangeWidget} from "./RangeTool";
+import Image from "../icons/Image";
+import Code from "../icons/Code";
+import Table from "../icons/Table";
+import List from "../icons/List";
 
 function onInputKey(key: string) {
     return (e: CustomEvent): boolean => {
@@ -81,17 +84,17 @@ export function createSuggestionWidget(icon: JSX.Element, itemName: string) : ty
         }
         render() {
             return <div>
-                <button onClick={this.insertItem}>
+                <span onClick={this.insertItem}>
                 {icon}
-                </button>
+                </span>
             </div>
         }
     }
 }
 
 export const defaultBlockSuggestionWidgets = [
-    createSuggestionWidget(<span>insert code</span>, 'code'),
-    createSuggestionWidget(<span>insert table</span>, 'table'),
+    createSuggestionWidget(<List size={16}/>, 'list'),
+    createSuggestionWidget(<Table size={16}/>, 'table'),
 ]
 
 

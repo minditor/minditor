@@ -14,11 +14,7 @@ type Rect = {
 }
 
 
-
-
-
 // CAUTION 默认range 头和尾一定是在同一个 scroll container 中，不存在 头有 scroll，尾却没有的情况
-
 
 function buildThresholdList(numSteps = 100) {
     let thresholds: number[] = [];
@@ -95,7 +91,7 @@ export class ReactiveState {
     public fixedMousePosition: {clientX: number, clientY: number}|null = null
     public contentRange: Atom<DocRange|null> = atom(null)
     public mouseEnteredBlockUnit: Atom<HTMLElement|null> = atom(null)
-    public mouseEnteredBlockDocNode: Atom<DocNode|null> = atom(null)
+    public lastMouseEnteredBlockDocNode: Atom<DocNode|null> = atom(null)
     public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null> = atom(null)
     constructor(public view: DocumentContentView) {
         this.createUserMousePosition()
@@ -195,11 +191,7 @@ export class ReactiveState {
         this.view.listen('block:mouseenter', (e: MouseEvent) => {
             const docNode = this.view.blockUnitToDocNode.get(e.target as HTMLElement)
             assert(!!docNode, 'can not find docNode from element')
-            this.mouseEnteredBlockDocNode(docNode)
-        })
-
-        this.view.listen('mouseleave', () => {
-            this.mouseEnteredBlockDocNode(null)
+            this.lastMouseEnteredBlockDocNode(docNode)
         })
     }
 

@@ -1,5 +1,6 @@
 /**@jsx createElement*/
 import {onESCKey, createElement, createHost} from 'axii'
+import {atom} from 'rata'
 import {Plugin, PluginRunArgv} from "../Plugin";
 import {Document} from "../Document";
 import {RangeWidget} from "./RangeTool";
@@ -8,13 +9,15 @@ import {RangeWidget} from "./RangeTool";
 export class BlockTool extends Plugin{
     public static displayName = `BlockTool`
     render() {
+        const hover = atom(false)
+
         const style = () => {
             // range 看不见了，display 要 none
-            const { mouseEnteredBlockDocNode, lastActiveDevice } = this.document.view.state
+            const { lastMouseEnteredBlockDocNode, lastActiveDevice } = this.document.view.state
 
-            if (!mouseEnteredBlockDocNode() || lastActiveDevice() !== 'mouse') return { display: 'none'}
+            if (!hover() &&( !lastMouseEnteredBlockDocNode() || lastActiveDevice() !== 'mouse')) return { display: 'none'}
             // const boundaryRect = boundaryContainer!.getBoundingClientRect()
-            const blockUnitRect = this.document.view.docNodeToBlockUnit.get(mouseEnteredBlockDocNode())!.getBoundingClientRect()
+            const blockUnitRect = this.document.view.docNodeToBlockUnit.get(lastMouseEnteredBlockDocNode())!.getBoundingClientRect()
 
 
             return {
@@ -24,7 +27,7 @@ export class BlockTool extends Plugin{
                 top: blockUnitRect.top,
                 // left: visibleRangeRect().left - boundaryRect.left,
                 right: '100%',
-                marginRight: 10,
+                marginRight: -1,
                 // left: 0,
                 // marginLeft: '-100%',
                 padding: 10,
@@ -37,7 +40,7 @@ export class BlockTool extends Plugin{
             }
         }
 
-        return  <div style={style}>
+        return  <div style={style} onmouseenter={() => hover(true)} onmouseleave={hover(false)}>
             <div>delete</div>
             <div>insert after</div>
             <div>copy</div>

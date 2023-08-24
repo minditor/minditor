@@ -8,7 +8,7 @@ export class Document {
     public view: DocumentContentView
     public content: DocumentContent
     public plugins: Plugin[] = []
-    constructor(public container: HTMLElement, data: DocNodeData[], docNodeTypes: {[k: string]: (typeof DocNode|typeof Text)}, public Plugins: (typeof Plugin)[]) {
+    constructor(public container: HTMLElement, data: DocNodeData, docNodeTypes: {[k: string]: (typeof DocNode|typeof Text)}, public Plugins: (typeof Plugin)[]) {
         this.content = new DocumentContent(data, docNodeTypes)
         this.view = new DocumentContentView(this.content)
     }

@@ -2,6 +2,10 @@
 import {onESCKey, createElement, createHost} from 'axii'
 import {Plugin, PluginRunArgv} from "../Plugin";
 import {Document} from "../Document";
+import Bold from "../icons/Bold";
+import Italic from "../icons/Italic";
+import Underline from "../icons/Underline";
+import Linethrough from "../icons/Linethrough";
 
 
 export class RangeWidget {
@@ -40,7 +44,8 @@ export function createRangeTool(RangeWidgetClasses: (typeof RangeWidget)[] ) {
                         display: 'block',
                         position: 'absolute', // CAUTION 注意 rangePosition 拿到的是相对于 modal boundary 的，所以我们这里也是相对于 modal boundary 的 absolute
                         // top: visibleRangeRect().top - boundaryRect.top + boundaryContainer!.scrollTop -50,
-                        top: visibleRangeRect().top - 100,
+                        top: visibleRangeRect().top,
+                        // marginBottom: '100%',
                         // left: visibleRangeRect().left - boundaryRect.left,
                         left: visibleRangeRect().left,
                         padding: 10,
@@ -73,18 +78,18 @@ export function createFormatWidget(icon: JSX.Element, formatName: string) {
             this.document.view.formatCurrentRange({[formatName]: true})
         }
         render() {
-            return <button onClick={this.toggleFormat}>
+            return <span style={{cursor: 'pointer'}} onClick={this.toggleFormat}>
                 {icon}
-            </button>
+            </span>
         }
     }
 }
 
 export const defaultFormatWidgets = [
-    createFormatWidget(<span>bold</span>, 'bold'),
-    createFormatWidget(<span>italic</span>, 'italic'),
-    createFormatWidget(<span>underline</span>, 'underline'),
-    createFormatWidget(<span>lineThrough</span>, 'lineThrough'),
+    createFormatWidget(<Bold size={16}/>, 'bold'),
+    createFormatWidget(<Italic size={16}/>, 'italic'),
+    createFormatWidget(<Underline size={16}/>, 'underline'),
+    createFormatWidget(<Linethrough size={16}/>, 'lineThrough'),
 ]
 
 

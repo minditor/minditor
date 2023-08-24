@@ -1,8 +1,6 @@
 import { atom, Atom, reactive, toRaw, computed, atomComputed } from 'rata'
 import { Fragment, createElement } from "axii"
 import {assert, deepClone} from "./util";
-import {DocumentContent} from "./Content";
-import {Doc} from "./editing";
 
 export type DocNodeData = {
     [k: string]: any,

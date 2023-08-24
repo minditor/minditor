@@ -12,6 +12,7 @@
     "cypress": "cypress open",
     "pw": "npm run test:compile && playwright test"
   },
+  "files": ["plugins"],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/minditor/minditor.git"
