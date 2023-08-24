@@ -34,5 +34,6 @@
     "jsx.d.ts",
     "playground/v2.tsx",
     "playground/rangeTool.tsx",
+    "editor.tsx"
   ]
 }

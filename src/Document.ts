@@ -41,4 +41,10 @@ export class Document {
         })
         return fragment
     }
+    toJSON() {
+        return {
+            type: 'Document',
+            children: this.content.toArrayJSON()
+        }
+    }
 }

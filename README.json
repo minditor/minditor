@@ -1,0 +1,13 @@
+{
+  "type": "Document",
+  "children": [
+    {
+      "type": "Paragraph",
+      "content": [
+        {
+          "type": "Text",
+          "value": ""
+        }
+      ]
+    }]
+}

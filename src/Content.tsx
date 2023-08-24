@@ -317,7 +317,6 @@ export class DocumentContent extends DocNode{
                 current = current.previousSiblingInTree
             }
         }
-
     }
     toArrayJSON() {
         return DocNode.map(this.firstChild, (child) => child.toJSON())
