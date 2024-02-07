@@ -1,5 +1,5 @@
 // @ts-ignore
-import { atom, Atom } from 'rata'
+import { atom, Atom } from 'axii'
 import {assert, debounce, idleThrottle, nextJob} from "./util";
 // import {createRangeLikeFromRange, findNodeFromElement} from "./editing";
 import {DocNode, DocRange} from "./DocNode";

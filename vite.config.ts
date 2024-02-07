@@ -10,8 +10,6 @@ export default {
   },
   resolve: {
     alias: {
-      'rata': fileURLToPath(new URL('../rata/src/index.ts', import.meta.url)),
-      'axii': fileURLToPath(new URL('../rata/playground/framework/src/index.ts', import.meta.url)),
     }
   },
   server: {

@@ -1,6 +1,6 @@
 /**@jsx createElement*/
 
-import {ANY, DocumentContent} from "../src/Content";
+import {ANY, DocumentContent} from "../src/DocumentContent.js";
 import { DocumentContentView } from "../src/View";
 import {Document} from "../src/Document";
 import {Paragraph, Section, Text, ListItem} from "../src/DocNode";

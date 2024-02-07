@@ -1,6 +1,6 @@
 /**@jsx createElement*/
 import {onESCKey, createElement, createHost} from 'axii'
-import {atom} from 'rata'
+import {atom} from 'axii'
 import {Plugin, PluginRunArgv} from "../Plugin";
 import {Document} from "../Document";
 import {RangeWidget} from "./RangeTool";

@@ -1,5 +1,5 @@
 import {DocNode, DocNodeData, IsolatedComponent, RenderContext, RenderProps} from "../DocNode";
-import { atom } from 'rata'
+import { atom } from 'axii'
 import {createElement} from 'axii'
 import {SuggestionWidget} from "../plugins/SuggestionTool";
 import highlight from 'highlight.js';

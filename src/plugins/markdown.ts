@@ -1,7 +1,7 @@
 import {onSpaceKeyDown, Atom} from 'axii'
 import {reverseMatchStrPair, reversMatchStr} from "../helper";
 import {DocNode, Section, Text, ListItem} from "../DocNode";
-import {DocumentContent} from "../Content";
+import {DocumentContent} from "../DocumentContent.js";
 import {DocumentContentView} from "../View";
 import {PluginRunArgv, Plugin} from "../Plugin";
 

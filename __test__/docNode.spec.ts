@@ -1,5 +1,5 @@
 import {describe, expect} from "@jest/globals";
-import {DocumentContent} from "../src/Content";
+import {DocumentContent} from "../src/DocumentContent.js";
 import { Section, Paragraph, Text} from "../src/DocNode";
 
 

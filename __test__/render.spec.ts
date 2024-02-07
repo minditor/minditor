@@ -1,4 +1,4 @@
-import {DocumentContent} from "../src/Content";
+import {DocumentContent} from "../src/DocumentContent.js";
 import {DocumentContentView} from "../src/View";
 import {Paragraph, Section, Text} from "../src/DocNode";
 import {expect, describe, test} from "@jest/globals";

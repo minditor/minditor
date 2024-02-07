@@ -1,9 +1,9 @@
 import { Document} from "./Document";
 import {DocRange, Text} from "./DocNode";
-import {DocumentContent} from "./Content";
+import {DocumentContent} from "./DocumentContent.js";
 import {DocumentContentView} from "./View";
 import {state as globalKM} from "./globals";
-import {atom} from 'rata'
+import {atom} from 'axii'
 import {assert} from "./util";
 import {createHost, Host} from 'axii'
 

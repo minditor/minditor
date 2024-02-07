@@ -1,4 +1,4 @@
-import {DocumentContent} from "../src/Content";
+import {DocumentContent} from "../src/DocumentContent.js";
 import {DocumentContentView} from "../src/View";
 import {Paragraph, Section, Text, ListItem} from "../src/DocNode";
 import {getByText} from '@testing-library/dom'

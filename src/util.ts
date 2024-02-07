@@ -101,3 +101,11 @@ export function setNativeRange(startElement: HTMLElement | ChildNode, startOffse
 export function deepClone(obj: any) {
   return JSON.parse(JSON.stringify(obj))
 }
+
+export function insertBefore( newNode: Node, referenceNode: Node) {
+  referenceNode.parentNode?.insertBefore(newNode, referenceNode)
+}
+
+export function insertAfter( newNode: Node, referenceNode: Node) {
+  referenceNode.parentNode?.insertBefore(newNode, referenceNode.nextSibling)
+}

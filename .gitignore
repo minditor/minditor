@@ -33,3 +33,7 @@ packages/axii-x6/stats.html
 /playwright-report/
 /playwright/.cache/
 /tests/spec-out
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
