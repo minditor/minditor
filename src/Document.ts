@@ -2,7 +2,7 @@ import {DocumentContent, DocNode, BlockData, Block, InlineData, Inline} from "./
 import {DocumentContentView} from "./View";
 import {Plugin} from './Plugin'
 import {assert} from "./util";
-
+import {GlobalState, state as defaultGlobalState } from './globals'
 
 export type DocumentData = {
     name: string,
@@ -14,47 +14,15 @@ export class Document {
     public content: DocumentContent
     public plugins: Plugin[] = []
     element?: HTMLElement
-    createBlocks(jsonData: BlockData[], docNodeTypes: {[k: string]: typeof DocNode}) : Block {
-
-        let head: Block|undefined
-        let prevNode: Block|undefined
-        jsonData.forEach(docNodeData => {
-            const BlockClass = docNodeTypes[docNodeData.type]! as typeof Block
-            const docNode = new BlockClass(docNodeData.props)
-
-            docNode.firstChild =  this.createInlines(docNodeData.content, docNodeTypes)
-
-            if (!head) {
-                head = docNode
-            }
-            if (prevNode) {
-                prevNode.nextSibling = docNode
-                docNode.previousSibling = prevNode
-            }
-            prevNode = docNode!
-        })
-        return head!
-    }
-    createInlines(jsonData: InlineData[], docNodeTypes: {[k: string]: typeof DocNode}): Inline {
-        let head: Inline|undefined
-        let prevNode: Inline|undefined
-        jsonData.forEach(inlineData => {
-            const InlineClass = docNodeTypes[inlineData.type]! as typeof Inline
-            const inline = new InlineClass(inlineData.props)
-            if (!head) {
-                head = inline
-            }
-            if (prevNode) {
-                prevNode.nextSibling = inline
-                inline.previousSibling = prevNode
-            }
-            prevNode = inline
-        })
-        return head!
-    }
-    constructor(public container: HTMLElement, public jsonData: DocumentData, public docNodeTypes: {[k: string]: typeof DocNode}, public Plugins: (typeof Plugin)[]) {
-        this.content = new DocumentContent(this.createBlocks(jsonData.content, docNodeTypes))
-        this.view = new DocumentContentView(this.content)
+    constructor(
+        public container: HTMLElement,
+        public jsonData: DocumentData,
+        public docNodeTypes: {[k: string]: typeof DocNode},
+        public Plugins: (typeof Plugin)[],
+        public globalState: GlobalState = defaultGlobalState
+    ) {
+        this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.content, docNodeTypes))
+        this.view = new DocumentContentView(this.content, globalState)
     }
     initializePlugin(PluginClass: typeof Plugin) {
         const plugin = new PluginClass(this)

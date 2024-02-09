@@ -1,10 +1,7 @@
-// @ts-ignore
-import { atom, Atom } from 'axii'
-import {assert, debounce, idleThrottle, nextJob} from "./util";
-// import {createRangeLikeFromRange, findNodeFromElement} from "./editing";
-import {DocNode, DocRange} from "./DocNode";
-import { state as globalState } from './globals'
-import {CONTENT_RANGE_CHANGE, DocumentContentView} from "./View";
+import {atom, Atom} from 'axii'
+import {idleThrottle, nextJob} from "./util";
+import {DocNode} from "./DocumentContent.js";
+import {CONTENT_RANGE_CHANGE, DocRange, DocumentContentView} from "./View";
 
 type Rect = {
     top: number,
@@ -85,24 +82,27 @@ function getRangeRectsIntersecting(rects: Rect[], targetRect: Rect, offset = 30)
 }
 
 
-export class ReactiveState {
+export class ReactiveViewState {
     public lastActiveDevice: Atom<'mouse'|'keyboard'|null> = atom(null)
     public mousePosition: Atom<{clientX: number, clientY: number}|null> = atom(null)
     public fixedMousePosition: {clientX: number, clientY: number}|null = null
-    public contentRange: Atom<DocRange|null> = atom(null)
+    public selectionRange: Atom<DocRange|null> = atom(null)
+    public rangeBeforeComposition: Atom<DocRange|null> = atom(null)
     public mouseEnteredBlockUnit: Atom<HTMLElement|null> = atom(null)
     public lastMouseEnteredBlockDocNode: Atom<DocNode|null> = atom(null)
     public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null> = atom(null)
     constructor(public view: DocumentContentView) {
-        this.createUserMousePosition()
-        this.createDocSelectionRange()
-        this.createLastActiveDevice()
-        this.createMouseEnteredBlockNode()
-        this.createVisibleRangeRect()
+        this.activateUserMousePosition()
+        this.activateDocSelectionRange()
+        this.activateLastActiveDevice()
+        this.activateMouseEnteredBlockNode()
+        this.activateVisibleRangeRect()
+        this.activateRangeBeforeComposition()
     }
-    createVisibleRangeRect() {
+    activateVisibleRangeRect() {
         let updateRangeClientRectCallback: EventListenerOrEventListenerObject
         let stopListenSelectionChange: () => void
+        const globalState = this.view.globalState
 
         this.view.listen('bindElement', (e: CustomEvent) => {
             const { element: docElement } = e.detail
@@ -113,7 +113,6 @@ export class ReactiveState {
                 if (stopListenSelectionChange) stopListenSelectionChange()
                 if (updateRangeClientRectCallback) boundaryContainer.removeEventListener('scroll', updateRangeClientRectCallback)
 
-                console.log("isIntersecting", docEntry.isIntersecting)
                 // FIXME 保证一定要产生监听？不然会出现时有时没有的情况，改成这样了还是有 bug。还是出现了 rsecting @ ReactiveS
                 if(!docEntry.isIntersecting) {
                     this.visibleRangeRect(null)
@@ -126,11 +125,10 @@ export class ReactiveState {
                         }
 
                         const range = globalState.selectionRange!
-                        // if (range.collapsed) {
-                        //     console.log(getRangeRectsIntersecting(Array.from(range.getClientRects()), docEntry.intersectionRect))
-                        //     rangeClientRect(null)
-                        //     return
-                        // }
+                        if (range.collapsed) {
+                            this.visibleRangeRect(null)
+                            return
+                        }
 
                         // 有 range 才监听 scroll
                         updateRangeClientRectCallback = idleThrottle( () => {
@@ -159,7 +157,7 @@ export class ReactiveState {
             }
         })
     }
-    createLastActiveDevice() {
+    activateLastActiveDevice() {
         this.view.listen('mousemove', () => {
             this.lastActiveDevice('mouse')
         })
@@ -168,7 +166,7 @@ export class ReactiveState {
             this.lastActiveDevice('keyboard')
         })
     }
-    createUserMousePosition() {
+    activateUserMousePosition() {
         const debouncedUpdateMousePosition = idleThrottle((e: MouseEvent) => {
             const {clientX, clientY} = e
             this.mousePosition({clientX, clientY})
@@ -177,23 +175,50 @@ export class ReactiveState {
 
         this.view.listen('mousemove', debouncedUpdateMousePosition)
     }
-    createDocSelectionRange() {
-        // FIXME 这里到底是谁负责从 globalKM 里面读？
-        this.view.listen(CONTENT_RANGE_CHANGE, () => {
-            // CAUTION 这里默认了 globalState 里的注册的 selectionchange 一定先发生，所以这里才能直接读
-            const range = globalState.selection!.rangeCount ? globalState.selection!.getRangeAt(0) : null
-            const docRange = range ? this.view.createDocRange(range) : null
-            console.log("setting content range", range, docRange)
-            this.contentRange(docRange)
+    activateDocSelectionRange() {
+        this.view.globalState.onSelectionChange(() => {
+            if (this.view.element && this.view.element.contains(this.view.globalState.selectionRange?.commonAncestorContainer!) ) {
+                const range = this.view.globalState.selection!.rangeCount ? this.view.globalState.selection!.getRangeAt(0) : null
+                const docRange = range ? this.view.createDocRange(range) : null
+                this.selectionRange(docRange)
+            }
         })
     }
-    createMouseEnteredBlockNode() {
-        this.view.listen('block:mouseenter', (e: MouseEvent) => {
-            const docNode = this.view.blockUnitToDocNode.get(e.target as HTMLElement)
-            assert(!!docNode, 'can not find docNode from element')
-            this.lastMouseEnteredBlockDocNode(docNode)
+    lastRangeBeforeComposition: Range|undefined = undefined
+    activateRangeBeforeComposition() {
+        this.view.globalState.onSelectionChange(() => {
+            if (this.view.element && this.view.element.contains(this.view.globalState.rangeBeforeComposition?.commonAncestorContainer!) ) {
+
+                const range = this.view.globalState.rangeBeforeComposition!
+
+                if (isRangeEqual(this.lastRangeBeforeComposition, range)) {
+                    // console.log('range not changed', range, range.startOffset, range.endOffset)
+                    return
+                }
+
+                const docRange = this.view.createDocRange(range)
+                // console.log('last range before composition', docRange.startText.props.value, docRange.startOffset, docRange.endText.props.value, docRange.endOffset)
+                this.rangeBeforeComposition(docRange)
+                this.lastRangeBeforeComposition = range.cloneRange()
+            }
         })
+    }
+    activateMouseEnteredBlockNode() {
+        // this.view.listen('block:mouseenter', (e: MouseEvent) => {
+        //     // FIXME
+        //     const docNode = this.view.blockUnitToDocNode.get(e.target as HTMLElement)
+        //     assert(!!docNode, 'can not find docNode from element')
+        //     this.lastMouseEnteredBlockDocNode(docNode)
+        // })
     }
 
 }
+
+function isRangeEqual(rangeA?: Range, rangeB?: Range) {
+    return rangeA && rangeB && rangeA.startContainer === rangeB.startContainer &&
+        rangeA.startOffset === rangeB.startOffset &&
+        rangeA.endContainer === rangeB.endContainer &&
+        rangeA.endOffset === rangeB.endOffset
+}
+
 

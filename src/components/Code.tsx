@@ -52,7 +52,7 @@ export class CodeSuggestionWidget extends SuggestionWidget {
     static displayName =`ImageSuggestionWidget`
     insertCodeBlock = (event: Event) =>{
         const codeDocNode = new Code({type: 'Code', value: ''})
-        this.document.content.replaceDocNode(codeDocNode, this.document.view.state.contentRange().startNode)
+        this.document.content.replaceDocNode(codeDocNode, this.document.view.state.selectionRange().startNode)
         this.parent.activated(false)
         // TODO 如果有 nextSibling ，就 focus 上去，如果没有，就创建一个新的 para，然后 focus
         codeDocNode.focus()

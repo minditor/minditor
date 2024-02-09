@@ -15,9 +15,11 @@ export const state:GlobalState = (function() {
     let currentSelection:Selection|null = window.getSelection()
     let rangeBeforeComposition:Range|null
     let selectionRange: Range|null
+    let isComposing = false
 
     const callbacks = new Set<SelectionChangeCallback>()
-        document.addEventListener('mousedown', () => {
+
+    document.addEventListener('mousedown', () => {
         isMouseDown = true
     })
 
@@ -26,25 +28,34 @@ export const state:GlobalState = (function() {
     })
 
     document.addEventListener('selectionchange', (e) => {
-        // TODO 必须 selection 是在 doc 中并且合法才行。
         currentSelection = window.getSelection()
         hasCursor = Boolean(currentSelection?.rangeCount)
         selectionRange = hasCursor ? currentSelection?.getRangeAt(0)! : null
-
         callbacks.forEach(callback => callback(e))
     })
 
-    document.addEventListener('keydown', (e) => {
-        if (hasCursor) {
-            // TODO selection change 发生在 keydown 之前吗？？？
-            if (e.isComposing || e.keyCode === 229) {
-                return
-            }
-            rangeBeforeComposition = currentSelection!.getRangeAt(0)
+    document.addEventListener('selectionchange', (e) => {
+        if (!isComposing) {
+            // CAUTION 特别注意这里要重新读 selection
+            rangeBeforeComposition = window.getSelection()!.rangeCount > 0 ? window.getSelection()!.getRangeAt(0) : null
         }
     })
 
 
+
+    document.addEventListener('keydown', (e) => {
+        if (hasCursor) {
+            // CAUTION keydown 发生在 compositionstart 之前，这个时候 selection 还没变，所以应该在这里记录 isComposing 才能保证正确
+            if (e.isComposing || e.keyCode === 229) {
+                isComposing = true
+                return
+            }
+        }
+    })
+
+    document.addEventListener('compositionend', () => {
+        isComposing = false
+    })
 
     return {
         get isMouseDown() {

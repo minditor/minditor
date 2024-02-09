@@ -1,23 +1,30 @@
-import {createElement, eventAlias, Host} from 'axii'
+import {atom, createElement, eventAlias, onBackspaceKey, onEnterKey, onTabKey} from 'axii'
 import {
     Block,
+    BlockData,
+    DocNode,
+    DocNodeFragment,
     DocumentContent,
+    EmitData,
     FormatData,
     Inline,
-    Text,
-    DocNode,
-    EmitData,
-    DocNodeFragment
+    Text
 } from "./DocumentContent.js";
-import {nextTask, setNativeCursor, setNativeRange} from "./util";
-import {ReactiveState} from "./ReactiveState";
+import {
+    assert,
+    nextTask,
+    setNativeCursor,
+    SHOULD_FIX_OFFSET_LAST,
+    SHOULD_RESET_CURSOR_AFTER_BACKSPACE,
+    ZWSP
+} from "./util";
+import {ReactiveViewState} from "./ReactiveViewState.js";
 import {EventDelegator} from "./EventDelegator";
+import {GlobalState} from "./globals.js";
 
 
 type CallbackType = (...arg: any[]) => any
 
-
-const ZWSP =  '​'
 
 export const CONTENT_RANGE_CHANGE = 'contentrangechange'
 
@@ -25,67 +32,119 @@ export const CONTENT_RANGE_CHANGE = 'contentrangechange'
 
 export class DocumentContentView extends EventDelegator{
     public element?: HTMLElement
-    public textNodeToElement = new WeakMap<Text, HTMLElement>()
-    public docNodeToBlockUnit = new WeakMap<DocNode, HTMLElement>()
-    public blockUnitToDocNode: WeakMap<HTMLElement, DocNode> = new WeakMap()
-    public state: ReactiveState
-    constructor(public doc: DocumentContent) {
-        super()
-        this.state = new ReactiveState(this)
+    public docNodeToElement = new WeakMap<DocNode|DocNodeFragment, HTMLElement|DocumentFragment>()
+    public elementToDocNode = new WeakMap<HTMLElement, DocNode>()
+    public state: ReactiveViewState
+    public usingDefaultBehavior = false
+    public globalState: GlobalState
+    public debugJSONContent = atom<BlockData>(null)
 
-        this.doc.on('append', this.patchAppend)
-        this.doc.on('prepend', this.patchPrepend)
-        this.doc.on('replace', this.patchReplace)
-        this.doc.on('deleteBetween', this.patchDeleteBetween)
-        this.doc.on('updateText', this.patchText)
+    constructor(public doc: DocumentContent, globalState: GlobalState) {
+        super()
+        this.globalState = globalState
+        this.state = new ReactiveViewState(this)
+
+        this.doc.on('append', this.preventPatchIfUseDefaultBehavior(this.patchAppend))
+        this.doc.on('prepend', this.preventPatchIfUseDefaultBehavior(this.patchPrepend))
+        this.doc.on('replace', this.preventPatchIfUseDefaultBehavior(this.patchReplace))
+        this.doc.on('deleteBetween', this.preventPatchIfUseDefaultBehavior(this.patchDeleteBetween))
+        this.doc.on('updateText', this.preventPatchIfUseDefaultBehavior(this.patchText))
     }
-    patchAppend = ({ args }: EmitData) => {
-        const [docNode, ref] = args
-        if (docNode instanceof Block) {
-            // render 一个 block
-            if (!docNode.element) {
-                docNode.element = this.renderBlock(docNode)
+    preventPatchIfUseDefaultBehavior(callback: CallbackType) {
+        return (...args: Parameters<typeof callback>) => {
+
+            if (!this.usingDefaultBehavior) {
+                callback(...args)
             }
-            insertAfter(docNode.element, ref.element!)
-        } else {
-            // render 多个 block，包装在 DocNodeFragment 里面
-            if (!docNode.element) {
-                docNode.element = this.renderBlockList(docNode.head!)
-                insertAfter(docNode.element, ref.element!)
-            }
-            // FIXME 一旦 DocumentFragment 被 append 了，里面的元素就没了，这个时候要重置一下。
-            //   这里还要再想清楚一点，会不会有 里面的 DocNode 有 element，但是 DocumentFragment 没有 element 的情况。
-            insertAfter(docNode.element, ref.element!)
+
+            // TODO 移出去，应该变成 middleware 的形式看起来才合理
+            this.debugJSONContent(this.doc.toJSON())
         }
     }
-    patchPrepend = () => {
+    renderDocNodeOrFragment(docNode: DocNode|DocNodeFragment) {
+        let element = this.docNodeToElement.get(docNode)
+
+        if (!element) {
+            if (docNode instanceof Block) {
+                element = this.renderBlock(docNode)
+            } else if (docNode instanceof Inline) {
+                element = this.renderInline(docNode)
+            } else {
+                // DocNodeFragment
+                const docNodeFrag = docNode as DocNodeFragment
+                if (docNodeFrag.head instanceof Block) {
+                    element = this.renderBlockList(docNodeFrag.head)
+                } else {
+                    element = this.renderInlineList(docNodeFrag.head! as Inline)
+                }
+            }
+        }
+        return element
+    }
+    patchAppend = ({ args }: EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>) => {
+        const [docNode, ref] = args
+        const refElement = this.docNodeToElement.get(ref)! as HTMLElement
+        const element = this.renderDocNodeOrFragment(docNode)
+        insertAfter(element!, refElement)
+    }
+    patchPrepend = ({ args }: EmitData<Parameters<DocumentContent["prepend"]>, ReturnType<DocumentContent["prepend"]>>) => {
+        const [docNode, ref] = args
+        const refElement = this.docNodeToElement.get(ref)!as HTMLElement
+        const element = this.renderDocNodeOrFragment(docNode)
+        insertBefore(element!, refElement)
+    }
+    patchReplace = ({ args }: EmitData<Parameters<DocumentContent["replace"]>, ReturnType<DocumentContent["replace"]>>) =>  {
+        const [docNode, ref] = args
+        const refElement = this.docNodeToElement.get(ref)!as HTMLElement
+        const element = this.renderDocNodeOrFragment(docNode)
+        refElement.replaceWith(element!)
+    }
+    patchDeleteBetween = ({ args, result }: EmitData<Parameters<DocumentContent["deleteBetween"]>, ReturnType<DocumentContent["deleteBetween"]>>) =>  {
+        const [start, end] = args
+
+        const fragment = document.createDocumentFragment()
+        let current = start
+        while (current !== end) {
+            const element = this.docNodeToElement.get(current)!
+            fragment.appendChild(element)
+            current = current.nextSibling!
+        }
+        if (end) {
+            fragment.appendChild(this.docNodeToElement.get(end)!)
+        }
+
+        this.docNodeToElement.set(result, fragment)
+    }
+
+    patchText= ({ args}: EmitData<Parameters<DocumentContent["updateText"]>, ReturnType<DocumentContent["updateText"]>>) =>  {
+        const [text, ref] = args
+        const element = this.docNodeToElement.get(ref)!
+        // 这样就能让空的 text node 也能有光标。
+        element.textContent = text.length === 0 ? ZWSP : text
+        console.log("updatetext", text, element.textContent.length)
 
     }
-    patchReplace= () =>  {
 
+    renderInline(inline: Inline) {
+        const element = inline.render()
+        this.docNodeToElement.set(inline, element)
+        this.elementToDocNode.set(element, inline)
+        return element
     }
-    patchDeleteBetween= () =>  {
-
-    }
-
-    patchText= ({ args}: EmitData) =>  {
-        const [text] = args
-        const element = this.textNodeToElement.get(text)!
-        element.textContent = text.value
-    }
-
     renderInlineList(head: Inline) {
         const result = document.createDocumentFragment()
         let current = head
         while (current) {
-            result.appendChild(current.renderElement())
+            result.appendChild(this.renderInline(current))
             current = current.nextSibling!
         }
         return result
     }
     renderBlock(block: Block) {
-        const inlines = this.renderInlineList(block.firstChild!)
-        return block.renderElement({ children: inlines })
+        const element =  block.render({ children:  this.renderInlineList(block.firstChild!) })
+        this.docNodeToElement.set(block, element)
+        this.elementToDocNode.set(element, block)
+        return element
     }
     renderBlockList(head: Block) {
         const result = document.createDocumentFragment()
@@ -96,18 +155,282 @@ export class DocumentContentView extends EventDelegator{
         }
         return result
     }
+    // CAUTION 浏览器的默认行为和预期有点不一致：
+    //  1. chrome/safari 如果 startOffset 是 0，并且有上一个节点，那么插入的数据变成了上一个节点的最后面，而不是 startText
+    //  2. firefox 是不删除 startText, 插入到 startText 中，并且不合并 endText。
+    //  结论是我们统一行为，不管 startOffset 是多少，都插入到 startText 中。
+    updateRange(range: DocRange, replaceTextValue = '', dontMergeBlock = false) {
+        const { startBlock, startText, startOffset, endBlock, endText, endOffset } = range
+        // 1. 先更新大的 block 和 inline 结构
+        if (range.isInSameBlock ) {
+            if (!range.isInSameInline&& !range.isSibling) {
+                this.doc.deleteBetween(startText.nextSibling!, endText.previousSibling)
+            }
+        } else {
+            // 跨越 block 的输入
+            if (startText.nextSibling) {
+                this.doc.deleteBetween(startText.nextSibling!, null)
+            }
+            const remainEndFragment = this.doc.deleteBetween(endText, null)
+            // 删除中间和结尾的的 block
+            this.doc.deleteBetween(startBlock.nextSibling!, endBlock)
 
+            // 如果有剩余的 fragment，插入到 startBlock 后面
+            // TODO 还要判断是不是 endText 也删完了。
+            if (remainEndFragment) {
+                if (!dontMergeBlock) {
+                    this.doc.append(remainEndFragment, startText)
+                } else {
+                    // 创建个新的 para
+                    const newPara = this.doc.createParagraph(remainEndFragment)
+                    this.doc.append(newPara, startBlock)
+                }
+            }
+        }
+
+        // 2. 再更新 startText 和 endText 的值
+        if (range.isInSameInline) {
+            const newTextValue = startText.props.value.slice(0, startOffset) + replaceTextValue + startText.props.value.slice(endOffset)
+            this.doc.updateText(newTextValue, startText)
+        } else {
+            const newStartTextValue = startText.props.value.slice(0, startOffset) + replaceTextValue
+            const newEndTextValue = endText.props.value.slice(endOffset)
+
+            // CAUTION 分开更新才是正确的。因为加入 startText 上面有 format，那么合并进来的 endText 也会带上，这就不符合预期了。
+            this.doc.updateText(newStartTextValue, startText)
+
+            if (newEndTextValue.length) {
+                this.doc.updateText(newEndTextValue, endText)
+            } else {
+                this.doc.deleteBetween(endText, endText)
+            }
+        }
+
+    }
+    tryUseDefaultBehaviorForRange(range: DocRange, e: Event) {
+        const {startText, startOffset, endText, endOffset, isCollapsed, isInSameInline} = range
+        const canUseDefaultBehaviorInBackspace = !SHOULD_RESET_CURSOR_AFTER_BACKSPACE &&
+            !(e instanceof KeyboardEvent && e.key === 'Backspace' && isCollapsed && startOffset < 2 && startText.props.value.length < 2)
+
+
+        // CAUTION 特别注意，这里能这么判断是因为 docRange 在创建的时候已经把 focus 在上个节点尾部和下个节点头部之类的特殊情况抹平了。
+        const canUseDefaultBehaviorInInputOrDeletion = isCollapsed ?
+            (startOffset!== 0 && (SHOULD_FIX_OFFSET_LAST ? endOffset !== endText.props.value.length : true)) :
+            (startOffset!== 0 && endOffset!== endText.props.value.length && isInSameInline)
+
+
+        const canUseDefaultBehavior = canUseDefaultBehaviorInBackspace && canUseDefaultBehaviorInInputOrDeletion
+
+        if (canUseDefaultBehavior) {
+            console.warn('using default behavior')
+            this.usingDefaultBehavior = true
+        } else {
+            if (!isCollapsed) {
+                this.setCursor(startText, startOffset)
+            }
+            e.preventDefault()
+        }
+        return canUseDefaultBehavior
+    }
+    resetUseDefaultBehavior() {
+        this.usingDefaultBehavior = false
+    }
+    splitByInline(block: Block, inline: Inline|null) {
+        // cursor 在段尾，产生一个新的空的 para
+        if (!inline) {
+            const newPara = this.doc.createParagraph()
+            this.doc.append(newPara, block)
+            return newPara
+        }
+
+        // cursor 在段首，上面产生一个新的 Para
+        if (!inline.previousSibling) {
+            const newPara = this.doc.createParagraph()
+            this.doc.prepend(newPara, block)
+            return block
+        }
+
+
+        const inlineFrag = this.doc.deleteBetween(inline, null)
+        const newPara = this.doc.createParagraph(inlineFrag)
+
+        this.doc.append(newPara, block)
+        return newPara
+    }
+    splitText(text:Text, offset: number) {
+        const originValue = text.props.value
+        this.doc.updateText(originValue.slice(0, offset), text)
+        const splitInline = new Text({value: originValue.slice(offset)})
+        this.doc.append(splitInline, text)
+        return splitInline
+    }
+    inputOrReplaceWithChar = (e: KeyboardEvent) => {
+        const range = this.state.selectionRange()!
+        const {startText, startOffset, endText, endOffset, isCollapsed, isInSameInline} = range
+
+        const succeed = this.tryUseDefaultBehaviorForRange(range, e)
+
+        this.updateRange(range, e.key)
+
+        this.resetUseDefaultBehavior()
+
+        if (!succeed){
+            // 非默认情况重置 cursor
+            this.setCursor(startText, startOffset + 1)
+        }
+    }
+    deleteRangeForReplaceWithComposition = (e: KeyboardEvent) => {
+        const range = this.state.selectionRange()!
+        // CAUTION 因为不能通过 e.preventDefault 阻止默认行为，所以这里通过手动设置 cursor 的方式阻止
+        this.setCursor(range.startText, range.startOffset)
+        this.updateRange(range, '')
+
+        // CAUTION 这里要重新 set cursor 是因为 range 可能删除完了，这时候要把 cursor 调整到 ZWSP 后面。
+        this.setCursor(range.startText, range.startOffset)
+
+    }
+    inputComposedData = (e: CompositionEvent) => {
+        const cursorBeforeComposition = this.state.rangeBeforeComposition()!
+        const succeed = this.tryUseDefaultBehaviorForRange(cursorBeforeComposition, e)
+
+        this.updateRange(cursorBeforeComposition, e.data)
+
+        this.resetUseDefaultBehavior()
+        if(!succeed) {
+            this.setCursor(cursorBeforeComposition.startText, cursorBeforeComposition.startOffset + e.data.length)
+        }
+        return false
+    }
+
+    // CAUTION 如果  range 刚好删完了 startText，
+    //  chrome 的行为是新增字符在后面 Text 的头部
+    //  firefox/safari 是在前面 Text 的尾部
+    //  我们统一行为，不删 startText，不合并 endText
+    deleteRange = (e: KeyboardEvent) => {
+        const range = this.state.selectionRange()!
+        const succeed = this.tryUseDefaultBehaviorForRange(range, e)
+
+        this.updateRange(range, '')
+        this.resetUseDefaultBehavior()
+
+        if (!succeed){
+            if(range.startText.props.value.length === 0 && range.startText.previousSibling instanceof Text) {
+                this.setCursor(range.startText.previousSibling, range.startText.previousSibling.props.value.length)
+                // 头也没有文字了，删除掉
+                this.doc.deleteBetween(range.startText, range.startText)
+            } else {
+                // 重置 cursor
+                this.setCursor(range.startText, range.startOffset)
+            }
+        }
+
+    }
+    deleteLast = (e: KeyboardEvent) => {
+        const range = this.state.selectionRange()!
+        const { startText, startOffset, startBlock } = range
+        // 文章开头，不做任何操作
+        if (startOffset === 0 && !startText.previousSibling && !startBlock.previousSibling) return
+
+        const succeed = this.tryUseDefaultBehaviorForRange(range, e)
+        if (startOffset === 0) {
+            // 理论上不会发生前面还有text，但当前是 offset 0 的情况，因为我们默认只能选中文字的尾部。
+            assert(!(startText.previousSibling instanceof Text), 'should not happen')
+            if (!startText.previousSibling) {
+                const previousBlock = startBlock.previousSibling!
+                // CAUTION  先把 block detach，再去操作 inline，性能高点
+                this.doc.deleteBetween(startBlock, startBlock)
+                const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null)
+                const previousBlockLastChild = previousBlock.lastChild!
+                this.doc.append(inlineFrag, previousBlock.lastChild!)
+                debugger
+                this.setCursor(previousBlockLastChild, Infinity)
+
+            } else {
+                // TODO 删除删一个 InlineComponent
+                //  如果只有一个组件，那么还要生成一个空的 Text
+            }
+        } else {
+            if (startText.props.value.length === 1) {
+                if (startText.previousSibling) {
+                    // 不管前面是什么，都设置到末尾
+                    this.setCursor(startText.previousSibling, Infinity)
+                    this.doc.deleteBetween(startText, startText)
+                } else {
+                    this.doc.updateText('', startText)
+                }
+            } else {
+                this.doc.updateText(startText.props.value.slice(0, startOffset - 1), startText)
+                if (!succeed) {
+                    this.setCursor(startText, startOffset - 1)
+                }
+            }
+        }
+
+        this.resetUseDefaultBehavior()
+    }
+    splitContent = (e: KeyboardEvent) => {
+        const range = this.state.selectionRange()!
+        const { startText, startOffset, startBlock, isEndFull } = range
+        e.preventDefault()
+
+        assert(!(startOffset === 0 && startText.previousSibling instanceof Text), 'should not happen')
+        // cursor 在中间，需要分割
+        let splitInline!:Inline
+
+        if (startOffset === 0) {
+            splitInline = startText
+        } else if (isEndFull) {
+            splitInline = startText.nextSibling!
+        } else {
+            // 文字中间
+            splitInline = this.splitText(startText, startOffset)
+        }
+        const newPara = this.splitByInline(startBlock, splitInline)
+        this.setCursor(newPara.firstChild as Text, 0)
+    }
+
+    deleteRangeWithoutMerge = (e: KeyboardEvent) =>{
+        const range= this.state.selectionRange()!
+        const { startText, endBlock, startBlock} = range
+        e.preventDefault()
+
+        if (!range.isInSameBlock) {
+            this.updateRange(this.state.selectionRange()!, '', true)
+            this.setCursor(endBlock.firstChild as Text, 0)
+        } else {
+            this.updateRange(this.state.selectionRange()!, '')
+            const newPara = this.splitByInline(startBlock, startText.nextSibling)
+            // 处理 startText 也变空的问题
+            if(startText.props.value.length === 0 && startText.previousSibling) {
+                this.doc.deleteBetween(startText, startText)
+            }
+            this.setCursor(newPara.firstChild as Text, 0)
+        }
+    }
+    changeLevel = () => {
+
+    }
     render() {
         this.element = (
             <div
                 spellcheck={false}
                 contenteditable
                 onKeydown={[
-                    // onNotComposition(onSingleKey(withCurrentRange(this.inputCharacter))),
-                    // onNotComposition(onEnterKey(withCurrentRange(this.changeLine))),
-                    // onNotComposition(onBackspaceKey(withCurrentRange(this.deleteContent))),
-                    // onNotComposition(onTabKey(this.changeLevel))
+                    onNotComposing(onCharKey(this.inputOrReplaceWithChar)),
+                    onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition)),
+
+                    onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange))),
+                    onNotComposing(this.onRangeCollapsed(onBackspaceKey(this.deleteLast))),
+
+                    onNotComposing(this.onRangeCollapsed(onEnterKey(this.splitContent))),
+                    onNotComposing(this.onRangeNotCollapsed(onEnterKey(this.deleteRangeWithoutMerge))),
+
+                    onNotComposing(onTabKey(this.changeLevel)),
+                    // 有 range 时的输入法开始处理，等同于先删除 range
                 ]}
+                onCompositionEndCapture={this.inputComposedData}
+                // safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
+                onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition)}
             >
                 {this.renderBlockList(this.doc.head!)}
             </div>
@@ -118,26 +441,32 @@ export class DocumentContentView extends EventDelegator{
             this.bindElement(this.element!)
         })
 
-
         return this.element
     }
     setCursor(docNode: DocNode, offset: number) {
-        const firstText = docNode instanceof Text ? docNode : docNode.content as Text
-        const startContainer = this.textNodeToElement.get(firstText)!.firstChild!
-        const startOffset = offset === Infinity ? firstText.value.length : offset
-        setNativeCursor(startContainer, startOffset)
-        console.log("setting cursor", firstText, startContainer, startOffset)
+        // FIXME 没考虑 InlineComponent 和 Component
+
+        const firstText = docNode instanceof Text ? docNode : (docNode as Block).firstChild as Text
+        const element = this.docNodeToElement.get(firstText)!
+        // 可能是个空的所以没有 text child
+        const startContainer = element.firstChild || element
+        // CAUTION 注意这里，如果是空节点，会渲染出一个 ZWSP，要调整到这个后面，不然有的浏览器就回自动插入到上一元素的末尾。
+        const startOffset = offset === Infinity ?
+            firstText.props.value.length :
+            (firstText.isEmpty ? 1 : offset)
+        setNativeCursor(startContainer as HTMLElement, startOffset)
+        console.log("api setting cursor", firstText, startContainer, startOffset)
     }
     setRange(docRange: DocRange) {
-        const startContainer = this.textNodeToElement.get(docRange.startText)!.firstChild!
-        const endContainer = this.textNodeToElement.get(docRange.endText)!.firstChild!
-        setNativeRange(startContainer, docRange.startOffset, endContainer, docRange.endOffset)
+        // const startContainer = this.textNodeToElement.get(docRange.startText)!.firstChild!
+        // const endContainer = this.textNodeToElement.get(docRange.endText)!.firstChild!
+        // setNativeRange(startContainer, docRange.startOffset, endContainer, docRange.endOffset)
     }
     formatRange(range: Range, formatData: FormatData) {
         // this.doc.formatRange(this.createDocRange(range)!, formatData)
     }
     formatCurrentRange(formatData: FormatData) {
-        const currentRange = this.state.contentRange()!
+        const currentRange = this.state.selectionRange()!
         // this.doc.formatRange(currentRange, formatData)
         // 重置 range
         this.setRange(currentRange)
@@ -145,16 +474,119 @@ export class DocumentContentView extends EventDelegator{
     get boundaryContainer() {
         return this.element?.parentElement
     }
+    findFirstTextFromElement(startContainer: Node): Text|undefined {
+        let current = startContainer
+        let result = this.elementToDocNode.get(current as HTMLElement)
+        while (current && !result) {
+            const docNode = this.elementToDocNode.get(current as HTMLElement)
+            if (docNode instanceof Text) {
+                result = docNode
+            }
+            current = current.parentElement!
+        }
+        return result instanceof Text ? result : undefined
+    }
+    findFirstBlockFromElement(startContainer: Node): Block|undefined {
+        let current = startContainer
+        let result: Block|undefined
+        while (current && !result) {
+            const docNode = this.elementToDocNode.get(current as HTMLElement)
+            if (docNode instanceof Block) {
+                result = docNode as Block
+            }
+            current = current.parentElement!
+
+        }
+        return result
+    }
+    // deleteRangeForComposition 是 replace，要允许 allowOffset0
+    createDocRange(range: Range){
+        // CAUTION 为了统一所有浏览器的行为，这里创造出来的 docRange 和实际的 dom Range 不一致。
+        //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
+        //  2. cursor 默认 focus 到上一个文字的尾部.
+        //  3. range 默认头部是自己的，尾部也是自己的
+        const { startContainer, startOffset, endContainer, endOffset, collapsed } = range
+        const startContainerText = this.findFirstTextFromElement(startContainer)!
+        const endContainerInline = this.findFirstTextFromElement(endContainer)
+        // setNativeCursor 时会调用 removeAllRange，会触发 range 重新计算，此时是不合法的。
+        if (!startContainerText || !endContainerInline) return null
+
+        let startText = startContainerText
+        let endInline = endContainerInline
+        let docStartOffset = startOffset
+        let docEndOffset = endOffset
+
+        if (collapsed) {
+            if (startOffset === 1 && startText.isEmpty) {
+                //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
+                docStartOffset = 0
+            } else if (startOffset === 0 && !startText.isEmpty && startContainerText.previousSibling instanceof Text) {
+                //  2. cursor 默认 focus 到上一个文字的尾部.
+                startText = startContainerText.previousSibling
+                docStartOffset = startText.props.value.length
+                endInline = startText
+                docEndOffset = docStartOffset
+            }
+        } else {
+            // 3. range 默认头部是自己的，尾部也是自己的
+            if (startOffset!==0 && startOffset === startContainerText.props.value.length && startContainerText.nextSibling instanceof Text) {
+                startText = startContainerText.nextSibling
+                docStartOffset = 0
+            }
+
+            if (endOffset === 0 && endContainerInline?.previousSibling instanceof Text) {
+                endInline = endContainerInline.previousSibling
+                docEndOffset = endInline.props.value.length
+            }
+        }
+
+        const startBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(startText!)!)
+        const endBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(endInline!)!)
+        return new DocRange(startBlock!, startText!, docStartOffset, endBlock!, endInline!, docEndOffset)
+    }
+    onRangeNotCollapsed = eventAlias<KeyboardEvent>(() => {
+        return this.globalState.selectionRange?.collapsed === false
+    })
+    onRangeCollapsed = eventAlias<KeyboardEvent>(() => {
+        return this.globalState.selectionRange?.collapsed === true
+    })
 }
 
-const onNotComposition = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
+const onNotComposing = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
+const onComposing = eventAlias((e: KeyboardEvent) => e.isComposing || e.keyCode === 229)
 
-const onSingleKey = eventAlias((e: KeyboardEvent) => e.key.length === 1)
+const onCharKey = eventAlias((e: KeyboardEvent) => e.key.length === 1)
+
 
 
 function insertAfter(newEle: HTMLElement|DocumentFragment|Comment, refEle: HTMLElement) {
     refEle.parentElement?.insertBefore(newEle, refEle.nextElementSibling!)
 }
 
+function insertBefore(newEle: HTMLElement|DocumentFragment|Comment, refEle: HTMLElement) {
+    refEle.parentElement?.insertBefore(newEle, refEle)
+}
 
-export type DocRange = any
+
+
+export class DocRange {
+    constructor(public startBlock: Block, public startText: Text, public startOffset: number, public endBlock: Block, public endText: Text, public endOffset: number) {}
+    get isCollapsed() {
+        return this.startText === this.endText && this.startOffset === this.endOffset
+    }
+    get isInSameBlock() {
+        return this.startBlock === this.endBlock
+    }
+    get isInSameInline() {
+        return this.startText === this.endText
+    }
+    get isSibling() {
+        return this.startText.nextSibling === this.endText
+    }
+    get isFull() {
+        return this.startOffset === 0 && this.endOffset === this.endText.props.value.length
+    }
+    get isEndFull() {
+        return this.endOffset === this.endText.props.value.length
+    }
+}

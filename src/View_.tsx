@@ -4,7 +4,7 @@ import {ANY, DocumentContent, DocumentContent, FormatData} from "./DocumentConte
 import {DocNode, DocRange, Text, RenderProps} from "./DocNode";
 import {state as globalKM} from "./globals";
 import {assert, nextTask, removeNodesBetween, setNativeCursor, setNativeRange, unwrapChildren} from "./util";
-import {ReactiveState} from "./ReactiveState";
+import {ReactiveViewState} from "./ReactiveViewState.js";
 import {EventDelegator} from "./EventDelegator";
 
 
@@ -44,11 +44,11 @@ export class DocumentContentView extends EventDelegator{
     public blockUnitToDocNode: WeakMap<HTMLElement, DocNode> = new WeakMap()
     public isolatedComponentToBlockUnit: WeakMap<DocNode, HTMLElement > = new WeakMap()
     public blockUnitToIsolatedComponent: WeakMap<HTMLElement,DocNode  > = new WeakMap()
-    public state: ReactiveState
+    public state: ReactiveViewState
     constructor(public doc: DocumentContent) {
         super()
 
-        this.state = new ReactiveState(this)
+        this.state = new ReactiveViewState(this)
 
         this.doc.listen('updateRange', this.patchUpdateRange)
         this.doc.listen('unwrap', this.patchUnwrap)
@@ -420,7 +420,7 @@ export class DocumentContentView extends EventDelegator{
                 }
             }
         } else {
-            newFocusDocNode = this.doc.updateRange(this.state.contentRange()!, '')
+            newFocusDocNode = this.doc.updateRange(this.state.selectionRange()!, '')
         }
 
         if (e?.defaultPrevented) {
@@ -433,10 +433,10 @@ export class DocumentContentView extends EventDelegator{
         e.stopPropagation()
 
         // console.log("change level", !this.state.contentRange(), this.state.contentRange()?.collapsed)
-        if(!this.state.contentRange()|| !this.state.contentRange()?.collapsed) return
+        if(!this.state.selectionRange()|| !this.state.selectionRange()?.collapsed) return
 
         const toParent = e.shiftKey
-        const  {startNode, startOffset} = this.state.contentRange()
+        const  {startNode, startOffset} = this.state.selectionRange()
         if (toParent) {
             if(!startNode.parent() || !DocNode.typeHasChildren(startNode)) {
                 console.log("no children")
@@ -553,7 +553,7 @@ export class DocumentContentView extends EventDelegator{
         this.doc.formatRange(this.createDocRange(range)!, formatData)
     }
     formatCurrentRange(formatData: FormatData) {
-        const currentRange = this.state.contentRange()!
+        const currentRange = this.state.selectionRange()!
         this.doc.formatRange(currentRange, formatData)
         // 重置 range
         this.setRange(currentRange)

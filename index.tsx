@@ -1,4 +1,5 @@
 import {Heading, OLItem, Paragraph, Text, ULItem} from "./src/DocumentContent.js";
+import {createRoot, createElement} from "axii";
 import jsonData from './readme1.json'
 import {Document} from "./src/index.js";
 
@@ -15,6 +16,12 @@ const newText = new Text({value: 'hello'})
 const newParagraph = new Paragraph()
 newParagraph.firstChild = newText
 
-
 myDoc.content.append(newParagraph, myDoc.content.head)
 
+const debugRoot = document.getElementById('debug-root')
+
+createRoot(debugRoot).render(<pre>
+    <code>
+    {() => JSON.stringify(myDoc.view.debugJSONContent(), null, 4)}
+    </code>
+</pre>)

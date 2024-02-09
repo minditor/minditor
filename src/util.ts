@@ -33,12 +33,16 @@ export function debounce(fn: Function, delay: number) {
   }
 }
 
+const requestIdleCallback = window.requestIdleCallback || function(cb: Function) {
+    setTimeout(cb, 0)
+}
+
 export function idleThrottle(fn: Function, timeout = 100) {
   let hasCallback: number | null
   let lastArgv : any[]
   return (...argv: any[]) => {
     if (!hasCallback) {
-      hasCallback = window.requestIdleCallback(() => {
+      hasCallback = requestIdleCallback(() => {
         fn(...lastArgv)
         hasCallback = null
       }, {timeout})
@@ -109,3 +113,16 @@ export function insertBefore( newNode: Node, referenceNode: Node) {
 export function insertAfter( newNode: Node, referenceNode: Node) {
   referenceNode.parentNode?.insertBefore(newNode, referenceNode.nextSibling)
 }
+
+export const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+
+export const IS_FF = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+
+export const IS_CHROME = navigator.userAgent.toLowerCase().indexOf('chrome') > -1;
+
+export const SHOULD_FIX_OFFSET_LAST = IS_FF
+
+export const IS_COMPOSITION_BEFORE_KEYDOWN = IS_SAFARI
+// CAUTION chrome 在尾部的 backspace 不触犯 selection change，ff fox 删除整个文字后光标出去了。
+export const SHOULD_RESET_CURSOR_AFTER_BACKSPACE = IS_CHROME && !IS_FF
+export const ZWSP = '​'

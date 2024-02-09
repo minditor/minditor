@@ -296,7 +296,7 @@ describe('delete at content head', () => {
         range.setStart(from, 0)
         range.setEnd(from, 0)
 
-        view.deleteContent(undefined, range)
+        view.deleteRange(undefined, range)
         const newData = content.toArrayJSON()
 
         debugger
@@ -364,7 +364,7 @@ describe('delete at content head', () => {
         range.setStart(from, 0)
         range.setEnd(from, 0)
 
-        view.deleteContent(undefined, range)
+        view.deleteRange(undefined, range)
         const newData = content.toArrayJSON()
         debugger
         expect(newData).toMatchObject([{
@@ -431,7 +431,7 @@ describe('delete at content head', () => {
         range.setStart(from, 0)
         range.setEnd(from, 0)
 
-        view.deleteContent(undefined, range)
+        view.deleteRange(undefined, range)
         const newData = content.toArrayJSON()
         expect(newData).toMatchObject([{
             type: 'Paragraph',
@@ -500,7 +500,7 @@ describe('delete at content head', () => {
         range.setStart(from, 0)
         range.setEnd(from, 0)
 
-        view.deleteContent(undefined, range)
+        view.deleteRange(undefined, range)
         const newData = content.toArrayJSON()
         expect(newData).toMatchObject([{
             type: 'ListItem',
@@ -567,7 +567,7 @@ describe('change line', () => {
         range.setStart(from, 0)
         range.setEnd(from, 0)
 
-        view.changeLine(undefined, range)
+        view.splitBlock(undefined, range)
         const newData = content.toArrayJSON()
 
         expect(newData).toMatchObject([{
@@ -606,7 +606,7 @@ describe('change line', () => {
         range.setStart(from, 1)
         range.setEnd(from, 1)
 
-        view.changeLine(undefined, range)
+        view.splitBlock(undefined, range)
         const newData = content.toArrayJSON()
         expect(newData).toMatchObject([{
             type: 'Paragraph',
@@ -651,7 +651,7 @@ describe('change line', () => {
         range.setStart(from, 1)
         range.setEnd(from, 1)
 
-        view.changeLine(undefined, range)
+        view.splitBlock(undefined, range)
         const newData = content.toArrayJSON()
 
         expect(newData).toMatchObject([{
@@ -699,7 +699,7 @@ describe('change line', () => {
         range.setStart(from.firstChild!, 4)
         range.setEnd(from.firstChild!, 4)
 
-        view.changeLine(undefined, range)
+        view.splitBlock(undefined, range)
         const newData = content.toArrayJSON()
 
         expect(newData).toMatchObject([{

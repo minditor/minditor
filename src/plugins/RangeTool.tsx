@@ -31,8 +31,8 @@ export function createRangeTool(RangeWidgetClasses: (typeof RangeWidget)[] ) {
                 // TODO 位置要跟着 content 一起滚动
 
                 // range 看不见了，display 要 none
-                const { visibleRangeRect, lastActiveDevice, contentRange } = this.document.view.state
-                if (lastActiveDevice() !== 'mouse' || !contentRange() || contentRange()?.collapsed || !visibleRangeRect()) {
+                const { visibleRangeRect, lastActiveDevice, selectionRange } = this.document.view.state
+                if (lastActiveDevice() !== 'mouse' || !selectionRange() || selectionRange()?.collapsed || !visibleRangeRect()) {
                     return { display: 'none'}
                 } else {
 

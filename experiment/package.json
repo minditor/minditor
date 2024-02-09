@@ -1,0 +1,15 @@
+{
+  "name": "experiment",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "vite"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axii": "^2.0.22",
+    "vite": "^5.0.12"
+  }
+}
