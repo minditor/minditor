@@ -1,39 +1,29 @@
 {
   "name": "readme",
-  "content": [
+  "children": [
     {
       "type": "Paragraph",
       "content": [
         {
           "type": "Text",
-          "props": {
-            "value": "123"
-          }
+          "value": "123"
         },
         {
           "type": "Text",
-          "props": {
-            "value": "456"
-          }
+          "value": "456"
         },
         {
           "type": "Text",
-          "props": {
             "value": "789"
-          }
         },
         {
           "type": "Text",
-          "props": {
             "value": "ABC"
-          }
         }
       ,
         {
           "type": "Text",
-          "props": {
             "value": "DEF"
-          }
         }
       ]
     },{
@@ -42,26 +32,18 @@
       "content": [
         {
           "type": "Text",
-          "props": {
             "value": "abc"
-          }
         },
         {
           "type": "Text",
-          "props": {
             "value": "def"
-          }
         },
         {
           "type": "Text",
-          "props": {
             "value": "ghi"
-          }
         },{
           "type": "Text",
-          "props": {
             "value": "jkl"
-          }
         }
       ]
     },
@@ -70,21 +52,15 @@
       "content": [
         {
           "type": "Text",
-          "props": {
             "value": "123"
-          }
         },
         {
           "type": "Text",
-          "props": {
             "value": "456"
-          }
         },
         {
           "type": "Text",
-          "props": {
             "value": "789"
-          }
         }
       ]
     }

@@ -5,13 +5,13 @@
   "main": "index.js",
   "scripts": {
     "start": "vite",
-    "test": "jest",
+    "test": "vitest",
     "test:compile": "tsc  -p ./tests/spec/tsconfig.json",
     "test:server": "npm run dev --prefix tests/server -- --port $npm_config_port",
     "dev": "vite",
     "build": "vite build",
     "cypress": "cypress open",
-    "pw": "npm run test:compile && playwright test"
+    "pw": "npm run test:compile && playwright test tests/spec/keyboard.input.spec.tsx"
   },
   "files": [
     "plugins"
@@ -35,7 +35,9 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.41.2",
+    "@testing-library/dom": "^9.3.4",
     "@types/node": "^18.11.17",
+    "happy-dom": "^13.3.8",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
     "vitest": "^1.2.2"

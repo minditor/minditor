@@ -6,7 +6,7 @@ import {GlobalState, state as defaultGlobalState } from './globals'
 
 export type DocumentData = {
     name: string,
-    content: BlockData[]
+    children: BlockData[]
 }
 
 export class Document {
@@ -21,7 +21,7 @@ export class Document {
         public Plugins: (typeof Plugin)[],
         public globalState: GlobalState = defaultGlobalState
     ) {
-        this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.content, docNodeTypes))
+        this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.children, docNodeTypes))
         this.view = new DocumentContentView(this.content, globalState)
     }
     initializePlugin(PluginClass: typeof Plugin) {

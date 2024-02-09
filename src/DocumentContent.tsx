@@ -1,9 +1,10 @@
 import {createElement} from 'axii'
 import EventEmitter from "eventemitter3";
-import {ZWSP} from "./util.js";
+import {ZWSP, assert} from "./util.js";
 
 export class DocNodeFragment {
     head: DocNode | null = null
+
     retrieve() {
         const head = this.head
         this.head = null
@@ -11,27 +12,42 @@ export class DocNodeFragment {
     }
 }
 
-export class DocNode{
-    constructor(public props?:any) {
+
+export class DocNode {
+    static displayName = 'DocNode'
+
+    constructor(public data?: any) {
     }
-    nextSibling: DocNode | null = null
-    previousSibling: DocNode | null = null
+
+    next: DocNode | null = null
+    prev: DocNode | null = null
+
     render(props?: any): any {
         return null
+    }
+
+    toJSON() {
+        return {
+            type: (this.constructor as typeof DocNode).displayName,
+            ...this.data
+        }
+
     }
 }
 
 
-export class Block extends DocNode  {
+export class Block extends DocNode {
     static displayName = 'Block'
+    static unwrapToParagraph = false
 
-    nextSibling: Block | null = null
-    previousSibling: Block | null = null
+    next: Block | null = null
+    prev: Block | null = null
     firstChild: Inline | null = null
-    get lastChild() : Inline| null{
+
+    get lastChild(): Inline | null {
         let current = this.firstChild
-        while (current && current.nextSibling) {
-            current = current.nextSibling
+        while (current && current.next) {
+            current = current.next
         }
         return current
     }
@@ -40,45 +56,82 @@ export class Block extends DocNode  {
 export class Inline extends DocNode {
     static displayName = 'Inline'
 
-    nextSibling: Inline | null = null
-    previousSibling: Inline | null = null
+    next: Inline | null = null
+    prev: Inline | null = null
 }
 
 
 // built-ins
 export class Text extends Inline {
     static displayName = 'Text'
+
     render() {
-        return <span>{this.props.value.length ? this.props.value : ZWSP}</span>
+        const testIdProp: { 'data-testid'?: any } = {}
+        if (this.data.testid) {
+            testIdProp['data-testid'] = this.data.testid
+        }
+        // TODO formats 实现
+        return <span {...testIdProp}>{this.data.value.length ? this.data.value : ZWSP}</span>
     }
+
     get isEmpty() {
-        return this.props.value === ''
+        return this.data.value === ''
+    }
+    toJSON() {
+        return {
+            type: 'Text',
+            ...this.data
+        }
     }
 }
 
 export class Paragraph extends Block {
     static displayName = 'Paragraph'
-    render({ children }: {children: any}) {
+
+    get isEmpty() {
+        return this.firstChild instanceof Text && this.firstChild.isEmpty
+    }
+
+    render({children}: { children: any }) {
         return <p>{children}</p>
+    }
+
+    toJSON() {
+        return {
+            type: 'Paragraph',
+        }
     }
 }
 
 export class Heading extends Block {
     static displayName = 'Heading'
-    render({ children }: {children: any}) {
+    static unwrapToParagraph = true
+
+    render({children}: { children: any }) {
         return <h1>{children}</h1>
     }
-
 }
 
 export class OLItem extends Block {
     static displayName = 'OLItem'
+    static unwrapToParagraph = true
 
 }
 
 export class ULItem extends Block {
     static displayName = 'ULItem'
+    static unwrapToParagraph = true
 
+    render({children}: { children: any }) {
+        return <div>{children}</div>
+    }
+
+    toJSON() {
+        return {
+            type: 'ULItem',
+            level: this.data.level
+        }
+    }
 }
 
 
@@ -100,7 +153,11 @@ function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: Propert
         const result = originalMethod.apply(this, args);
 
         // 触发事件
-        this.emit(propertyKey, {method: propertyKey, args, result} as EmitData<Parameters<typeof originalMethod>, ReturnType<typeof originalMethod>>);
+        this.emit(propertyKey, {
+            method: propertyKey,
+            args,
+            result
+        } as EmitData<Parameters<typeof originalMethod>, ReturnType<typeof originalMethod>>);
 
         // 返回原始方法的结果
         return result;
@@ -111,158 +168,189 @@ function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: Propert
 
 
 export class DocumentContent extends EventEmitter {
-    static createBlocksFromData(jsonData: BlockData[], docNodeTypes: {[k: string]: typeof DocNode}): Block {
-        let head: Block|undefined
-        let prevNode: Block|undefined
+    static createBlocksFromData(jsonData: BlockData[], docNodeTypes: { [k: string]: typeof DocNode }): Block {
+        let head: Block | undefined
+        let prevNode: Block | undefined
         jsonData.forEach(docNodeData => {
             const BlockClass = docNodeTypes[docNodeData.type]! as typeof Block
-            const docNode = new BlockClass(docNodeData.props)
+            const docNode = new BlockClass(docNodeData)
 
-            docNode.firstChild =  DocumentContent.createInlinesFromData(docNodeData.content, docNodeTypes)
+            docNode.firstChild = DocumentContent.createInlinesFromData(docNodeData.content, docNodeTypes)
 
             if (!head) {
                 head = docNode
             }
             if (prevNode) {
-                prevNode.nextSibling = docNode
-                docNode.previousSibling = prevNode
+                prevNode.next = docNode
+                docNode.prev = prevNode
             }
             prevNode = docNode!
         })
         return head!
     }
-    static createInlinesFromData(jsonData: InlineData[], docNodeTypes: {[k: string]: typeof DocNode}): Inline {
-        let head: Inline|undefined
-        let prevNode: Inline|undefined
+
+    static createInlinesFromData(jsonData: InlineData[], docNodeTypes: { [k: string]: typeof DocNode }): Inline {
+        let head: Inline | undefined
+        let prevNode: Inline | undefined
         jsonData.forEach(inlineData => {
             const InlineClass = docNodeTypes[inlineData.type]! as typeof Inline
-            const inline = new InlineClass(inlineData.props)
+            const inline = new InlineClass(inlineData)
             if (!head) {
                 head = inline
             }
             if (prevNode) {
-                prevNode.nextSibling = inline
-                inline.previousSibling = prevNode
+                prevNode.next = inline
+                inline.prev = prevNode
             }
             prevNode = inline
         })
         return head!
     }
-    createParagraph(child?: Inline|DocNodeFragment) {
+
+    static fromData(jsonData: BlockData[], docNodeTypes: { [k: string]: typeof DocNode }) {
+        return new DocumentContent(DocumentContent.createBlocksFromData(jsonData, docNodeTypes))
+    }
+
+    constructor(public firstChild: Block) {
+        super();
+    }
+
+    createParagraph(child?: Inline | DocNodeFragment) {
         const para = new Paragraph()
         para.firstChild = child ? (child instanceof DocNodeFragment ? child.retrieve() : child) : new Text({value: ''})
         return para
     }
-    constructor(public head: Block) {
-        super();
-    }
+
     @AutoEmit
-    append(docNode: DocNode|DocNodeFragment, ref: DocNode) {
-        const originalNext = ref.nextSibling
-        if (docNode instanceof DocNode) {
-            docNode.nextSibling = originalNext
-            docNode.previousSibling = ref
-            ref.nextSibling = docNode
-        } else {
-            const head = docNode.retrieve()!
-            head.previousSibling = ref
-            ref.nextSibling = head
-        }
-    }
-    @AutoEmit
-    prepend(docNode: DocNode|DocNodeFragment, ref: DocNode) {
-        const originalPrevious = ref.previousSibling
-        if (docNode instanceof DocNode) {
-            docNode.previousSibling = originalPrevious
-            docNode.nextSibling = ref
-            ref.previousSibling = docNode
-        } else {
-            const head = docNode.retrieve()!
-            head!.nextSibling = ref
-            ref.previousSibling = head
-        }
-    }
-    @AutoEmit
-    replace(docNode: DocNode|DocNodeFragment, ref: DocNode) {
-        const originalPrevious = ref.previousSibling
-        const originalNext = ref.nextSibling
-        if (docNode instanceof DocNode) {
-            docNode.previousSibling = originalPrevious
-            docNode.nextSibling = originalNext
-            ref.previousSibling = null
-            ref.nextSibling = null
-        } else {
-            const head = docNode.retrieve()!
-            head!.previousSibling = originalPrevious
-            head!.nextSibling = originalNext
-            ref.previousSibling = null
-            ref.nextSibling = null
-        }
-    }
-    @AutoEmit
-    deleteBetween<T extends DocNode>( start: T, end: T|null) {
-        const fragment = new DocNodeFragment()
-        const beforeStart = start.previousSibling
-        const afterEnd = end?.nextSibling || null
-        if (afterEnd) {
-            afterEnd.previousSibling = beforeStart
-        }
-        if (beforeStart) {
-            beforeStart.nextSibling = afterEnd
+    append(docNode: DocNode | DocNodeFragment, ref: DocNode) {
+        const originalNext = ref.next
+        const appendNode = docNode instanceof DocNode ? docNode : docNode.retrieve()!
+        let lastAppendNode = appendNode
+        while (lastAppendNode.next) {
+            lastAppendNode.next.prev = lastAppendNode
+            lastAppendNode = lastAppendNode.next
         }
 
-        start.previousSibling = null
+        lastAppendNode.next = originalNext
+        if (originalNext) {
+            originalNext.prev = lastAppendNode
+        }
+        ref.next = appendNode
+        appendNode.prev = ref
+    }
+
+    @AutoEmit
+    prepend(docNode: DocNode | DocNodeFragment, ref: DocNode) {
+        const originalPrevious = ref.prev
+        const prependNode = docNode instanceof DocNode ? docNode : docNode.retrieve()!
+
+        let lastPrependNode = prependNode
+        while (lastPrependNode.next) {
+            lastPrependNode = lastPrependNode.next
+        }
+
+        prependNode.prev = ref.prev
+        if (ref.prev) {
+            ref.prev.next = prependNode
+        }
+
+        lastPrependNode.next = ref
+        ref.prev = lastPrependNode
+
+        if (this.firstChild === ref) {
+            this.firstChild = prependNode as Block
+        }
+    }
+
+    @AutoEmit
+    replace(docNode: DocNode | DocNodeFragment, ref: DocNode) {
+        const toReplace = docNode instanceof DocNode ? docNode : docNode.retrieve()!
+
+        toReplace.prev = ref.prev
+        if (ref.prev) {
+            ref.prev.next = toReplace
+        }
+        toReplace.next = ref.next
+        if (ref.next) {
+            ref.next.prev = toReplace
+        }
+        ref.prev = null
+        ref.next = null
+        if (this.firstChild === ref) {
+            this.firstChild = docNode as Block
+        }
+    }
+
+    @AutoEmit
+    deleteBetween<T extends DocNode>(start: T, end: T | null) {
+        const fragment = new DocNodeFragment()
+        const beforeStart = start.prev
+        const afterEnd = end?.next || null
+        if (afterEnd) {
+            afterEnd.prev = beforeStart
+        }
+        if (beforeStart) {
+            beforeStart.next = afterEnd
+        }
+
+        start.prev = null
         if (end) {
-            end.nextSibling = null
+            end.next = null
         }
         fragment.head = start
         return fragment
     }
+
     @AutoEmit
     updateText(newTextValue: string, text: Text) {
-        text.props.value = newTextValue
+        text.data.value = newTextValue
     }
+    @AutoEmit
+    formatText(text: Text, format: FormatData) {
+        if (!text.data.formats) {
+            text.data.formats = {}
+        }
+
+        text.data.formats = {
+            ...text.data.formats,
+            ...format
+        }
+    }
+
     toJSON() {
         const result: BlockData[] = []
-        let current = this.head
+        let current = this.firstChild
         while (current) {
             const inlineData: InlineData[] = []
             let currentInline = current.firstChild
             while (currentInline) {
-                inlineData.push({
-                    type: (currentInline.constructor as typeof Inline).displayName,
-                    props: currentInline.props,
-                })
-                currentInline = currentInline.nextSibling as Inline
+                inlineData.push(currentInline.toJSON())
+                currentInline = currentInline.next as Inline
             }
             result.push({
-                type: (current.constructor as typeof Block).displayName,
-                props: current.props,
+                ...current.toJSON(),
                 content: inlineData
             })
-            current = current.nextSibling as Block
+            current = current.next as Block
         }
         return result
     }
 }
 
 export type FormatData = {
-    [k:string] : any
+    [k: string]: any
 }
 
 export type BlockData = {
+    [k: string]: any,
     type: string,
-    props?: {
-        [k: string]: any,
-    }
     content: InlineData[]
     testid?: string,
 }
 
 export type InlineData = {
+    [k: string]: any,
     type: string,
-    props?: {
-        [k: string]: any,
-    }
+    value: any,
     testid?: string,
 }

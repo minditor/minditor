@@ -1,10 +1,9 @@
-import {Heading, OLItem, Paragraph, Text, ULItem} from "./src/DocumentContent.js";
 import {createRoot, createElement} from "axii";
 import jsonData from './readme1.json'
-import {Document} from "./src/index.js";
+import {Document,Heading, OLItem, Paragraph, Text, ULItem} from "./src/index.js";
 
 
-const root= document.getElementById('root')
+const root= document.getElementById('root')!
 const types = {
     Paragraph, Text, Heading, OLItem, ULItem
 }
@@ -16,9 +15,9 @@ const newText = new Text({value: 'hello'})
 const newParagraph = new Paragraph()
 newParagraph.firstChild = newText
 
-myDoc.content.append(newParagraph, myDoc.content.head)
+myDoc.content.append(newParagraph, myDoc.content.firstChild)
 
-const debugRoot = document.getElementById('debug-root')
+const debugRoot = document.getElementById('debug-root')!
 
 createRoot(debugRoot).render(<pre>
     <code>

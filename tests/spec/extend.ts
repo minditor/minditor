@@ -1,5 +1,4 @@
-import {expect, Locator, Page} from "@playwright/test";
-import {ElementHandle} from "playwright-webkit";
+import {expect, Page, ElementHandle} from "@playwright/test";
 
 const PORT = 5179
 

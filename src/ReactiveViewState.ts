@@ -106,6 +106,10 @@ export class ReactiveViewState {
 
         this.view.listen('bindElement', (e: CustomEvent) => {
             const { element: docElement } = e.detail
+            if (!window.IntersectionObserver) {
+                console.warn('IntersectionObserver not supported')
+                return
+            }
             // doc 本身的显隐藏回调
             const observer = new IntersectionObserver(([docEntry]) => {
                 const boundaryContainer = this.view.boundaryContainer!

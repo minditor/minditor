@@ -1,4 +1,3 @@
-/**@jsx createElement*/
 import {createElement} from './mock'
 import {test, expect, Locator} from '@playwright/test';
 

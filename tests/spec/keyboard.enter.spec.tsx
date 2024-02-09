@@ -1,4 +1,3 @@
-/**@jsx createElement*/
 import {createElement} from './mock'
 import {test, expect, Locator} from '@playwright/test';
 
@@ -11,7 +10,6 @@ import { data as singleSectionData } from '../server/data/singleSection'
 // import { data } from './data/multiPara'
 // import { data } from './data/playgroundMultiPara'
 import '../test-extend'
-import {ElementHandle} from "playwright-webkit";
 import { extend } from './extend'
 
 const ZWSP = '​'
@@ -117,7 +115,7 @@ test.describe('keyboard Enter actions', () => {
     test('List content. Should create new List item before this.', async ({page}) => {
       await page.load('singleList')
       const data = singleListData
-      const firstText = data.children[0].children[0].content[0].value
+      const firstText = data.children[0].content[0].value
       const firstTextEl = await  page.getByText(firstText).elementHandle()
       // 1.1 设置焦点
       await page.setSelection(firstTextEl, 0)
@@ -267,7 +265,7 @@ test.describe('keyboard Enter actions', () => {
     test('List content. Should create new List item after this.', async ({page}) => {
       await page.load('singleList')
       const data = singleListData
-      const firstText = data.children[0].children[0].content[0].value
+      const firstText = data.children[0].content[0].value
       const firstTextEl = await page.getByText(firstText).elementHandle()
       // 1.1 设置焦点
       await page.setSelection(firstTextEl, firstText.length)
@@ -434,7 +432,7 @@ test.describe('keyboard Enter actions', () => {
     test('List content. Should create new List item in middle.', async ({page}) => {
       await page.load('singleList')
       const data = singleListData
-      const firstText = data.children[0].children[1].content[0].value
+      const firstText = data.children[0].content[0].value
       const firstTextEl = await page.getByText(firstText).elementHandle()
       // 1.1 设置焦点
       await page.setSelection(firstTextEl, 1)
@@ -445,8 +443,8 @@ test.describe('keyboard Enter actions', () => {
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
       // @ts-ignore
-      dataToCompare.children[0].children.splice(1, 0, { type:'ListItem', content: [{type: 'Text', value: '4'}]})
-      dataToCompare.children[0].children[2].content[0].value = '56'
+      dataToCompare.children[0].splice(1, 0, { type:'ListItem', content: [{type: 'Text', value: '4'}]})
+      dataToCompare.children[0].content[0].value = '56'
       await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
 
       // 2.2 测试 dom

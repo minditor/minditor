@@ -140,7 +140,7 @@ test.describe('keyboard Backspace actions', () => {
     test('ListItem content. Should change item into para.', async ({page}) => {
       await page.load('nestedList')
       const data = nestedListData
-      const focusText = data.children[0].children[0].content[0].value
+      const focusText = data.children![0].children![0].content[0].value
       const allText = stringifyNodeData(data)
 
       const focusTextEl = await page.getByText(focusText).elementHandle()
@@ -154,11 +154,11 @@ test.describe('keyboard Backspace actions', () => {
 
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
-      const deletedItem: any = dataToCompare.children[0].children[0];
+      const deletedItem: any = dataToCompare.children![0].children![0];
       // content 变 para content
       (dataToCompare.children as any[]).unshift({type: 'Para', content: deletedItem.content})
       // children 提升
-      dataToCompare.children[1].children.splice(0, 1, ...deletedItem.children);
+      dataToCompare.children![1].children!.splice(0, 1, ...deletedItem.children);
       expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
       //
       //
@@ -194,7 +194,7 @@ test.describe('keyboard Backspace actions', () => {
     test('ListItem content second level. should split into two list', async ({page}) => {
       await page.load('nestedList')
       const data = nestedListData
-      const focusText = data.children[0].children[1].content[0].value
+      const focusText = data.children![0].children![1].content[0].value
       const allText = stringifyNodeData(data)
 
       const focusTextEl = await page.getByText(focusText).elementHandle()
@@ -208,9 +208,9 @@ test.describe('keyboard Backspace actions', () => {
 
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
-      const deletedItem: any = dataToCompare.children[0].children[1];
-      const restItems = dataToCompare.children[0].children.slice(2)
-      dataToCompare.children[0].children.splice(1);
+      const deletedItem: any = dataToCompare.children![0].children![1];
+      const restItems = dataToCompare.children![0].children!.slice(2)
+      dataToCompare.children![0].children!.splice(1);
       // focus 的 content 变成 para，自己的 children 和后面的 item 变成新的 list。
       (dataToCompare.children as any[]).push({ type: 'Para', content: deletedItem.content});
       (dataToCompare.children as any[]).push({ type: 'List', children: deletedItem.children.concat(restItems)})

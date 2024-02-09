@@ -18,7 +18,7 @@
     "jsx": "react",
     "jsxFactory": "window.createElement",
     "lib": ["esnext", "dom"],
-    "types": ["jest", "node"],
+    "types": ["node"],
     "allowSyntheticDefaultImports": true,
   },
   "include": [

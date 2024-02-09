@@ -3,7 +3,7 @@
     "baseUrl": "./",
     "outDir": "dist",
     "sourceMap": true,
-    "target": "es2016",
+    "target": "es2017",
     "newLine": "LF",
     "useDefineForClassFields": false,
     "module": "esnext",
@@ -19,7 +19,7 @@
     "jsxFactory": "createElement",
     "jsxFragmentFactory": "Fragment",
     "lib": ["esnext", "dom"],
-    "types": ["jest", "node"],
+    "types": ["node"],
     "allowSyntheticDefaultImports": true,
     "declaration": true,
   },
@@ -28,6 +28,9 @@
     "src",
     "jsx.d.ts",
     "experiment/**/*",
-    "editor.tsx"
+    "editor.tsx",
+    "tests/**/*",
+    "index.tsx",
+    "__test__/**/*",
   ]
 }

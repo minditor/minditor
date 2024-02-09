@@ -9,9 +9,9 @@ const searchObj = Object.fromEntries(
 )
 
 
-import { registerCommands as markdownPlugins } from "../../src/markdown";
-import { registerCommands as inlineToolCommands } from "../../src/inlineTool";
-import { Doc } from "../../src";
+// import { registerCommands as markdownPlugins } from "../../src/markdown";
+// import { registerCommands as inlineToolCommands } from "../../src/inlineTool";
+import { Document, Heading, OLItem, Paragraph, Text, ULItem } from "../../src";
 // import { data } from './data/singleSection'
 // import { data } from './data/multiSection'
 // import { data } from './data/singlePara'
@@ -22,18 +22,20 @@ import { Doc } from "../../src";
 // import { data } from './data/playgroundMultiPara'
 
 
-// @ts-ignore @vite-ignore
-// const { data } = await import(`./data/${searchObj.data || 'singlePara'}`)
+// @vite-ignore
 const { data } = await import(`./data/${searchObj.data || 'singlePara'}`)
 const rootElement = document.getElementById('root')!
+const types = {
+    Paragraph, Text, Heading, OLItem, ULItem
+}
+
 rootElement.style.position = 'relative'
 
-const doc = new Doc(
-    data,
+const doc = new Document(
     rootElement,
-    [...markdownPlugins(), ...inlineToolCommands()]
-    // []，
-
+    data,
+    types,
+    []
 )
 
 
@@ -50,8 +52,9 @@ Object.assign(window, {
     expect,
     createElement,
 })
+
 // 一定要放最后，这个时候才触发 test case
-doc.render({ 'data-testid': 'app'})
+doc.render()
 
 
 
