@@ -1,15 +1,15 @@
+/**@jsx createElement*/
 import {createElement} from './mock'
 import {test, expect, Locator} from '@playwright/test';
 
-import { data as singleParaData } from '../server/data/singlePara'
-import { data as singleListData } from '../server/data/singleList'
-import { data as singleSectionData } from '../server/data/singleSection'
+import { data as singleParaData } from './data/singlePara'
+import { data as singleListData } from './data/singleList'
+import { data as singleSectionData } from './data/singleSection'
 // import { data } from './data/multiSection'
 // import { data } from './data/component'
 // import { data } from './data/nestedList'
 // import { data } from './data/multiPara'
 // import { data } from './data/playgroundMultiPara'
-import '../test-extend'
 import { extend } from "./extend";
 
 const ZWSP = '​'
@@ -40,7 +40,7 @@ test.describe('keyboard Input actions', () => {
     const dataToCompare = structuredClone(data)
     // TODO 还要对比和 API 创造出来的是否一样？
     dataToCompare.children[0].content[0].value = dataToCompare.children[0].content[0].value + 'a'
-    expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+    expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
 
     // 2.2 测试 dom
@@ -89,7 +89,7 @@ test.describe('keyboard Input actions', () => {
     const dataToCompare = structuredClone(data)
     // TODO 还要对比和 API 创造出来的是否一样？
     dataToCompare.children[0].content[0].value = 'a' + dataToCompare.children[0].content[0].value
-    expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+    expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
 
     // 2.2 测试 dom
@@ -142,7 +142,7 @@ test.describe('keyboard Input actions', () => {
     // TODO 还要对比和 API 创造出来的是否一样？
     const originValue = dataToCompare.children[0].content[0].value
     dataToCompare.children[0].content[0].value = originValue[0] + 'a' + originValue.slice(1)
-    expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+    expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
 
     // 2.2 测试 dom

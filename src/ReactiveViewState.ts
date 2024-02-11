@@ -183,6 +183,7 @@ export class ReactiveViewState {
         this.view.globalState.onSelectionChange(() => {
             if (this.view.element && this.view.element.contains(this.view.globalState.selectionRange?.commonAncestorContainer!) ) {
                 const range = this.view.globalState.selection!.rangeCount ? this.view.globalState.selection!.getRangeAt(0) : null
+                console.log(range)
                 const docRange = range ? this.view.createDocRange(range) : null
                 this.selectionRange(docRange)
             }

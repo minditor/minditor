@@ -22,6 +22,10 @@
     "types": ["node"],
     "allowSyntheticDefaultImports": true,
     "declaration": true,
+    "paths": {
+      "minditor": ["src"],
+      "@test": ["tests"]
+    }
   },
   "include": [
     "global.d.ts",
@@ -31,6 +35,8 @@
     "editor.tsx",
     "tests/**/*",
     "index.tsx",
+    "readme.tsx",
     "__test__/**/*",
-  ]
+  ],
+
 }

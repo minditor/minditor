@@ -7,7 +7,7 @@ export function extend(page: Page) {
 
     page.load = async (dataName: string = 'singlePara') => {
         //@ts-ignore
-        await page.goto(`http://localhost:${PORT}?data=${dataName}`);
+        await page.goto(`http://localhost:${PORT}/server/index.html?data=${dataName}`);
         await expect(page.getByTestId('root')).not.toBeEmpty()
     }
 
@@ -22,7 +22,7 @@ export function extend(page: Page) {
 
     page.doc = {
         root: {
-            toJSON: () => page.evaluate(() => window.doc.root.toJSON())
+            toJSON: () => page.evaluate(() => window.doc.content.toJSON())
         },
         get element() {
             return new Proxy({}, {

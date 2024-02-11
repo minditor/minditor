@@ -1,6 +1,4 @@
 import {Screen} from "@testing-library/dom";
-import { Page } from '@playwright/test';
-import {expectSelectionMatch} from "./server/util";
 
 export {};
 
@@ -16,6 +14,15 @@ declare global {
         readonly expectDeepMatch: any,
         readonly expect: any,
         readonly createElement: any,
+    }
+    var __DEV__: boolean
+    namespace JSX {
+        interface IntrinsicElements {
+            // allow arbitrary elements
+            // @ts-ignore suppress ts:2374 = Duplicate string index signature.
+            [name: string]: any
+        }
+        // interface Element extends  ComponentNode {}
     }
 }
 

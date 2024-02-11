@@ -96,9 +96,12 @@ export class DocumentContentView extends EventDelegator{
     }
     patchReplace = ({ args }: EmitData<Parameters<DocumentContent["replace"]>, ReturnType<DocumentContent["replace"]>>) =>  {
         const [docNode, ref] = args
-        const refElement = this.docNodeToElement.get(ref)!as HTMLElement
-        const element = this.renderDocNodeOrFragment(docNode)
-        refElement.replaceWith(element!)
+        const refElement = this.docNodeToElement.get(ref) as HTMLElement|undefined
+        // 可能不是 body 上的 dom 操作。
+        if (refElement) {
+            const element = this.renderDocNodeOrFragment(docNode)
+            refElement.replaceWith(element!)
+        }
     }
     patchDeleteBetween = ({ args, result }: EmitData<Parameters<DocumentContent["deleteBetween"]>, ReturnType<DocumentContent["deleteBetween"]>>) =>  {
         const [start, end] = args
@@ -239,26 +242,36 @@ export class DocumentContentView extends EventDelegator{
         this.usingDefaultBehavior = false
     }
     splitByInline(block: Block, inline: Inline|null) {
+
+        let newBlock: Block
+
+        const currentType = block.constructor as typeof Block
+        if (currentType.splitAsSameType) {
+            const Type = block.constructor as typeof Block
+            newBlock = Type.createEmpty()
+        } else {
+            newBlock = this.doc.createParagraph()
+        }
+
+
         // cursor 在段尾，产生一个新的空的 para
         if (!inline) {
-            const newPara = this.doc.createParagraph()
-            this.doc.append(newPara, block)
-            return newPara
+            this.doc.append(newBlock, block)
+            return newBlock
         }
 
         // cursor 在段首，上面产生一个新的 Para
         if (!inline.prev) {
-            const newPara = this.doc.createParagraph()
-            this.doc.prepend(newPara, block)
+            this.doc.prepend(newBlock, block)
             return block
         }
 
-
+        // 在中间
         const inlineFrag = this.doc.deleteBetween(inline, null)
-        const newPara = this.doc.createParagraph(inlineFrag)
+        this.doc.replace(inlineFrag, newBlock.firstChild!, newBlock)
 
-        this.doc.append(newPara, block)
-        return newPara
+        this.doc.append(newBlock, block)
+        return newBlock
     }
     splitText(text:Text, offset: number) {
         const originValue = text.data.value
@@ -342,12 +355,10 @@ export class DocumentContentView extends EventDelegator{
                     // 删除上一个空的 Para
                     this.doc.deleteBetween(startBlock.prev, startBlock.prev)
                 } else {
-                    debugger
-                    if ((startBlock.constructor as typeof Block).unwrapToParagraph) {
+                    if ((startBlock.constructor as typeof Block).unwrap) {
                         // heading/listItem 之类的在头部删除会变成 paragraph
-                        const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null)
-                        const newPara = this.doc.createParagraph(inlineFrag)
-                        this.doc.replace(newPara, startBlock)
+                        const newPara = (startBlock.constructor as typeof Block).unwrap!(this.doc, startBlock)
+                        this.setCursor(newPara.firstChild as Text, 0)
                     } else if(startBlock.prev){
                         // 往上合并
                         // CAUTION 这里不用考虑 startBlock 是 Component 的情况，因为 Component 无法 focus 在头部

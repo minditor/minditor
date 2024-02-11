@@ -1,13 +1,13 @@
 export const data = {
     type: 'Document',
     children: [{
-        type: 'ListItem',
+        type: 'ULItem',
         content: [{ type: 'Text', value: '123'} ]
     }, {
-        type: 'ListItem',
+        type: 'ULItem',
         content: [{ type: 'Text', value: '456'} ]
     }, {
-        type: 'ListItem',
+        type: 'ULItem',
         content: [{ type: 'Text', value: '789'} ]
     }]
 }

@@ -1,8 +1,8 @@
 /**@jsx createElement*/
 import {createElement, expectDeepMatch, expectDOMMatch, expect, expectSelectionMatch} from "./util";
 import {screen} from "@testing-library/dom";
-import { state, actions } from '../../src/globals'
-import '../test-extend.ts'
+import { state, actions, Document, Heading, OLItem, Paragraph, Text, ULItem } from 'minditor'
+import '../spec/test-extend.ts'
 
 const searchObj = Object.fromEntries(
     window.location.search.slice(1).split('&').map(pair => pair.split('='))
@@ -11,19 +11,18 @@ const searchObj = Object.fromEntries(
 
 // import { registerCommands as markdownPlugins } from "../../src/markdown";
 // import { registerCommands as inlineToolCommands } from "../../src/inlineTool";
-import { Document, Heading, OLItem, Paragraph, Text, ULItem } from "../../src";
-// import { data } from './data/singleSection'
-// import { data } from './data/multiSection'
-// import { data } from './data/singlePara'
-// import { data } from './data/singleList'
-// import { data } from './data/component'
-// import { data } from './data/nestedList'
-// import { data } from './data/multiPara'
-// import { data } from './data/playgroundMultiPara'
+// import { data } from '@test/spec/data/singleSection'
+// import { data } from '@test/spec/data/multiSection'
+// import { data } from '@test/spec/data/singlePara'
+// import { data } from '@test/spec/data/singleList'
+// import { data } from '@test/spec/data/component'
+// import { data } from '@test/spec/data/nestedList'
+// import { data } from '@test/spec/data/multiPara'
+// import { data } from '@test/spec/data/playgroundMultiPara'
 
 
 // @vite-ignore
-const { data } = await import(`./data/${searchObj.data || 'singlePara'}`)
+const { data } = await import(`../spec/data/${searchObj.data || 'singlePara'}`)
 const rootElement = document.getElementById('root')!
 const types = {
     Paragraph, Text, Heading, OLItem, ULItem

@@ -1,15 +1,15 @@
+/**@jsx createElement*/
 import {createElement} from './mock'
 import {test, expect, Locator} from '@playwright/test';
 
-import { data as singleParaData } from '../server/data/singlePara'
-import { data as singleListData } from '../server/data/singleList'
-import { data as singleSectionData } from '../server/data/singleSection'
+import { data as singleParaData } from './data/singlePara'
+import { data as singleListData } from './data/singleList'
+import { data as singleSectionData } from './data/singleSection'
 // import { data } from './data/multiSection'
 // import { data } from './data/component'
 // import { data } from './data/nestedList'
 // import { data } from './data/multiPara'
 // import { data } from './data/playgroundMultiPara'
-import '../test-extend'
 import { extend } from './extend'
 
 const ZWSP = '​'
@@ -42,8 +42,8 @@ test.describe('keyboard Enter actions', () => {
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
-      dataToCompare.children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
-      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children.unshift({ type:'Paragraph', content: [{type: 'Text', value: ''}]})
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
 
       // 2.2 测试 dom
@@ -87,17 +87,17 @@ test.describe('keyboard Enter actions', () => {
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
       // @ts-ignore
-      dataToCompare.children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
-      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children.unshift({ type:'Paragraph', content: [{type: 'Text', value: ''}]})
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const focusPElement = (firstTextEl as Node)!.parentElement!.parentElement
+        const focusPElement = (firstTextEl as Node)!.parentElement!
         const newPElement = focusPElement!.previousSibling!
 
           window.expectDOMMatch(newPElement, <p><span>{ZWSP}</span></p>)
           // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-          window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}12322`, 'whole text not match')
+          window.expect(window.doc.element!.textContent).toEqual(`${ZWSP}12322`, 'whole text not match')
 
       }, [firstTextEl, ZWSP])
 
@@ -127,19 +127,16 @@ test.describe('keyboard Enter actions', () => {
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
       // @ts-ignore
-      dataToCompare.children[0].children.unshift({ type:'ListItem', content: [{type: 'Text', value: ''}]})
-      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children.unshift({ type:'ULItem', content: [{type: 'Text', value: ''}]})
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const listElement = (firstTextEl as Node).parentElement!.parentElement!.parentElement
+        const listElement = (firstTextEl as Node).parentElement!.parentElement!
         window.expectDOMMatch(listElement,
             <any>
               <any>
-                <any>
-                  <span>{ZWSP}</span>
-                </any>
-                <any data-testignorechildren></any>
+                <span>{ZWSP}</span>
               </any>
               <any data-testignorechildren></any>
               <any data-testignorechildren></any>
@@ -147,7 +144,7 @@ test.describe('keyboard Enter actions', () => {
             </any>
         ),
         // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-        window.expect(window.doc.element!.textContent).toEqual(`00${ZWSP}123456789`)
+        window.expect(window.doc.element!.textContent).toEqual(`${ZWSP}123456789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
@@ -166,7 +163,7 @@ test.describe('keyboard Enter actions', () => {
 
   test.describe('at end of content', () => {
 
-    test('Para content. Should create new Para after this.', async ({page}) => {
+    test('Para content end. Should create new Para after this.', async ({page}) => {
       await page.load('singlePara')
       const data = singleParaData
       const focusText = data.children!.at(-1)!.content!.at(-1)!.value
@@ -184,8 +181,8 @@ test.describe('keyboard Enter actions', () => {
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
-      dataToCompare.children.push({type: 'Para', content: [{type: 'Text', value: ''}]})
-      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children.push({type: 'Paragraph', content: [{type: 'Text', value: ''}]})
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
 
       // 2.2 测试 dom
@@ -205,7 +202,8 @@ test.describe('keyboard Enter actions', () => {
       await page.evaluate(([firstTextEl]) => {
         window.expectSelectionMatch({
           startContainer: firstTextEl!.parentElement!.nextSibling!.firstChild!.firstChild,
-          startOffset: 0,
+          // CAUTION 因为是空的，会渲染出一个 ZWSP，并且 cursor 在 1 的位置
+          startOffset: 1,
           collapsed: true
         })
       }, [focusTextEl])
@@ -229,8 +227,8 @@ test.describe('keyboard Enter actions', () => {
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
       // @ts-ignore
-      dataToCompare.children[0].children.unshift({ type:'Para', content: [{type: 'Text', value: ''}]})
-      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children.splice(1, 0, { type:'Paragraph', content: [{type: 'Text', value: ''}]})
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
@@ -239,24 +237,22 @@ test.describe('keyboard Enter actions', () => {
         window.expectDOMMatch(sectionElement,
             <any>
               {titleElement.cloneNode(true)}
-              <any>
-                <p><span>{ZWSP}</span></p>
-                <any data-testignorechildren></any>
-              </any>
+              <p><span>{ZWSP}</span></p>
+              <any data-testignorechildren></any>
             </any>
 
         )
           // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-        window.expect(window.doc.element!.textContent).toEqual(`00123${ZWSP}22`, 'whole text not match')
+        window.expect(window.doc.element!.textContent).toEqual(`123${ZWSP}22`, 'whole text not match')
       }, [focusTextEl, ZWSP])
 
       // 2.3 range 测试
-      const firstParaText = data.children[0].children[0].content[0]!.value
+      const firstParaText = data.children[1].content[0]!.value
       await page.evaluate(([firstParaText]) => {
         const firstParaElement = window.page.getByText(firstParaText)
         window.expectSelectionMatch({
           startContainer: (firstParaElement as Node)!.parentElement!.previousSibling!.firstChild!.firstChild,
-          startOffset: 0,
+          startOffset: 1,
           collapsed: true
         })
       }, [firstParaText])
@@ -277,34 +273,32 @@ test.describe('keyboard Enter actions', () => {
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
       // @ts-ignore
-      dataToCompare.children[0].children.splice(1, 0, { type:'ListItem', content: [{type: 'Text', value: ''}]})
-      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children.splice(1, 0, { type:'ULItem', content: [{type: 'Text', value: ''}]})
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const listElement = (firstTextEl as Node).parentElement!.parentElement!.parentElement
+        const listElement = (firstTextEl as Node).parentElement!.parentElement!
         window.expectDOMMatch(listElement,
             <any>
               <any data-testignorechildren></any>
               <any>
-                <any>
-                  <span>{ZWSP}</span>
-                </any>
-                <any data-testignorechildren></any>
+                <span>{ZWSP}</span>
               </any>
               <any data-testignorechildren></any>
               <any data-testignorechildren></any>
             </any>
         ),
             // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-            window.expect(window.doc.element!.textContent).toEqual(`00123${ZWSP}456789`)
+            window.expect(window.doc.element!.textContent).toEqual(`123${ZWSP}456789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
       await page.evaluate(([firstTextEl]) => {
         window.expectSelectionMatch({
-          startContainer: (firstTextEl as Node)!.parentElement!.parentElement!.nextSibling!.firstChild!.firstChild!.firstChild,
-          startOffset: 0,
+          startContainer: (firstTextEl as Node)!.parentElement!.nextSibling!.firstChild!.firstChild!,
+          // 空字符的会定位到 Offset 1
+          startOffset: 1,
           collapsed: true
         })
       }, [firstTextEl])
@@ -342,7 +336,7 @@ test.describe('keyboard Enter actions', () => {
 
       dataToCompare.children.unshift(firstParaPart)
       // FIXME
-      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
 
       // 2.2 测试 dom
@@ -375,7 +369,7 @@ test.describe('keyboard Enter actions', () => {
 
     })
 
-    test('Section content. Should create two section.', async ({page}) => {
+    test('Section title middle. Should create new paragraph using split text.', async ({page}) => {
       await page.load('singleSection')
       const data = singleSectionData
       const focusText = data.children[0].content[0].value
@@ -391,30 +385,27 @@ test.describe('keyboard Enter actions', () => {
       const dataToCompare = structuredClone(data)
       // TODO 还要对比和 API 创造出来的是否一样？
       // @ts-ignore
-      dataToCompare.children.unshift({ type:'Section', content: [{type: 'Text', value: '1'}]})
-      dataToCompare.children[1].content[0].value = '23'
-      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children[0].content[0].value = '1'
+      dataToCompare.children.splice(1, 0, { type:'Paragraph', content: [{type: 'Text', value: '23'}]})
+
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const sectionsElement = (firstTextEl as Node)!.parentElement!.parentElement!.parentElement!
+        const sectionsElement = (firstTextEl as Node)!.parentElement!.parentElement!
         window.expectDOMMatch(sectionsElement,
             <any>
               <any>
-                <any><span>1</span></any>
-                <any></any>
+                <span>1</span>
               </any>
-              <any>
-                <any><span>23</span></any>
-                <any data-testignorechildren>
-                </any>
-              </any>
+              <p>
+                <span>23</span>
+              </p>
+              <any data-testignorechildren/>
             </any>
-
-
         )
         // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-        window.expect(window.doc.element!.textContent).toEqual(`0012322`, 'whole text not match')
+        window.expect(window.doc.element!.textContent).toEqual(`12322`, 'whole text not match')
       }, [focusTextEl, ZWSP])
 
       // 2.3 range 测试
@@ -432,7 +423,7 @@ test.describe('keyboard Enter actions', () => {
     test('List content. Should create new List item in middle.', async ({page}) => {
       await page.load('singleList')
       const data = singleListData
-      const firstText = data.children[0].content[0].value
+      const firstText = data.children[1].content[0].value
       const firstTextEl = await page.getByText(firstText).elementHandle()
       // 1.1 设置焦点
       await page.setSelection(firstTextEl, 1)
@@ -443,33 +434,27 @@ test.describe('keyboard Enter actions', () => {
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
       // @ts-ignore
-      dataToCompare.children[0].splice(1, 0, { type:'ListItem', content: [{type: 'Text', value: '4'}]})
-      dataToCompare.children[0].content[0].value = '56'
-      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare)
+      dataToCompare.children.splice(1, 0, { type:'ULItem', content: [{type: 'Text', value: '4'}]})
+      dataToCompare.children[2].content[0].value = '56'
+      await expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const listElement = (firstTextEl as Node).parentElement!.parentElement!.parentElement
+        const listElement = (firstTextEl as Node).parentElement!.parentElement!
         window.expectDOMMatch(listElement,
             <any>
               <any data-testignorechildren></any>
               <any>
-                <any>
-                  <span>4</span>
-                </any>
-                <any data-testignorechildren></any>
+                <span>4</span>
               </any>
               <any>
-                <any>
-                  <span>56</span>
-                </any>
-                <any data-testignorechildren></any>
+                <span>56</span>
               </any>
               <any data-testignorechildren></any>
             </any>
         ),
             // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-            window.expect(window.doc.element!.textContent).toEqual(`00123456789`)
+            window.expect(window.doc.element!.textContent).toEqual(`123456789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试

@@ -38,7 +38,14 @@ export class DocNode {
 
 export class Block extends DocNode {
     static displayName = 'Block'
-    static unwrapToParagraph = false
+    // 在头部按 backspace 是否变成一个普通的 Paragraph
+    static unwrap?: (doc: DocumentContent, block: Block) => Block
+    // 在 content 中间按回车的时候，是否应该分割成同样类型的新 Block，如果不是就默认创建 Paragraph。
+    static splitAsSameType = false
+    // 如果 splitAsSameType 为 true，就必须重写这个函数
+    static createEmpty() {
+        return new this()
+    }
 
     next: Block | null = null
     prev: Block | null = null
@@ -105,7 +112,13 @@ export class Paragraph extends Block {
 
 export class Heading extends Block {
     static displayName = 'Heading'
-    static unwrapToParagraph = true
+
+    static unwrap(doc: DocumentContent, heading: Heading) {
+        const fragment = doc.deleteBetween(heading.firstChild!, null)
+        const newPara = doc.createParagraph(fragment)
+        doc.replace(newPara, heading)
+        return newPara
+    }
 
     render({children}: { children: any }) {
         return <h1>{children}</h1>
@@ -114,14 +127,60 @@ export class Heading extends Block {
 
 export class OLItem extends Block {
     static displayName = 'OLItem'
-    static unwrapToParagraph = true
+    static unwrap(doc: DocumentContent, olItem: OLItem) {
+        if (olItem.data.level === 0) {
+            const fragment = doc.deleteBetween(olItem.firstChild!, null)
+            const newPara = doc.createParagraph(fragment)
+            doc.replace(newPara, olItem)
+            return newPara
+        } else {
+            const fragment = doc.deleteBetween(olItem.firstChild!, null)
+            const newOlItem = new OLItem({level: olItem.data.level-1})
+            newOlItem.firstChild = fragment.retrieve()
+            doc.replace(newOlItem, olItem)
+            return newOlItem
+        }
+    }
+    static splitAsSameType = true
+    static createEmpty(level =0) {
+        const newItem = new OLItem({level})
+        newItem.firstChild = new Text({value: ''})
+        return newItem
+    }
+    render({children}: { children: any }) {
+        return <div>{children}</div>
+    }
 
+    toJSON() {
+        return {
+            type: 'OLItem',
+            level: this.data.level
+        }
+    }
 }
 
 export class ULItem extends Block {
     static displayName = 'ULItem'
-    static unwrapToParagraph = true
-
+    static unwrap(doc: DocumentContent, ulItem: ULItem) {
+        if (ulItem.data.level === 0) {
+            const fragment = doc.deleteBetween(ulItem.firstChild!, null)
+            const newPara = doc.createParagraph(fragment)
+            doc.replace(newPara, ulItem)
+            return newPara
+        } else {
+            const fragment = doc.deleteBetween(ulItem.firstChild!, null)
+            const newOlItem = new ULItem({level: ulItem.data.level-1})
+            newOlItem.firstChild = fragment.retrieve()
+            doc.replace(newOlItem, ulItem)
+            return newOlItem
+        }
+    }
+    static splitAsSameType = true
+    static createEmpty(level =0) {
+        const newItem = new ULItem({level})
+        newItem.firstChild = new Text({value: ''})
+        return newItem
+    }
     render({children}: { children: any }) {
         return <div>{children}</div>
     }
@@ -263,21 +322,27 @@ export class DocumentContent extends EventEmitter {
     }
 
     @AutoEmit
-    replace(docNode: DocNode | DocNodeFragment, ref: DocNode) {
+    replace(docNode: DocNode | DocNodeFragment, ref: DocNode, parent: DocumentContent|Block = this) {
         const toReplace = docNode instanceof DocNode ? docNode : docNode.retrieve()!
+
+        let lastOfToReplace = toReplace
+        while (lastOfToReplace.next) {
+            lastOfToReplace = lastOfToReplace.next
+        }
 
         toReplace.prev = ref.prev
         if (ref.prev) {
             ref.prev.next = toReplace
         }
-        toReplace.next = ref.next
+        lastOfToReplace.next = ref.next
         if (ref.next) {
-            ref.next.prev = toReplace
+            ref.next.prev = lastOfToReplace
         }
         ref.prev = null
         ref.next = null
-        if (this.firstChild === ref) {
-            this.firstChild = docNode as Block
+
+        if (parent.firstChild === ref) {
+            parent.firstChild = toReplace as Block
         }
     }
 

@@ -16,15 +16,14 @@
     "esModuleInterop": true,
     "removeComments": false,
     "jsx": "react",
+    "jsxFragmentFactory": "window.Fragment",
     "jsxFactory": "window.createElement",
     "lib": ["esnext", "dom"],
     "types": ["node"],
     "allowSyntheticDefaultImports": true,
   },
   "include": [
-    "../../global.d.ts",
-    "../../jsx.d.ts",
-    "../test-extend.ts"
+    "./test-extend.ts"
   ],
   "files": [
     "keyboard.enter.spec.tsx",

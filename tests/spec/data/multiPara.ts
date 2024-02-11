@@ -1,6 +1,5 @@
 export const data = {
     type: 'Document',
-    content: [{ type: 'Text', value: 'test title'} ],
     children: [{
         type: 'Paragraph',
         content: [
