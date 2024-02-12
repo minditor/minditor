@@ -21,6 +21,7 @@ import {
 import {ReactiveViewState} from "./ReactiveViewState.js";
 import {EventDelegator} from "./EventDelegator";
 import {GlobalState} from "./globals.js";
+import {DocumentContentHistory} from "./DocumentContentHistory.js";
 
 
 type CallbackType = (...arg: any[]) => any
@@ -29,6 +30,37 @@ type CallbackType = (...arg: any[]) => any
 export const CONTENT_RANGE_CHANGE = 'contentrangechange'
 
 
+function saveHistoryPacket(target: DocumentContentView, propertyKey: string, descriptor: PropertyDescriptor) {
+    // 保存原始方法的引用
+    const originalMethod = descriptor.value;
+
+    // 重写原始方法
+    descriptor.value = function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
+        this.history?.openPacket()
+        const result = originalMethod.apply(this, args)
+        // TODO 存 cursor
+        this.history?.closePacket()
+        return result
+    };
+
+    return descriptor
+}
+
+
+
+function preventPatchIfUseDefaultBehavior(target: DocumentContentView, propertyKey: string, descriptor: PropertyDescriptor) {
+    // 保存原始方法的引用
+    const originalMethod = descriptor.value;
+    // 重写原始方法
+    descriptor.value = function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
+        if (!this.usingDefaultBehavior) {
+            originalMethod.apply(this, args)
+        }
+        this.debugJSONContent(this.doc.toJSON())
+    };
+
+    return descriptor
+}
 
 export class DocumentContentView extends EventDelegator{
     public element: HTMLElement|null = null
@@ -37,30 +69,21 @@ export class DocumentContentView extends EventDelegator{
     public state!: ReactiveViewState
     public usingDefaultBehavior = false
     public globalState: GlobalState
+    public history?: DocumentContentHistory
     public debugJSONContent = atom<BlockData>(null)
 
-    constructor(public doc: DocumentContent, globalState: GlobalState) {
+    constructor(public doc: DocumentContent, globalState: GlobalState, history?: DocumentContentHistory ) {
         super()
         this.globalState = globalState
+        this.history = history
         this.state = new ReactiveViewState(this)
 
-        this.doc.on('append', this.preventPatchIfUseDefaultBehavior(this.patchAppend))
-        this.doc.on('prepend', this.preventPatchIfUseDefaultBehavior(this.patchPrepend))
-        this.doc.on('replace', this.preventPatchIfUseDefaultBehavior(this.patchReplace))
-        this.doc.on('deleteBetween', this.preventPatchIfUseDefaultBehavior(this.patchDeleteBetween))
-        this.doc.on('updateText', this.preventPatchIfUseDefaultBehavior(this.patchUpdateText))
-        this.doc.on('formatText', this.patchFormatText)
-    }
-    preventPatchIfUseDefaultBehavior(callback: CallbackType) {
-        return (...args: Parameters<typeof callback>) => {
-
-            if (!this.usingDefaultBehavior) {
-                callback(...args)
-            }
-
-            // TODO 移出去，应该变成 middleware 的形式看起来才合理
-            this.debugJSONContent(this.doc.toJSON())
-        }
+        this.doc.on('append', this.patchAppend.bind(this))
+        this.doc.on('prepend', this.patchPrepend.bind(this))
+        this.doc.on('replace', this.patchReplace.bind(this))
+        this.doc.on('deleteBetween', this.patchDeleteBetween.bind(this))
+        this.doc.on('updateText', this.patchUpdateText.bind(this))
+        this.doc.on('formatText', this.patchFormatText.bind(this))
     }
     renderDocNodeOrFragment(docNode: DocNode|DocNodeFragment) {
         let element = this.docNodeToElement.get(docNode)
@@ -82,19 +105,36 @@ export class DocumentContentView extends EventDelegator{
         }
         return element
     }
-    patchAppend = ({ args }: EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>) => {
-        const [docNode, ref] = args
-        const refElement = this.docNodeToElement.get(ref)! as HTMLElement
-        const element = this.renderDocNodeOrFragment(docNode)
-        insertAfter(element!, refElement)
+    @preventPatchIfUseDefaultBehavior
+    patchAppend ({ args }: EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>) {
+    // patchAppend =({ args }: EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>) => {
+        const [docNode, ref, parent] = args
+        if (ref) {
+            const refElement = this.docNodeToElement.get(ref!) as HTMLElement
+            const element = this.renderDocNodeOrFragment(docNode)
+            insertAfter(element!, refElement)
+        } else {
+            if (parent instanceof DocumentContent) {
+                const element = this.renderDocNodeOrFragment(docNode)
+                this.element!.appendChild(element!)
+            } else {
+                const parentElement = this.docNodeToElement.get(parent!) as HTMLElement
+                const element = this.renderDocNodeOrFragment(docNode)
+                parentElement.appendChild(element!)
+            }
+        }
+
     }
-    patchPrepend = ({ args }: EmitData<Parameters<DocumentContent["prepend"]>, ReturnType<DocumentContent["prepend"]>>) => {
+    @preventPatchIfUseDefaultBehavior
+    patchPrepend ({ args }: EmitData<Parameters<DocumentContent["prepend"]>, ReturnType<DocumentContent["prepend"]>>) {
         const [docNode, ref] = args
         const refElement = this.docNodeToElement.get(ref)!as HTMLElement
         const element = this.renderDocNodeOrFragment(docNode)
         insertBefore(element!, refElement)
     }
-    patchReplace = ({ args }: EmitData<Parameters<DocumentContent["replace"]>, ReturnType<DocumentContent["replace"]>>) =>  {
+
+    @preventPatchIfUseDefaultBehavior
+    patchReplace ({ args }: EmitData<Parameters<DocumentContent["replace"]>, ReturnType<DocumentContent["replace"]>>) {
         const [docNode, ref] = args
         const refElement = this.docNodeToElement.get(ref) as HTMLElement|undefined
         // 可能不是 body 上的 dom 操作。
@@ -103,7 +143,8 @@ export class DocumentContentView extends EventDelegator{
             refElement.replaceWith(element!)
         }
     }
-    patchDeleteBetween = ({ args, result }: EmitData<Parameters<DocumentContent["deleteBetween"]>, ReturnType<DocumentContent["deleteBetween"]>>) =>  {
+    @preventPatchIfUseDefaultBehavior
+    patchDeleteBetween({ args, result }: EmitData<Parameters<DocumentContent["deleteBetween"]>, ReturnType<DocumentContent["deleteBetween"]>>) {
         const { head } = result as DocNodeFragment
 
         const fragment = document.createDocumentFragment()
@@ -117,15 +158,14 @@ export class DocumentContentView extends EventDelegator{
 
         this.docNodeToElement.set(result, fragment)
     }
-
-    patchUpdateText= ({ args}: EmitData<Parameters<DocumentContent["updateText"]>, ReturnType<DocumentContent["updateText"]>>) =>  {
+    @preventPatchIfUseDefaultBehavior
+    patchUpdateText ({ args}: EmitData<Parameters<DocumentContent["updateText"]>, ReturnType<DocumentContent["updateText"]>>) {
         const [text, ref] = args
         const element = this.docNodeToElement.get(ref)!
         // 这样就能让空的 text node 也能有光标。
         element.textContent = text.length === 0 ? ZWSP : text
-        console.log("updatetext", text, element.textContent.length)
     }
-    patchFormatText = ({ args}: EmitData<Parameters<DocumentContent["formatText"]>, ReturnType<DocumentContent["formatText"]>>) =>  {
+    patchFormatText ({ args}: EmitData<Parameters<DocumentContent["formatText"]>, ReturnType<DocumentContent["formatText"]>>) {
         // TODO
     }
 
@@ -223,7 +263,7 @@ export class DocumentContentView extends EventDelegator{
             (startOffset!== 0 && endOffset!== endText.data.value.length && isInSameInline)
 
 
-        const canUseDefaultBehavior = canUseDefaultBehaviorInBackspace && canUseDefaultBehaviorInInputOrDeletion
+        const canUseDefaultBehavior = e.isTrusted && canUseDefaultBehaviorInBackspace && canUseDefaultBehaviorInInputOrDeletion
 
         if (canUseDefaultBehavior) {
             console.warn('using default behavior')
@@ -254,13 +294,13 @@ export class DocumentContentView extends EventDelegator{
 
         // cursor 在段尾，产生一个新的空的 para
         if (!inline) {
-            this.doc.append(newBlock, block)
+            this.doc.append(newBlock, block, this.doc)
             return newBlock
         }
 
         // cursor 在段首，上面产生一个新的 Para
         if (!inline.prev) {
-            this.doc.prepend(newBlock, block)
+            this.doc.prepend(newBlock, block, this.doc)
             return block
         }
 
@@ -278,7 +318,8 @@ export class DocumentContentView extends EventDelegator{
         this.doc.append(splitInline, text)
         return splitInline
     }
-    inputOrReplaceWithChar = (e: KeyboardEvent) => {
+    @saveHistoryPacket
+    inputOrReplaceWithChar ( e: KeyboardEvent) {
         const range = this.state.selectionRange()!
         const {startText, startOffset, endText, endOffset, isCollapsed, isInSameInline} = range
 
@@ -293,7 +334,8 @@ export class DocumentContentView extends EventDelegator{
             this.setCursor(startText, startOffset + 1)
         }
     }
-    deleteRangeForReplaceWithComposition = (e: KeyboardEvent) => {
+    @saveHistoryPacket
+    deleteRangeForReplaceWithComposition(e: KeyboardEvent) {
         const range = this.state.selectionRange()!
         // CAUTION 因为不能通过 e.preventDefault 阻止默认行为，所以这里通过手动设置 cursor 的方式阻止
         this.setCursor(range.startText, range.startOffset)
@@ -303,7 +345,9 @@ export class DocumentContentView extends EventDelegator{
         this.setCursor(range.startText, range.startOffset)
 
     }
-    inputComposedData = (e: CompositionEvent) => {
+
+    @saveHistoryPacket
+    inputComposedData (e: CompositionEvent) {
         const cursorBeforeComposition = this.state.rangeBeforeComposition()!
         const succeed = this.tryUseDefaultBehaviorForRange(cursorBeforeComposition, e)
 
@@ -320,7 +364,8 @@ export class DocumentContentView extends EventDelegator{
     //  chrome 的行为是新增字符在后面 Text 的头部
     //  firefox/safari 是在前面 Text 的尾部
     //  我们统一行为，不删 startText，不合并 endText
-    deleteRange = (e: KeyboardEvent) => {
+    @saveHistoryPacket
+    deleteRange(e: KeyboardEvent) {
         const range = this.state.selectionRange()!
         const succeed = this.tryUseDefaultBehaviorForRange(range, e)
 
@@ -338,7 +383,8 @@ export class DocumentContentView extends EventDelegator{
             }
         }
     }
-    deleteLast = (e: KeyboardEvent) => {
+    @saveHistoryPacket
+    deleteLast(e: KeyboardEvent) {
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock } = range
         // 文章开头，不做任何操作
@@ -393,7 +439,8 @@ export class DocumentContentView extends EventDelegator{
 
         this.resetUseDefaultBehavior()
     }
-    splitContent = (e: KeyboardEvent) => {
+    @saveHistoryPacket
+    splitContent(e: KeyboardEvent) {
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock, isEndFull } = range
         e.preventDefault()
@@ -412,8 +459,8 @@ export class DocumentContentView extends EventDelegator{
         const newPara = this.splitByInline(startBlock, splitInline)
         this.setCursor(newPara.firstChild as Text, 0)
     }
-
-    deleteRangeWithoutMerge = (e: KeyboardEvent) =>{
+    @saveHistoryPacket
+    deleteRangeWithoutMerge (e: KeyboardEvent){
         const range= this.state.selectionRange()!
         const { startText, endBlock, startBlock} = range
         e.preventDefault()
@@ -431,7 +478,8 @@ export class DocumentContentView extends EventDelegator{
             this.setCursor(newPara.firstChild as Text, 0)
         }
     }
-    changeLevel = () => {
+    @saveHistoryPacket
+    changeLevel () {
 
     }
     render() {
@@ -440,21 +488,21 @@ export class DocumentContentView extends EventDelegator{
                 spellcheck={false}
                 contenteditable
                 onKeydown={[
-                    onNotComposing(onCharKey(this.inputOrReplaceWithChar)),
-                    onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition)),
+                    onNotComposing(onCharKey(this.inputOrReplaceWithChar.bind(this))),
+                    onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))),
 
-                    onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange))),
-                    onNotComposing(this.onRangeCollapsed(onBackspaceKey(this.deleteLast))),
+                    onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this)))),
+                    onNotComposing(this.onRangeCollapsed(onBackspaceKey(this.deleteLast.bind(this)))),
 
-                    onNotComposing(this.onRangeCollapsed(onEnterKey(this.splitContent))),
-                    onNotComposing(this.onRangeNotCollapsed(onEnterKey(this.deleteRangeWithoutMerge))),
+                    onNotComposing(this.onRangeCollapsed(onEnterKey(this.splitContent.bind(this)))),
+                    onNotComposing(this.onRangeNotCollapsed(onEnterKey(this.deleteRangeWithoutMerge.bind(this)))),
 
-                    onNotComposing(onTabKey(this.changeLevel)),
+                    onNotComposing(onTabKey(this.changeLevel.bind(this))),
                     // 有 range 时的输入法开始处理，等同于先删除 range
                 ]}
-                onCompositionEndCapture={this.inputComposedData}
+                onCompositionEndCapture={this.inputComposedData.bind(this)}
                 // safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
-                onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition)}
+                onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))}
             >
                 {this.renderBlockList(this.doc.firstChild!)}
             </div>
@@ -499,7 +547,7 @@ export class DocumentContentView extends EventDelegator{
                     this.splitText(endText, endOffset)
                 }
 
-                this.doc.formatText(toFormatInline, formatData)
+                this.doc.formatText(formatData, toFormatInline)
             } else {
                 let startInline = startText
                 if (startOffset !== 0) {
@@ -510,10 +558,9 @@ export class DocumentContentView extends EventDelegator{
                     endInline = this.splitText(endText, endOffset)
                 }
                 let currentInline: Inline = startInline
-                debugger
                 while (currentInline && currentInline !== endInline) {
                     if (currentInline instanceof Text) {
-                        this.doc.formatText(currentInline, formatData)
+                        this.doc.formatText(formatData, currentInline )
                     }
                     currentInline = currentInline.next!
                 }
@@ -556,6 +603,7 @@ export class DocumentContentView extends EventDelegator{
             }
         }
     }
+    @saveHistoryPacket
     formatCurrentRange(formatData: FormatData) {
         const currentRange = this.state.selectionRange()!
         this.formatRange(currentRange, formatData)

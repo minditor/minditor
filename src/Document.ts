@@ -3,6 +3,7 @@ import {DocumentContentView} from "./View";
 import {Plugin} from './Plugin'
 import {assert} from "./util";
 import {GlobalState, state as defaultGlobalState } from './globals'
+import { DocumentContentHistory } from "./DocumentContentHistory.js";
 
 export type DocumentData = {
     name: string,
@@ -12,6 +13,7 @@ export type DocumentData = {
 export class Document {
     public view: DocumentContentView
     public content: DocumentContent
+    public history: DocumentContentHistory
     public plugins: Plugin[] = []
     element?: HTMLElement
     constructor(
@@ -22,7 +24,8 @@ export class Document {
         public globalState: GlobalState = defaultGlobalState
     ) {
         this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.children, docNodeTypes))
-        this.view = new DocumentContentView(this.content, globalState)
+        this.history = new DocumentContentHistory(this.content)
+        this.view = new DocumentContentView(this.content, globalState, this.history)
     }
     initializePlugin(PluginClass: typeof Plugin) {
         const plugin = new PluginClass(this)
@@ -54,9 +57,9 @@ export class Document {
         // return fragment
     }
     toJSON() {
-        // return {
-        //     type: 'Document',
-        //     children: this.content.toArrayJSON()
-        // }
+        return {
+            type: 'Document',
+            children: this.content.toJSON()
+        }
     }
 }

@@ -1,4 +1,5 @@
 export * from './Document'
 export * from './DocumentContent.js'
 export * from './View'
+export * from './DocumentContentHistory.js'
 export * from './globals.js'

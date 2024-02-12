@@ -21,7 +21,7 @@ const searchObj = Object.fromEntries(
 // import { data } from '@test/spec/data/playgroundMultiPara'
 
 
-// @vite-ignore
+/* @vite-ignore */
 const { data } = await import(`../spec/data/${searchObj.data || 'singlePara'}`)
 const rootElement = document.getElementById('root')!
 const types = {

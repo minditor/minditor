@@ -1,14 +1,13 @@
 import {expect, Page, ElementHandle} from "@playwright/test";
 
-// FIXME 从 port 里面读取
-const PORT = 5179
 
 export function extend(page: Page) {
     if (page.load) return
 
     page.load = async (dataName: string = 'singlePara') => {
         //@ts-ignore
-        await page.goto(`http://localhost:${PORT}/server/index.html?data=${dataName}`);
+        await page.goto(`./index.html?data=${dataName}`);
+        console.log(page.url())
         await expect(page.getByTestId('root')).not.toBeEmpty()
     }
 

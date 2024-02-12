@@ -3,8 +3,9 @@ import EventEmitter from "eventemitter3";
 import {ZWSP, assert} from "./util.js";
 
 export class DocNodeFragment {
-    head: DocNode | null = null
-
+    constructor(public head: DocNode|null = null) {
+        this.head = head || null
+    }
     retrieve() {
         const head = this.head
         this.head = null
@@ -281,8 +282,11 @@ export class DocumentContent extends EventEmitter {
     }
 
     @AutoEmit
-    append(docNode: DocNode | DocNodeFragment, ref: DocNode) {
-        const originalNext = ref.next
+    append(docNode: DocNode | DocNodeFragment, ref: DocNode|null, parent? : DocumentContent|Block) {
+        assert(!(!ref && !parent), 'ref and parent should not be both null')
+        assert(!(!ref && parent!.firstChild), 'ref should not be null when parent is not empty')
+
+        const originalNext = ref?.next || null
         const appendNode = docNode instanceof DocNode ? docNode : docNode.retrieve()!
         let lastAppendNode = appendNode
         while (lastAppendNode.next) {
@@ -294,12 +298,22 @@ export class DocumentContent extends EventEmitter {
         if (originalNext) {
             originalNext.prev = lastAppendNode
         }
-        ref.next = appendNode
+
+        if (ref) {
+            ref.next = appendNode
+        } else {
+            // ref 为 null 说明 parent 应该是空的
+            parent!.firstChild = appendNode
+        }
+
         appendNode.prev = ref
+        return lastAppendNode
     }
 
     @AutoEmit
-    prepend(docNode: DocNode | DocNodeFragment, ref: DocNode) {
+    prepend(docNode: DocNode | DocNodeFragment, ref: DocNode, parent : DocumentContent|Block = this) {
+        assert(!(!ref && !parent), 'ref and parent should not be both null')
+        assert(!(!ref && parent!.firstChild), 'ref should not be null when parent is not empty')
         const originalPrevious = ref.prev
         const prependNode = docNode instanceof DocNode ? docNode : docNode.retrieve()!
 
@@ -316,42 +330,44 @@ export class DocumentContent extends EventEmitter {
         lastPrependNode.next = ref
         ref.prev = lastPrependNode
 
-        if (this.firstChild === ref) {
-            this.firstChild = prependNode as Block
+        if (parent?.firstChild === ref) {
+            parent.firstChild = prependNode as Block
         }
+
+        return prependNode
     }
 
     @AutoEmit
     replace(docNode: DocNode | DocNodeFragment, ref: DocNode, parent: DocumentContent|Block = this) {
-        const toReplace = docNode instanceof DocNode ? docNode : docNode.retrieve()!
+        const firstNewNode = docNode instanceof DocNode ? docNode : docNode.retrieve()!
 
-        let lastOfToReplace = toReplace
-        while (lastOfToReplace.next) {
-            lastOfToReplace = lastOfToReplace.next
+        let lastNewNode = firstNewNode
+        while (lastNewNode.next) {
+            lastNewNode = lastNewNode.next
         }
 
-        toReplace.prev = ref.prev
+        firstNewNode.prev = ref.prev
         if (ref.prev) {
-            ref.prev.next = toReplace
+            ref.prev.next = firstNewNode
         }
-        lastOfToReplace.next = ref.next
+        lastNewNode.next = ref.next
         if (ref.next) {
-            ref.next.prev = lastOfToReplace
+            ref.next.prev = lastNewNode
         }
         ref.prev = null
         ref.next = null
 
         if (parent.firstChild === ref) {
-            parent.firstChild = toReplace as Block
+            parent.firstChild = firstNewNode as Block
         }
+
+        return [firstNewNode, lastNewNode]
     }
 
     // 包括开头，不包括结尾
     @AutoEmit
     deleteBetween<T extends DocNode>(start: T, end: T | null, parent?: DocumentContent|Block) {
-
         // assert( !parent || (parent instanceof DocumentContent && start instanceof Block || parent instanceof Block && start instanceof Inline), 'parent and start type not match')
-
         const fragment = new DocNodeFragment()
         const beforeStart = start.prev
 
@@ -383,17 +399,33 @@ export class DocumentContent extends EventEmitter {
         return origin
     }
     @AutoEmit
-    formatText(text: Text, format: FormatData) {
+    formatText( format: FormatData, text: Text) {
         if (!text.data.formats) {
             text.data.formats = {}
         }
+        const originFormats = text.data.formats
 
         text.data.formats = {
             ...text.data.formats,
-            ...format
         }
-    }
 
+        for(const key in format) {
+            if (format[key] === null || format[key] === undefined) {
+                delete text.data.formats[key]
+            } else {
+                text.data.formats[key] = format[key]
+            }
+        }
+
+        return originFormats
+    }
+    get lastChild(): Block | null {
+        let current = this.firstChild
+        while (current && current.next) {
+            current = current.next
+        }
+        return current
+    }
     toJSON() {
         const result: BlockData[] = []
         let current = this.firstChild

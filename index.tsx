@@ -19,8 +19,16 @@ myDoc.content.append(newParagraph, myDoc.content.firstChild)
 
 const debugRoot = document.getElementById('debug-root')!
 
-createRoot(debugRoot).render(<pre>
-    <code>
-    {() => JSON.stringify(myDoc.view.debugJSONContent(), null, 4)}
-    </code>
-</pre>)
+createRoot(debugRoot).render(
+    <div>
+        <div>
+            <button onClick={() => myDoc.history.undo()}>undo</button>
+            <button onClick={() => myDoc.history.redo()}>redo</button>
+        </div>
+        <pre>
+            <code>
+            {() => JSON.stringify(myDoc.view.debugJSONContent(), null, 4)}
+            </code>
+        </pre>
+    </div>
+)
