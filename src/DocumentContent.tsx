@@ -114,7 +114,7 @@ export class Heading extends Block {
     static displayName = 'Heading'
 
     static unwrap(doc: DocumentContent, heading: Heading) {
-        const fragment = doc.deleteBetween(heading.firstChild!, null)
+        const fragment = doc.deleteBetween(heading.firstChild!, null, heading)
         const newPara = doc.createParagraph(fragment)
         doc.replace(newPara, heading)
         return newPara
@@ -129,12 +129,12 @@ export class OLItem extends Block {
     static displayName = 'OLItem'
     static unwrap(doc: DocumentContent, olItem: OLItem) {
         if (olItem.data.level === 0) {
-            const fragment = doc.deleteBetween(olItem.firstChild!, null)
+            const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
             const newPara = doc.createParagraph(fragment)
             doc.replace(newPara, olItem)
             return newPara
         } else {
-            const fragment = doc.deleteBetween(olItem.firstChild!, null)
+            const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
             const newOlItem = new OLItem({level: olItem.data.level-1})
             newOlItem.firstChild = fragment.retrieve()
             doc.replace(newOlItem, olItem)
@@ -163,12 +163,12 @@ export class ULItem extends Block {
     static displayName = 'ULItem'
     static unwrap(doc: DocumentContent, ulItem: ULItem) {
         if (ulItem.data.level === 0) {
-            const fragment = doc.deleteBetween(ulItem.firstChild!, null)
+            const fragment = doc.deleteBetween(ulItem.firstChild!, null, ulItem)
             const newPara = doc.createParagraph(fragment)
             doc.replace(newPara, ulItem)
             return newPara
         } else {
-            const fragment = doc.deleteBetween(ulItem.firstChild!, null)
+            const fragment = doc.deleteBetween(ulItem.firstChild!, null, ulItem)
             const newOlItem = new ULItem({level: ulItem.data.level-1})
             newOlItem.firstChild = fragment.retrieve()
             doc.replace(newOlItem, ulItem)
@@ -346,29 +346,41 @@ export class DocumentContent extends EventEmitter {
         }
     }
 
+    // 包括开头，不包括结尾
     @AutoEmit
-    deleteBetween<T extends DocNode>(start: T, end: T | null) {
+    deleteBetween<T extends DocNode>(start: T, end: T | null, parent?: DocumentContent|Block) {
+
+        // assert( !parent || (parent instanceof DocumentContent && start instanceof Block || parent instanceof Block && start instanceof Inline), 'parent and start type not match')
+
         const fragment = new DocNodeFragment()
         const beforeStart = start.prev
-        const afterEnd = end?.next || null
-        if (afterEnd) {
-            afterEnd.prev = beforeStart
-        }
-        if (beforeStart) {
-            beforeStart.next = afterEnd
-        }
 
         start.prev = null
-        if (end) {
-            end.next = null
+
+        if (beforeStart) {
+            beforeStart.next = end
+        } else {
+            // 是从头删的
+            parent!.firstChild = end
         }
+
+
+        if (end) {
+            // 链条的尾部清理
+            end.prev!.next = null
+            // 剩余部分的头部清理
+            end.prev = beforeStart
+        }
+
         fragment.head = start
         return fragment
     }
 
     @AutoEmit
     updateText(newTextValue: string, text: Text) {
+        const origin = text.data.value
         text.data.value = newTextValue
+        return origin
     }
     @AutoEmit
     formatText(text: Text, format: FormatData) {

@@ -104,17 +104,15 @@ export class DocumentContentView extends EventDelegator{
         }
     }
     patchDeleteBetween = ({ args, result }: EmitData<Parameters<DocumentContent["deleteBetween"]>, ReturnType<DocumentContent["deleteBetween"]>>) =>  {
-        const [start, end] = args
+        const { head } = result as DocNodeFragment
 
         const fragment = document.createDocumentFragment()
-        let current = start
-        while (current !== end) {
+        let current = head
+
+        while (current) {
             const element = this.docNodeToElement.get(current)!
             fragment.appendChild(element)
             current = current.next!
-        }
-        if (end) {
-            fragment.appendChild(this.docNodeToElement.get(end)!)
         }
 
         this.docNodeToElement.set(result, fragment)
@@ -170,16 +168,16 @@ export class DocumentContentView extends EventDelegator{
         // 1. 先更新大的 block 和 inline 结构
         if (range.isInSameBlock ) {
             if (!range.isInSameInline&& !range.isSibling) {
-                this.doc.deleteBetween(startText.next!, endText.prev)
+                this.doc.deleteBetween(startText.next!, endText, startBlock)
             }
         } else {
             // 跨越 block 的输入
             if (startText.next) {
-                this.doc.deleteBetween(startText.next!, null)
+                this.doc.deleteBetween(startText.next!, null, startBlock)
             }
-            const remainEndFragment = this.doc.deleteBetween(endText, null)
+            const remainEndFragment = this.doc.deleteBetween(endText, null, endBlock)
             // 删除中间和结尾的的 block
-            this.doc.deleteBetween(startBlock.next!, endBlock)
+            this.doc.deleteBetween(startBlock.next!, endBlock.next, this.doc)
 
             // 如果有剩余的 fragment，插入到 startBlock 后面
             // TODO 还要判断是不是 endText 也删完了。
@@ -208,7 +206,7 @@ export class DocumentContentView extends EventDelegator{
             if (newEndTextValue.length) {
                 this.doc.updateText(newEndTextValue, endText)
             } else {
-                this.doc.deleteBetween(endText, endText)
+                this.doc.deleteBetween(endText, endText.next, endBlock)
             }
         }
 
@@ -267,7 +265,7 @@ export class DocumentContentView extends EventDelegator{
         }
 
         // 在中间
-        const inlineFrag = this.doc.deleteBetween(inline, null)
+        const inlineFrag = this.doc.deleteBetween(inline, null, block)
         this.doc.replace(inlineFrag, newBlock.firstChild!, newBlock)
 
         this.doc.append(newBlock, block)
@@ -333,7 +331,7 @@ export class DocumentContentView extends EventDelegator{
             if(range.startText.data.value.length === 0 && range.startText.prev instanceof Text) {
                 this.setCursor(range.startText.prev, range.startText.prev.data.value.length)
                 // 头也没有文字了，删除掉
-                this.doc.deleteBetween(range.startText, range.startText)
+                this.doc.deleteBetween(range.startText, range.startText.next, range.startBlock)
             } else {
                 // 重置 cursor
                 this.setCursor(range.startText, range.startOffset)
@@ -353,7 +351,7 @@ export class DocumentContentView extends EventDelegator{
 
                 if (startBlock.prev instanceof Paragraph && startBlock.prev.isEmpty) {
                     // 删除上一个空的 Para
-                    this.doc.deleteBetween(startBlock.prev, startBlock.prev)
+                    this.doc.deleteBetween(startBlock.prev, startBlock, this.doc)
                 } else {
                     if ((startBlock.constructor as typeof Block).unwrap) {
                         // heading/listItem 之类的在头部删除会变成 paragraph
@@ -364,8 +362,8 @@ export class DocumentContentView extends EventDelegator{
                         // CAUTION 这里不用考虑 startBlock 是 Component 的情况，因为 Component 无法 focus 在头部
                         const previousBlock = startBlock.prev!
                         // CAUTION  先把 block detach，再去操作 inline，性能高点
-                        this.doc.deleteBetween(startBlock, startBlock)
-                        const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null)
+                        this.doc.deleteBetween(startBlock, startBlock.next, this.doc)
+                        const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null, startBlock)
                         const previousBlockLastChild = previousBlock.lastChild!
                         this.doc.append(inlineFrag, previousBlock.lastChild!)
                         this.setCursor(previousBlockLastChild, Infinity)
@@ -381,7 +379,7 @@ export class DocumentContentView extends EventDelegator{
                 if (startText.prev) {
                     // 不管前面是什么，都设置到末尾
                     this.setCursor(startText.prev, Infinity)
-                    this.doc.deleteBetween(startText, startText)
+                    this.doc.deleteBetween(startText, startText.next, startBlock)
                 } else {
                     this.doc.updateText('', startText)
                 }
@@ -428,7 +426,7 @@ export class DocumentContentView extends EventDelegator{
             const newPara = this.splitByInline(startBlock, startText.next)
             // 处理 startText 也变空的问题
             if(startText.data.value.length === 0 && startText.prev) {
-                this.doc.deleteBetween(startText, startText)
+                this.doc.deleteBetween(startText, startText.next, startBlock)
             }
             this.setCursor(newPara.firstChild as Text, 0)
         }
