@@ -1,4 +1,4 @@
-import {Atom, atom, computed, createElement, createRoot, reactive} from "axii";
+import {Atom, atom, computed, createElement, createRoot, destroyComputed, reactive} from "axii";
 import {Block, DocumentContent, Text} from "../DocumentContent.js";
 
 type IndexData = {
@@ -69,7 +69,11 @@ export class OLItem extends Block {
             return this.index.map(i => i+1).join('.') + '.'
         })
     }
-
+    destroy() {
+        destroyComputed(this.index)
+        destroyComputed(this.displayIndex)
+        this.indexRoot?.dispose()
+    }
     render({children}: { children: any }) {
         const indexContainer = <span contenteditable={false}></span> as unknown as HTMLElement
         this.indexRoot = createRoot(indexContainer)

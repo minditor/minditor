@@ -67,7 +67,7 @@ export class Heading extends Block {
     destroy() {
         destroyComputed(this.index)
         destroyComputed(this.displayIndex)
-        // FIXME destroy indexRoot
+        this.indexRoot?.dispose()
     }
 
     render({children}: { children: any }) {

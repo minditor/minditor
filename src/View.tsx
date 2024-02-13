@@ -165,7 +165,22 @@ export class DocumentContentView extends EventDelegator{
         element.textContent = text.length === 0 ? ZWSP : text
     }
     patchFormatText ({ args}: EmitData<Parameters<DocumentContent["formatText"]>, ReturnType<DocumentContent["formatText"]>>) {
-        // TODO
+        const newFormats = args[0]
+        Object.entries(newFormats).forEach(([key, value]) => {
+          // @ts-ignore
+            const styleKV = Text.formatToStyle([key, value])!
+            const [styleName, styleValue] = Object.entries(styleKV)[0]
+
+            const element = this.docNodeToElement.get(args[1]) as HTMLElement
+            if (styleValue === undefined) {
+                element.style.removeProperty(styleName)
+            } else {
+                // @ts-ignore
+                element.style[styleName] = styleValue
+            }
+        })
+
+
     }
 
     renderInline(inline: Inline) {
@@ -332,6 +347,7 @@ export class DocumentContentView extends EventDelegator{
             // 非默认情况重置 cursor
             this.setCursor(startText, startOffset + 1)
         }
+        this.dispatch(new CustomEvent('inputChar', {detail: e.key}))
     }
     @saveHistoryPacket
     deleteRangeForReplaceWithComposition(e: KeyboardEvent) {
@@ -356,7 +372,8 @@ export class DocumentContentView extends EventDelegator{
         if(!succeed) {
             this.setCursor(cursorBeforeComposition.startText, cursorBeforeComposition.startOffset + e.data.length)
         }
-        return false
+        this.dispatch(new CustomEvent('inputChar', {detail: e.data}))
+
     }
 
     // CAUTION 如果  range 刚好删完了 startText，
@@ -516,17 +533,17 @@ export class DocumentContentView extends EventDelegator{
     }
     setCursor(docNode: DocNode, offset: number) {
         // FIXME 没考虑 InlineComponent 和 Component
-
-        const firstText = docNode instanceof Text ? docNode : (docNode as Block).firstChild as Text
-        const element = this.docNodeToElement.get(firstText)!
+        const isNodeBlock = docNode instanceof Block
+        const focusText = isNodeBlock ? (docNode as Block)[offset === 0 ? 'firstChild' : 'lastChild'] as Text : docNode as Text
+        const element = this.docNodeToElement.get(focusText)!
         // 可能是个空的所以没有 text child
         const startContainer = element.firstChild || element
         // CAUTION 注意这里，如果是空节点，会渲染出一个 ZWSP，要调整到这个后面，不然有的浏览器就回自动插入到上一元素的末尾。
         const startOffset = offset === Infinity ?
-            firstText.data.value.length :
-            (firstText.isEmpty ? 1 : offset)
+            focusText.data.value.length :
+            (focusText.isEmpty ? 1 : offset)
         setNativeCursor(startContainer as HTMLElement, startOffset)
-        console.log("api setting cursor", firstText, startContainer, startOffset)
+        console.log("api setting cursor", focusText, startContainer, startOffset)
     }
     setRange(docRange: DocRange) {
         // const startContainer = this.textNodeToElement.get(docRange.startText)!.firstChild!

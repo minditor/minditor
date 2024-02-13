@@ -114,14 +114,25 @@ function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: Propert
 
 export class Text extends Inline {
     static displayName = 'Text'
-
+    // FIXME 互斥样式的处理
+    static formatToStyle = ([formatName, formatValue]:[string, any]) => {
+        if (formatName === 'bold') {
+            return { fontWeight: formatValue ? 'bold' : undefined}
+        } else if (formatName === 'italic') {
+            return { fontStyle: formatValue ? 'italic' : undefined}
+        } else if (formatName === 'underline') {
+            return { textDecoration: formatValue ? 'underline' : undefined}
+        } else if (formatName === 'lineThrough') {
+            return { textDecoration: formatValue ? 'line-through' : undefined }
+        }
+    }
     render() {
         const testIdProp: { 'data-testid'?: any } = {}
         if (this.data.testid) {
             testIdProp['data-testid'] = this.data.testid
         }
-        // TODO formats 实现
-        return <span {...testIdProp}>{this.data.value.length ? this.data.value : ZWSP}</span>
+        const formatStyle = Object.assign({}, ...Object.entries(this.data.formats || {}).map(Text.formatToStyle))
+        return <span {...testIdProp} style={formatStyle}>{this.data.value.length ? this.data.value : ZWSP}</span>
     }
 
     get isEmpty() {

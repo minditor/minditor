@@ -1,28 +1,22 @@
-import { Document} from "./Document";
-import {DocRange, Text} from "./DocNode";
-import {DocumentContent} from "./DocumentContent.js";
-import {DocumentContentView} from "./View";
+import {Document} from "./Document";
 import {state as globalKM} from "./globals";
-import {atom} from 'axii'
-import {assert} from "./util";
-import {createHost, Host} from 'axii'
+import {atom, createRoot} from 'axii'
+import {assert, nextJob, nextTask} from "./util";
 
-export type EventMatchHandle = (e: Event) => boolean
-export type EventCallback = (e: Event, args: PluginRunArgv) => any
+export type EventMatchHandle = (e: unknown) => boolean
+export type EventCallback = (e: unknown, args?: PluginRunArgv) => any
 export type PluginRunArgv = {
-    content: DocumentContent,
-    view: DocumentContentView,
-    range?: Range,
-    docRange?: DocRange
+
 }
 
 export class Plugin {
+    public static displayName = 'Plugin'
     public static activateEventListeners: Map<string, Set<EventCallback>> = new Map()
     public static deactivateEventListeners: Map<string, Set<EventCallback>> = new Map()
-    public static activateEvents: {[k: string]: (e:Event) => boolean}
-    public static deactivateEvents: {[k: string]: (e:Event) => boolean}
+    public static activateEvents: {[k: string]: (e:unknown) => boolean}
+    public static deactivateEvents: {[k: string]: (e:unknown) => boolean}
     public activated = atom(false)
-    public host?: Host
+    public root?: ReturnType<typeof createRoot>
     constructor(public document: Document) {
         this.addActivateEventListeners()
     }
@@ -33,18 +27,15 @@ export class Plugin {
         return null
     }
     renderPluginView() {
-        assert(!this.host, 'plugin view should only render once')
-        const fragment = document.createDocumentFragment()
-        const placeholder = new Comment('plugin')
-        fragment.appendChild(placeholder)
-        this.host = createHost(this.render(), placeholder)
-
-        this.host.render()
-        return fragment
+        assert(!this.root, 'plugin view should only render once')
+        const element = document.createElement('div')
+        this.root = createRoot(element)
+        this.root.render(this.render()!)
+        return this
     }
     destroy() {
-        this.host.destroy()
-        delete this.host
+        this.root?.dispose()
+        delete this.root
     }
     addActivateEventListeners() {
         const ThisPluginKlass = this.constructor as typeof Plugin
@@ -52,37 +43,31 @@ export class Plugin {
             let callbacks = Plugin.activateEventListeners.get(eventName)
             if (!callbacks) {
                 Plugin.activateEventListeners.set(eventName, (callbacks = new Set()))
-                console.log('add event listener', eventName)
 
-                // FIXME type
-                // @ts-ignore
-                this.document.view.listen(eventName, (e) => {
-                    let range: Range
-                    let docRange: DocRange
-                    if (globalKM.selectionRange) {
-                        range = globalKM.selectionRange
-                        docRange = this.document.view.createDocRange(range)
-                    }
+                this.document.view.listen(eventName, (e:any) => {
                     const args = {
                         content: this.document.content,
                         view: this.document.view,
-                        range,
-                        docRange
+                        range: globalKM.selectionRange,
+                        docRange: this.document.view.state.selectionRange
                     }
 
+                    // CAUTION 放到 nextTask 里面 run 这样用户可以放心的处理 history 等
                     // CAUTION 同时只允许激活一个。如果用户有合并需求，自己写个合并类。
-                    for(let callback of callbacks) {
-                        if(callback(e, args)) break
-                    }
-                })
+                    nextTask(() => {
+                        for(let callback of callbacks!) {
+                            if(callback(e, args)) break
+                        }
+                    })
+
+                },  true)
             }
 
-            callbacks.add((e: Event, args: PluginRunArgv) => {
-                console.log('dispatching', eventName, e)
+            callbacks.add((e: unknown, args?: PluginRunArgv) => {
                 if (!eventMatchHandle(e)) return
                 console.log("activating", this)
                 this.activated(true)
-                return this.run(args)
+                return this.run(args!)
             })
         })
 
@@ -90,18 +75,14 @@ export class Plugin {
             let callbacks = Plugin.deactivateEventListeners.get(eventName)
             if (!callbacks) {
                 Plugin.deactivateEventListeners.set(eventName, (callbacks = new Set()))
-                // FIXME type
-                // @ts-ignore
-                this.document.view.listen(eventName, (e) => {
-                    for(let callback of callbacks) {
+                this.document.view.listen(eventName, (e:any) => {
+                    for(let callback of callbacks!) {
                         callback(e)
                     }
                 })
             }
 
-            callbacks.add((e: Event, args: PluginRunArgv) => {
-                console.log('dispatching', eventName, e)
-                if (e.key === 'Escape') debugger
+            callbacks.add((e: unknown) => {
                 if (!eventMatchHandle(e)) return
                 console.warn('deactivated', this)
                 this.activated(false)

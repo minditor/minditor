@@ -48,7 +48,6 @@ export const state:GlobalState = (function() {
             // CAUTION keydown 发生在 compositionstart 之前，这个时候 selection 还没变，所以应该在这里记录 isComposing 才能保证正确
             if (e.isComposing || e.keyCode === 229) {
                 isComposing = true
-                return
             }
         }
     })
