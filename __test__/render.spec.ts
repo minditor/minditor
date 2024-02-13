@@ -1,10 +1,11 @@
 /**
  * @vitest-environment happy-dom
  */
-import {DocumentContent, Paragraph, Text, Heading} from "../src/DocumentContent.js";
+import {DocumentContent, Paragraph, Text} from "../src/DocumentContent.js";
 import {DocumentContentView} from "../src/View";
 import { state as globalState} from '../src/globals.js'
 import {expect, describe, test} from "vitest";
+import {Heading} from "../src/components/Heading.js";
 
 describe('basic render', () => {
     test('render Paragraph', () => {

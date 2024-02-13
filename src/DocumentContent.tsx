@@ -1,6 +1,6 @@
-import {createElement} from 'axii'
 import EventEmitter from "eventemitter3";
-import {ZWSP, assert} from "./util.js";
+import {assert, ZWSP} from "./util.js";
+import {createElement} from "axii";
 
 export class DocNodeFragment {
     constructor(public head: DocNode|null = null) {
@@ -69,7 +69,46 @@ export class Inline extends DocNode {
 }
 
 
-// built-ins
+export type EmitData<T, U> = {
+    method: string,
+    args: T,
+    result: U
+}
+
+
+export const EVENT_ANY = Symbol('ANY')
+
+// 方法装饰器
+function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: PropertyDescriptor) {
+    // 保存原始方法的引用
+    const originalMethod = descriptor.value;
+
+    // 重写原始方法
+    descriptor.value = function (this: EventEmitter, ...args: Parameters<typeof originalMethod>) {
+        // 调用原始方法
+        const result = originalMethod.apply(this, args);
+
+        // 触发事件
+        this.emit(propertyKey, {
+            method: propertyKey,
+            args,
+            result
+        } as EmitData<Parameters<typeof originalMethod>, ReturnType<typeof originalMethod>>);
+
+        this.emit(EVENT_ANY, {
+            method: propertyKey,
+            args,
+            result
+        } as EmitData<Parameters<typeof originalMethod>, ReturnType<typeof originalMethod>>);
+
+        // 返回原始方法的结果
+        return result;
+    };
+
+    return descriptor;
+}
+
+
 export class Text extends Inline {
     static displayName = 'Text'
 
@@ -85,6 +124,7 @@ export class Text extends Inline {
     get isEmpty() {
         return this.data.value === ''
     }
+
     toJSON() {
         return {
             type: 'Text',
@@ -110,122 +150,6 @@ export class Paragraph extends Block {
         }
     }
 }
-
-export class Heading extends Block {
-    static displayName = 'Heading'
-
-    static unwrap(doc: DocumentContent, heading: Heading) {
-        const fragment = doc.deleteBetween(heading.firstChild!, null, heading)
-        const newPara = doc.createParagraph(fragment)
-        doc.replace(newPara, heading)
-        return newPara
-    }
-
-    render({children}: { children: any }) {
-        return <h1>{children}</h1>
-    }
-}
-
-export class OLItem extends Block {
-    static displayName = 'OLItem'
-    static unwrap(doc: DocumentContent, olItem: OLItem) {
-        if (olItem.data.level === 0) {
-            const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
-            const newPara = doc.createParagraph(fragment)
-            doc.replace(newPara, olItem)
-            return newPara
-        } else {
-            const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
-            const newOlItem = new OLItem({level: olItem.data.level-1})
-            newOlItem.firstChild = fragment.retrieve()
-            doc.replace(newOlItem, olItem)
-            return newOlItem
-        }
-    }
-    static splitAsSameType = true
-    static createEmpty(level =0) {
-        const newItem = new OLItem({level})
-        newItem.firstChild = new Text({value: ''})
-        return newItem
-    }
-    render({children}: { children: any }) {
-        return <div>{children}</div>
-    }
-
-    toJSON() {
-        return {
-            type: 'OLItem',
-            level: this.data.level
-        }
-    }
-}
-
-export class ULItem extends Block {
-    static displayName = 'ULItem'
-    static unwrap(doc: DocumentContent, ulItem: ULItem) {
-        if (ulItem.data.level === 0) {
-            const fragment = doc.deleteBetween(ulItem.firstChild!, null, ulItem)
-            const newPara = doc.createParagraph(fragment)
-            doc.replace(newPara, ulItem)
-            return newPara
-        } else {
-            const fragment = doc.deleteBetween(ulItem.firstChild!, null, ulItem)
-            const newOlItem = new ULItem({level: ulItem.data.level-1})
-            newOlItem.firstChild = fragment.retrieve()
-            doc.replace(newOlItem, ulItem)
-            return newOlItem
-        }
-    }
-    static splitAsSameType = true
-    static createEmpty(level =0) {
-        const newItem = new ULItem({level})
-        newItem.firstChild = new Text({value: ''})
-        return newItem
-    }
-    render({children}: { children: any }) {
-        return <div>{children}</div>
-    }
-
-    toJSON() {
-        return {
-            type: 'ULItem',
-            level: this.data.level
-        }
-    }
-}
-
-
-export type EmitData<T, U> = {
-    method: string,
-    args: T,
-    result: U
-}
-
-
-// 方法装饰器
-function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: PropertyDescriptor) {
-    // 保存原始方法的引用
-    const originalMethod = descriptor.value;
-
-    // 重写原始方法
-    descriptor.value = function (this: EventEmitter, ...args: Parameters<typeof originalMethod>) {
-        // 调用原始方法
-        const result = originalMethod.apply(this, args);
-
-        // 触发事件
-        this.emit(propertyKey, {
-            method: propertyKey,
-            args,
-            result
-        } as EmitData<Parameters<typeof originalMethod>, ReturnType<typeof originalMethod>>);
-
-        // 返回原始方法的结果
-        return result;
-    };
-
-    return descriptor;
-}
-
 
 export class DocumentContent extends EventEmitter {
     static createBlocksFromData(jsonData: BlockData[], docNodeTypes: { [k: string]: typeof DocNode }): Block {
@@ -462,4 +386,12 @@ export type InlineData = {
     type: string,
     value: any,
     testid?: string,
+}
+
+
+export class InlineComponent extends Inline {
+}
+
+export type InlineComponentContext = {
+    block: Block
 }

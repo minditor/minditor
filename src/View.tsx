@@ -7,8 +7,7 @@ import {
     DocumentContent,
     EmitData,
     FormatData,
-    Inline, Paragraph,
-    Text
+    Inline, Paragraph, Text
 } from "./DocumentContent.js";
 import {
     assert,

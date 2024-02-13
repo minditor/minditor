@@ -1,4 +1,4 @@
-import {DocNodeFragment, DocumentContent, EmitData, Text} from "./DocumentContent.js";
+import {DocNodeFragment, DocumentContent, EmitData, EVENT_ANY, Text} from "./DocumentContent.js";
 import {assert} from "./util.js";
 
 type appendEmitData = EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>
@@ -65,12 +65,7 @@ export class DocumentContentHistory {
     public undoIndex = 0
     public operating = false
     constructor(public doc: DocumentContent) {
-        this.doc.on('append', this.push)
-        this.doc.on('prepend', this.push)
-        this.doc.on('replace', this.push)
-        this.doc.on('deleteBetween', this.push)
-        this.doc.on('updateText', this.push)
-        this.doc.on('formatText', this.push)
+        this.doc.on(EVENT_ANY, this.push)
     }
     push = (event: emitData) => {
         if (this.operating) return
