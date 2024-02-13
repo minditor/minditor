@@ -63,6 +63,31 @@
             "value": "789"
         }
       ]
+    },
+    {
+      "type": "Heading",
+      "useIndex": true,
+      "level": 0,
+      "content": [{"type": "Text", "value": "title"}]
+    },{
+      "type": "Paragraph",
+      "content": [
+        {"type": "Text", "value": "11"},
+        {"type": "Text", "value": "22"},
+        {"type": "Text", "value": "33"}
+      ]
+    }, {
+      "type": "Heading",
+      "useIndex": true,
+      "level": 1,
+      "content": [{"type": "Text", "value": "title2"}]
+    },{
+      "type": "Paragraph",
+      "content": [
+        {"type": "Text", "value": "44"},
+        {"type": "Text", "value": "55"},
+        {"type": "Text", "value": "66"}
+      ]
     }
   ]
 }

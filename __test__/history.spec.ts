@@ -1,13 +1,10 @@
 /**
  * @vitest-environment jsdom
  */
-import {DocumentContent, Paragraph, Heading, Text, ULItem, DocumentContentView, DocumentContentHistory, Document} from "../src/index.js";
-import { setNativeCursor } from "../src/util.js";
-import {state as globalStates} from '../src/globals.js'
-import {getByText} from '@testing-library/dom'
-import {expect, describe, test} from "vitest";
+import {Document, Heading, Paragraph, Text, ULItem, OLItem} from "../src/index.js";
+import {describe, expect, test} from "vitest";
 
-const BuiltinTypes = {Paragraph, Heading, Text, ULItem}
+const BuiltinTypes = {Paragraph, Heading, Text, ULItem, OLItem}
 
 function getByTestID(element: HTMLElement, id: string) {
     return element.querySelector(`[data-testid='${id}']`)
@@ -392,13 +389,17 @@ describe('delete at content head', () => {
                 content: [
                     {type: 'Text', value: 'section', testid: 'section'}
                 ],
-
+                "level": 0,
+                "manualIndex": undefined,
+                "useIndex": false,
             }, {
                 type: 'Heading',
                 content: [
                     {type: 'Text', value: 'section1.1', testid: 'section1.1'}
                 ],
-
+                "level": 0,
+                "manualIndex": undefined,
+                "useIndex": false,
             }, {
                 type: 'Paragraph',
                 content: [
@@ -417,7 +418,9 @@ describe('delete at content head', () => {
                 content: [
                     {type: 'Text', value: 'section1.2.1', testid: 'section1.2.1'}
                 ],
-                children: []
+                "level": 0,
+                "manualIndex": undefined,
+                "useIndex": false,
             }]
 
         const doc = new Document(document.body, {
@@ -438,15 +441,19 @@ describe('delete at content head', () => {
         expect(newData).toMatchObject([{
             type: 'Heading',
             content: [
-                {type: 'Text', value: 'section',}
+                {type: 'Text', value: 'section',"testid": "section",}
             ],
-
+            "level": 0,
+            "manualIndex": undefined,
+            "useIndex": false,
         }, {
             type: 'Heading',
             content: [
-                {type: 'Text', value: 'section1.1',}
+                {type: 'Text', value: 'section1.1',"testid": "section1.1",}
             ],
-
+            "level": 0,
+            "manualIndex": undefined,
+            "useIndex": false,
         }, {
             type: 'Paragraph',
             content: [
@@ -457,14 +464,16 @@ describe('delete at content head', () => {
         }, {
             type: 'Paragraph',
             content: [
-                {type: 'Text', value: 'section1.2',}
+                {type: 'Text', value: 'section1.2',"testid": "section1.2",}
             ]
         }, {
             type: 'Heading',
             content: [
-                {type: 'Text', value: 'section1.2.1'}
+                {type: 'Text', value: 'section1.2.1', "testid": "section1.2.1",}
             ],
-            children: []
+            "level": 0,
+            "manualIndex": undefined,
+            "useIndex": false,
         }])
 
         // 内容不变
@@ -527,7 +536,7 @@ describe('delete at content head', () => {
     test('delete at list head, should unwrap as new para', () => {
         const contentData =
             [{
-                type: 'ULItem',
+                type: 'OLItem',
                 level:0,
                 content: [
                     {type: 'Text', value: 'l11'},
@@ -535,7 +544,7 @@ describe('delete at content head', () => {
                     {type: 'Text', value: 'l13'}
                 ],
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 level:1,
                 content: [
                     {type: 'Text', value: 'l111'},
@@ -543,7 +552,7 @@ describe('delete at content head', () => {
                     {type: 'Text', value: 'l113'}
                 ]
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 level:0,
                 content: [
                     {type: 'Text', value: 'l21'},
@@ -552,7 +561,7 @@ describe('delete at content head', () => {
                 ],
 
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 level:0,
                 content: [
                     {type: 'Text', value: 'l213', testid: 'l213'}, // <-- here
@@ -560,7 +569,7 @@ describe('delete at content head', () => {
                     {type: 'Text', value: 'l213'}
                 ]
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 level:0,
                 content: [
                     {type: 'Text', value: 'l31'},
@@ -585,7 +594,7 @@ describe('delete at content head', () => {
         doc.view.deleteLast(new KeyboardEvent('keydown', {key: 'Backspace'}))
         const newData = doc.toJSON().children
         expect(newData).toMatchObject([{
-            type: 'ULItem',
+            type: 'OLItem',
             level:0,
             content: [
                 {type: 'Text', value: 'l11'},
@@ -593,7 +602,7 @@ describe('delete at content head', () => {
                 {type: 'Text', value: 'l13'}
             ],
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             level:1,
             content: [
                 {type: 'Text', value: 'l111'},
@@ -601,7 +610,7 @@ describe('delete at content head', () => {
                 {type: 'Text', value: 'l113'}
             ]
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             level:0,
             content: [
                 {type: 'Text', value: 'l21'},
@@ -616,7 +625,7 @@ describe('delete at content head', () => {
                 {type: 'Text', value: 'l213'}
             ]
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             level:0,
             content: [
                 {type: 'Text', value: 'l31'},
@@ -625,8 +634,7 @@ describe('delete at content head', () => {
             ]
         }])
         //
-        // FIXME - 我们的 list 不是用 atom 构建的，没法自动构建序号
-        // expect(element.textContent).toBe('1.l11l12l131.1.l111l112l1132.l21l22l23l213l212l2131.l31l32l33')
+        expect(element.textContent).toBe('1.l11l12l131.1.l111l112l1132.l21l22l23l213l212l2131.l31l32l33')
         doc.history.undo()
         expect(doc.content.toJSON()).toMatchObject(contentData)
     })
@@ -881,13 +889,17 @@ describe('format range', () => {
                 content: [
                     {type: 'Text', value: 'section', testid: 'section'} // <-- here
                 ],
-
+                "level": 0,
+                "manualIndex": undefined,
+                "useIndex": false,
             }, {
                 type: 'Heading',
                 content: [
                     {type: 'Text', value: 'section1.1', testid: 'section1.1'}
                 ],
-
+                "level": 0,
+                "manualIndex": undefined,
+                "useIndex": false,
             }, {
                 type: 'Paragraph',
                 content: [
@@ -900,13 +912,17 @@ describe('format range', () => {
                 content: [
                     {type: 'Text', value: 'section1.2', testid: 'section1.2'} // <-- here
                 ],
-
+                "level": 0,
+                "manualIndex": undefined,
+                "useIndex": false,
             }, {
                 type: 'Heading',
                 content: [
                     {type: 'Text', value: 'section1.2.1', testid: 'section1.2.1'}
                 ],
-                children: []
+                "level": 0,
+                "manualIndex": undefined,
+                "useIndex": false,
             }]
 
         const doc = new Document(document.body, {
@@ -931,15 +947,20 @@ describe('format range', () => {
         expect(newData).toMatchObject([{
             type: 'Heading',
             content: [
-                {type: 'Text', value: 'se'}, // <-- here
+                {type: 'Text', value: 'se', "testid": "section",}, // <-- here
                 {type: 'Text', value: 'ction', formats: {bold: true}}
             ],
-
+            "level": 0,
+            "manualIndex": undefined,
+            "useIndex": false,
         }, {
             type: 'Heading',
             content: [
-                {type: 'Text', value: 'section1.1', formats: {bold: true}}
+                {type: 'Text', value: 'section1.1', formats: {bold: true}, "testid": "section1.1",}
             ],
+            "level": 0,
+            "manualIndex": undefined,
+            "useIndex": false,
         }, {
             type: 'Paragraph',
             content: [
@@ -950,16 +971,20 @@ describe('format range', () => {
         }, {
             type: 'Heading',
             content: [
-                {type: 'Text', value: 'se', formats: {bold: true}},
+                {type: 'Text', value: 'se', formats: {bold: true}, "testid": "section1.2",},
                 {type: 'Text', value: 'ction1.2'} // <-- here
             ],
-
+            "level": 0,
+            "manualIndex": undefined,
+            "useIndex": false,
         }, {
             type: 'Heading',
             content: [
-                {type: 'Text', value: 'section1.2.1'}
+                {type: 'Text', value: 'section1.2.1', "testid": "section1.2.1",}
             ],
-            children: []
+            "level": 0,
+            "manualIndex": undefined,
+            "useIndex": false,
         }])
 
         doc.history.undo()
@@ -973,21 +998,21 @@ describe('list update', () => {
     test('change line at end of para', () => {
         const contentData =
             [{
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: 'l1pt11'},
                     {type: 'Text', value: 'l1pt12', testid: 'l1pt12'}, // <-- here
                     {type: 'Text', value: 'l1pt13'}
                 ]
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: 'l2pt11',},
                     {type: 'Text', value: 'l2pt12', testid: 'l2pt12'},// <-- here
                     {type: 'Text', value: 'l2pt13',}
                 ]
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: 'l3pt11'},
                     {type: 'Text', value: 'l3pt12'},
@@ -1015,7 +1040,7 @@ describe('list update', () => {
         const newData = doc.toJSON().children
 
         expect(newData).toMatchObject([{
-            type: 'ULItem',
+            type: 'OLItem',
             content: [
                 {type: 'Text', value: 'l1pt11'},
                 {type: 'Text', value: 'l1'}, // <-- here
@@ -1023,7 +1048,7 @@ describe('list update', () => {
                 {type: 'Text', value: 'l2pt13',}
             ]
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             content: [
                 {type: 'Text', value: 'l3pt11'},
                 {type: 'Text', value: 'l3pt12'},
@@ -1031,8 +1056,7 @@ describe('list update', () => {
             ]
         }])
 
-        // FIXME 序号问题
-        // expect(element.textContent).toBe(`1.l1pt11l1pt12l2pt132.l3pt11l3pt12l3pt13`)
+        expect(element.textContent).toBe(`1.l1pt11l1pt12l2pt132.l3pt11l3pt12l3pt13`)
         doc.history.undo()
         expect(doc.content.toJSON()).toMatchObject(contentData)
     })
@@ -1041,43 +1065,45 @@ describe('list update', () => {
     test('update range in nested list', () => {
         const contentData =
             [{
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: '222'},
                 ],
-
+                level:0
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: '333'},
                 ],
-
+                level:1
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: '666'},
                 ],
-
+                level:2
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: '777'},
                     {type: 'Text', value: '777', testid: '777'}, // <-- from
                     {type: 'Text', value: '777'}
                 ],
+                level:3
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: 'list2', testid: 'list2'}, // <-- to
                 ],
-
+                level:2
             }, {
-                type: 'ULItem',
+                type: 'OLItem',
                 content: [
                     {type: 'Text', value: '9'},
                     {type: 'Text', value: '99'},
                     {type: 'Text', value: '999'}
                 ],
+                level:1
             }]
 
         const doc = new Document(document.body, {
@@ -1100,41 +1126,45 @@ describe('list update', () => {
         const newData = doc.toJSON().children
 
         expect(newData).toMatchObject([{
-            type: 'ULItem',
+            type: 'OLItem',
             content: [
                 {type: 'Text', value: '222'},
             ],
-
+            level:0,
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             content: [
                 {type: 'Text', value: '333'},
             ],
+            level:1,
 
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             content: [
                 {type: 'Text', value: '666'},
             ],
+            level:2,
 
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             content: [
                 {type: 'Text', value: '777'},
                 {type: 'Text', value: '77'},
                 {type: 'Text', value: 'st2'},
             ],
+            level:3,
+
         }, {
-            type: 'ULItem',
+            type: 'OLItem',
             content: [
                 {type: 'Text', value: '9'},
                 {type: 'Text', value: '99'},
                 {type: 'Text', value: '999'}
             ],
+            level:1,
         }])
 
-        // FIXME 序号问题
-        // expect(element.textContent).toBe(`1.2221.1.3331.1.1.6661.1.1.1.77777st21.2.999999`)
+        expect(element.textContent).toBe(`1.2221.1.3331.1.1.6661.1.1.1.77777st21.2.999999`)
         doc.history.undo()
         doc.view.deleteRange(new KeyboardEvent('keydown', {key: 'Backspace'}))
 

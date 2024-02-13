@@ -1,6 +1,6 @@
 import EventEmitter from "eventemitter3";
 import {assert, ZWSP} from "./util.js";
-import {createElement} from "axii";
+import {createElement, Atom, atom} from "axii";
 
 export class DocNodeFragment {
     constructor(public head: DocNode|null = null) {
@@ -21,10 +21,13 @@ export class DocNode {
     }
 
     next: DocNode | null = null
-    prev: DocNode | null = null
+    prev: Atom<DocNode|null> = atom(null)
 
     render(props?: any): any {
         return null
+    }
+    destroy() {
+
     }
 
     toJSON() {
@@ -49,7 +52,7 @@ export class Block extends DocNode {
     }
 
     next: Block | null = null
-    prev: Block | null = null
+    prev: Atom<Block|null> = atom(null)
     firstChild: Inline | null = null
 
     get lastChild(): Inline | null {
@@ -65,7 +68,7 @@ export class Inline extends DocNode {
     static displayName = 'Inline'
 
     next: Inline | null = null
-    prev: Inline | null = null
+    prev: Atom<Inline|null> = atom(null)
 }
 
 
@@ -166,7 +169,7 @@ export class DocumentContent extends EventEmitter {
             }
             if (prevNode) {
                 prevNode.next = docNode
-                docNode.prev = prevNode
+                docNode.prev(prevNode)
             }
             prevNode = docNode!
         })
@@ -184,7 +187,7 @@ export class DocumentContent extends EventEmitter {
             }
             if (prevNode) {
                 prevNode.next = inline
-                inline.prev = prevNode
+                inline.prev(prevNode)
             }
             prevNode = inline
         })
@@ -214,13 +217,13 @@ export class DocumentContent extends EventEmitter {
         const appendNode = docNode instanceof DocNode ? docNode : docNode.retrieve()!
         let lastAppendNode = appendNode
         while (lastAppendNode.next) {
-            lastAppendNode.next.prev = lastAppendNode
+            lastAppendNode.next.prev(lastAppendNode)
             lastAppendNode = lastAppendNode.next
         }
 
         lastAppendNode.next = originalNext
         if (originalNext) {
-            originalNext.prev = lastAppendNode
+            originalNext.prev(lastAppendNode)
         }
 
         if (ref) {
@@ -230,7 +233,7 @@ export class DocumentContent extends EventEmitter {
             parent!.firstChild = appendNode
         }
 
-        appendNode.prev = ref
+        appendNode.prev(ref)
         return lastAppendNode
     }
 
@@ -238,7 +241,6 @@ export class DocumentContent extends EventEmitter {
     prepend(docNode: DocNode | DocNodeFragment, ref: DocNode, parent : DocumentContent|Block = this) {
         assert(!(!ref && !parent), 'ref and parent should not be both null')
         assert(!(!ref && parent!.firstChild), 'ref should not be null when parent is not empty')
-        const originalPrevious = ref.prev
         const prependNode = docNode instanceof DocNode ? docNode : docNode.retrieve()!
 
         let lastPrependNode = prependNode
@@ -246,13 +248,13 @@ export class DocumentContent extends EventEmitter {
             lastPrependNode = lastPrependNode.next
         }
 
-        prependNode.prev = ref.prev
-        if (ref.prev) {
-            ref.prev.next = prependNode
+        prependNode.prev(ref.prev())
+        if (ref.prev()) {
+            ref.prev()!.next = prependNode
         }
 
         lastPrependNode.next = ref
-        ref.prev = lastPrependNode
+        ref.prev(lastPrependNode)
 
         if (parent?.firstChild === ref) {
             parent.firstChild = prependNode as Block
@@ -270,15 +272,15 @@ export class DocumentContent extends EventEmitter {
             lastNewNode = lastNewNode.next
         }
 
-        firstNewNode.prev = ref.prev
-        if (ref.prev) {
-            ref.prev.next = firstNewNode
+        firstNewNode.prev(ref.prev())
+        if (ref.prev()) {
+            ref.prev()!.next = firstNewNode
         }
         lastNewNode.next = ref.next
         if (ref.next) {
-            ref.next.prev = lastNewNode
+            ref.next.prev(lastNewNode)
         }
-        ref.prev = null
+        ref.prev(null)
         ref.next = null
 
         if (parent.firstChild === ref) {
@@ -293,9 +295,9 @@ export class DocumentContent extends EventEmitter {
     deleteBetween<T extends DocNode>(start: T, end: T | null, parent?: DocumentContent|Block) {
         // assert( !parent || (parent instanceof DocumentContent && start instanceof Block || parent instanceof Block && start instanceof Inline), 'parent and start type not match')
         const fragment = new DocNodeFragment()
-        const beforeStart = start.prev
+        const beforeStart = start.prev()
 
-        start.prev = null
+        start.prev(null)
 
         if (beforeStart) {
             beforeStart.next = end
@@ -307,9 +309,9 @@ export class DocumentContent extends EventEmitter {
 
         if (end) {
             // 链条的尾部清理
-            end.prev!.next = null
+            end.prev()!.next = null
             // 剩余部分的头部清理
-            end.prev = beforeStart
+            end.prev(beforeStart)
         }
 
         fragment.head = start

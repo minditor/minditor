@@ -74,6 +74,8 @@ export function expectDOMMatch(inputTarget: any, toMatch: HTMLElement, path: str
                     expectDOMMatch(targetChild, child as HTMLElement, currentPath, index)
                 } else if (targetChild instanceof Text && child instanceof Text){
                     expect(child.wholeText).toEqual(targetChild.wholeText)
+                } else if (targetChild instanceof Comment && child instanceof Comment){
+                    // 不对比
                 } else {
                     expect(child.valueOf()).toEqual(targetChild.valueOf())
                 }

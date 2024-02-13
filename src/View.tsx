@@ -298,7 +298,7 @@ export class DocumentContentView extends EventDelegator{
         }
 
         // cursor 在段首，上面产生一个新的 Para
-        if (!inline.prev) {
+        if (!inline.prev()) {
             this.doc.prepend(newBlock, block, this.doc)
             return block
         }
@@ -372,8 +372,8 @@ export class DocumentContentView extends EventDelegator{
         this.resetUseDefaultBehavior()
 
         if (!succeed){
-            if(range.startText.data.value.length === 0 && range.startText.prev instanceof Text) {
-                this.setCursor(range.startText.prev, range.startText.prev.data.value.length)
+            if(range.startText.data.value.length === 0 && range.startText.prev() instanceof Text) {
+                this.setCursor(range.startText.prev()!, range.startText.prev()!.data.value.length)
                 // 头也没有文字了，删除掉
                 this.doc.deleteBetween(range.startText, range.startText.next, range.startBlock)
             } else {
@@ -391,21 +391,21 @@ export class DocumentContentView extends EventDelegator{
         const succeed = this.tryUseDefaultBehaviorForRange(range, e)
         if (startOffset === 0) {
             // 理论上不会发生前面还有text，但当前是 offset 0 的情况，因为我们默认只能选中文字的尾部。
-            assert(!(startText.prev instanceof Text), 'should not happen')
-            if (!startText.prev) {
+            assert(!(startText.prev() instanceof Text), 'should not happen')
+            if (!startText.prev()) {
 
-                if (startBlock.prev instanceof Paragraph && startBlock.prev.isEmpty) {
+                if (startBlock.prev() instanceof Paragraph && (startBlock.prev() as Paragraph).isEmpty) {
                     // 删除上一个空的 Para
-                    this.doc.deleteBetween(startBlock.prev, startBlock, this.doc)
+                    this.doc.deleteBetween(startBlock.prev()!, startBlock, this.doc)
                 } else {
                     if ((startBlock.constructor as typeof Block).unwrap) {
                         // heading/listItem 之类的在头部删除会变成 paragraph
                         const newPara = (startBlock.constructor as typeof Block).unwrap!(this.doc, startBlock)
                         this.setCursor(newPara.firstChild as Text, 0)
-                    } else if(startBlock.prev){
+                    } else if(startBlock.prev()){
                         // 往上合并
                         // CAUTION 这里不用考虑 startBlock 是 Component 的情况，因为 Component 无法 focus 在头部
-                        const previousBlock = startBlock.prev!
+                        const previousBlock = startBlock.prev()!
                         // CAUTION  先把 block detach，再去操作 inline，性能高点
                         this.doc.deleteBetween(startBlock, startBlock.next, this.doc)
                         const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null, startBlock)
@@ -421,9 +421,9 @@ export class DocumentContentView extends EventDelegator{
             }
         } else {
             if (startText.data.value.length === 1) {
-                if (startText.prev) {
+                if (startText.prev()) {
                     // 不管前面是什么，都设置到末尾
-                    this.setCursor(startText.prev, Infinity)
+                    this.setCursor(startText.prev()!, Infinity)
                     this.doc.deleteBetween(startText, startText.next, startBlock)
                 } else {
                     this.doc.updateText('', startText)
@@ -444,7 +444,7 @@ export class DocumentContentView extends EventDelegator{
         const { startText, startOffset, startBlock, isEndFull } = range
         e.preventDefault()
 
-        assert(!(startOffset === 0 && startText.prev instanceof Text), 'should not happen')
+        assert(!(startOffset === 0 && startText.prev() instanceof Text), 'should not happen')
         let splitInline!:Inline
 
         if (startOffset === 0) {
@@ -471,7 +471,7 @@ export class DocumentContentView extends EventDelegator{
             this.updateRange(this.state.selectionRange()!, '')
             const newPara = this.splitByInline(startBlock, startText.next)
             // 处理 startText 也变空的问题
-            if(startText.data.value.length === 0 && startText.prev) {
+            if(startText.data.value.length === 0 && startText.prev()) {
                 this.doc.deleteBetween(startText, startText.next, startBlock)
             }
             this.setCursor(newPara.firstChild as Text, 0)
@@ -658,9 +658,9 @@ export class DocumentContentView extends EventDelegator{
             if (startOffset === 1 && startText.isEmpty) {
                 //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
                 docStartOffset = 0
-            } else if (startOffset === 0 && !startText.isEmpty && startContainerText.prev instanceof Text) {
+            } else if (startOffset === 0 && !startText.isEmpty && startContainerText.prev() instanceof Text) {
                 //  2. cursor 默认 focus 到上一个文字的尾部.
-                startText = startContainerText.prev
+                startText = startContainerText.prev() as Text
                 docStartOffset = startText.data.value.length
                 endInline = startText
                 docEndOffset = docStartOffset
@@ -672,8 +672,8 @@ export class DocumentContentView extends EventDelegator{
                 docStartOffset = 0
             }
 
-            if (endOffset === 0 && endContainerInline?.prev instanceof Text) {
-                endInline = endContainerInline.prev
+            if (endOffset === 0 && endContainerInline?.prev() instanceof Text) {
+                endInline = endContainerInline.prev() as Text
                 docEndOffset = endInline.data.value.length
             }
         }

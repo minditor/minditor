@@ -395,9 +395,10 @@ test.describe('keyboard Enter actions', () => {
         const sectionsElement = (firstTextEl as Node)!.parentElement!.parentElement!
         window.expectDOMMatch(sectionsElement,
             <any>
-              <any>
+              <h1>
+                <any data-testignorechildren></any>
                 <span>1</span>
-              </any>
+              </h1>
               <p>
                 <span>23</span>
               </p>
