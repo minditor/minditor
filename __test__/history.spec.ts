@@ -116,9 +116,9 @@ describe('update range', () => {
             [{
                 type: 'Paragraph',
                 content: [
-                    {type: 'Text', value: '11', testid: '11'},
+                    {type: 'Text', value: '11', testid: '11'}, // <--from
                     {type: 'Text', value: '22'},
-                    {type: 'Text', value: '33', testid: '33'}
+                    {type: 'Text', value: '33', testid: '33'} // <--to
                 ]
             }]
 
@@ -147,6 +147,8 @@ describe('update range', () => {
 
         doc.history.undo()
         expect(doc.content.toJSON()).toMatchObject(docData)
+        expect(element.textContent).toBe('112233')
+
     })
 
     test('update range in sibling node content', async () => {
@@ -185,7 +187,9 @@ describe('update range', () => {
             children: contentData
         }, BuiltinTypes, [])
         doc.render()
+        
         const element = doc.element!
+        expect(element.textContent).toBe('sectionpt11pt12pt13pt21pt22pt23pt31pt32pt33')
 
 
         const range = document.createRange()
@@ -199,6 +203,8 @@ describe('update range', () => {
 
         doc.history.undo()
         expect(doc.content.toJSON()).toMatchObject(contentData)
+        expect(element.textContent).toBe('sectionpt11pt12pt13pt21pt22pt23pt31pt32pt33')
+
     })
 
     test('update range in different tree level', async () => {

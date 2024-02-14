@@ -52,7 +52,6 @@ export class OLItem extends Block {
 
             const sameTypePrevBlock = this.prev() instanceof OLItem ? this.prev() : null
 
-            if(this.level() === 0) debugger
             if (sameTypePrevBlock) {
                 const prevIndexData = (sameTypePrevBlock as OLItem).index
 

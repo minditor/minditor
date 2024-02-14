@@ -3,13 +3,20 @@ import {assert, ZWSP} from "./util.js";
 import {createElement, Atom, atom} from "axii";
 
 export class DocNodeFragment {
-    constructor(public head: DocNode|null = null) {
-        this.head = head || null
+    public retrieved = false
+    public tail:DocNode
+    constructor(public head: DocNode) {
+        this.tail = head
+        while (this.tail.next) {
+            this.tail = this.tail.next
+        }
     }
     retrieve() {
-        const head = this.head
-        this.head = null
-        return head
+        this.retrieved = true
+        return this.head
+        // const head = this.head
+        // this.head = null
+        // return head
     }
 }
 
@@ -237,7 +244,7 @@ export class DocumentContent extends EventEmitter {
     }
 
     @AutoEmit
-    append(docNode: DocNode | DocNodeFragment, ref: DocNode|null, parent? : DocumentContent|Block) {
+    append(docNode: DocNode | DocNodeFragment, ref: DocNode|null, parent : DocumentContent|Block) {
         assert(!(!ref && !parent), 'ref and parent should not be both null')
         assert(!(!ref && parent!.firstChild), 'ref should not be null when parent is not empty')
 
@@ -322,7 +329,6 @@ export class DocumentContent extends EventEmitter {
     @AutoEmit
     deleteBetween<T extends DocNode>(start: T, end: T | null, parent?: DocumentContent|Block) {
         // assert( !parent || (parent instanceof DocumentContent && start instanceof Block || parent instanceof Block && start instanceof Inline), 'parent and start type not match')
-        const fragment = new DocNodeFragment()
         const beforeStart = start.prev()
 
         start.prev(null)
@@ -342,8 +348,7 @@ export class DocumentContent extends EventEmitter {
             end.prev(beforeStart)
         }
 
-        fragment.head = start
-        return fragment
+        return new DocNodeFragment(start)
     }
 
     @AutoEmit

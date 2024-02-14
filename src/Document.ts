@@ -24,7 +24,7 @@ export class Document {
         public globalState: GlobalState = defaultGlobalState
     ) {
         this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.children, docNodeTypes))
-        this.history = new DocumentContentHistory(this.content)
+        this.history = new DocumentContentHistory(this)
         this.view = new DocumentContentView(this.content, globalState, this.history)
     }
     initializePlugin(PluginClass: typeof Plugin) {

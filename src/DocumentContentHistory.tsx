@@ -1,6 +1,9 @@
 import {AutoEmit, DocNodeFragment, DocumentContent, EmitData, EVENT_ANY, Text} from "./DocumentContent.js";
+import { Document } from "./Document.js";
 import {assert} from "./util.js";
 import EventEmitter from "eventemitter3";
+import {DocRange} from "./View.js";
+import {Options} from "pretty-format";
 
 type appendEmitData = EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>
 type prependEmitData = EmitData<Parameters<DocumentContent["prepend"]>, ReturnType<DocumentContent["prepend"]>>
@@ -14,10 +17,8 @@ type emitMethod = 'append' | 'prepend' | 'replace' | 'deleteBetween' | 'updateTe
 
 export type Packet = {
     stack: emitData[]
-    cursor?: {
-        startText: Text,
-        startOffset: number,
-    }
+    startRange: DocRange|null,
+    endRange: DocRange|null
 }
 
 export class DocumentContentHistory extends EventEmitter{
@@ -43,7 +44,7 @@ export class DocumentContentHistory extends EventEmitter{
         if (end) {
             doc.prepend(frag, end)
         } else {
-            doc.append(frag, parent!.lastChild!, parent)
+            doc.append(frag, parent!.lastChild!, parent!)
         }
     }
     static updateText(doc: DocumentContent, { args, result: originText }: updateTextEmitData) {
@@ -62,12 +63,12 @@ export class DocumentContentHistory extends EventEmitter{
     }
 
     public packets: Packet[] = []
-    public currentPacket: Packet|null = { stack: [] }
+    public currentPacket: Packet|null = { stack: [], startRange:null, endRange: null }
     public undoIndex = 0
     public operating = false
-    constructor(public doc: DocumentContent) {
+    constructor(public doc: Document) {
         super()
-        this.doc.on(EVENT_ANY, this.push.bind(this))
+        this.doc.content.on(EVENT_ANY, this.push.bind(this))
     }
     @AutoEmit
     push(event: emitData)  {
@@ -75,17 +76,17 @@ export class DocumentContentHistory extends EventEmitter{
         this.currentPacket!.stack.push(event)
     }
     @AutoEmit
-    openPacket() {
+    openPacket(startRange: DocRange|null) {
         if (this.undoIndex !== 0) {
             this.packets.splice(this.packets.length - this.undoIndex, Infinity)
             this.undoIndex = 0
         }
-        this.currentPacket = { stack: [] }
+        this.currentPacket = { stack: [], startRange, endRange:null }
     }
-    // TODO cursor 位置的处理？？？
     @AutoEmit
-    closePacket() {
+    closePacket(endRange: DocRange|null) {
         assert(!!this.currentPacket, 'packet should not be null')
+        this.currentPacket!.endRange = endRange
         this.packets.push(this.currentPacket!)
         this.currentPacket = null
         // TODO updateText 的 packet 合并
@@ -99,8 +100,9 @@ export class DocumentContentHistory extends EventEmitter{
             const event = packet.stack[i]
             // FIXME type 应该怎么写？
             // @ts-ignore
-            DocumentContentHistory[event.method](this.doc, event)
+            DocumentContentHistory[event.method](this.doc.content, event)
         }
+        if (packet.startRange) this.doc.view?.setRange(packet.startRange!)
         this.undoIndex++
         this.operating = false
     }
@@ -114,8 +116,9 @@ export class DocumentContentHistory extends EventEmitter{
             const event = packet.stack[i]
             // FIXME type 应该怎么写？
             // @ts-ignore
-            this.doc[event.method](...event.args)
+            this.doc.content[event.method](...event.args)
         }
+        if (packet.endRange) this.doc.view?.setRange(packet.endRange!)
         this.operating = false
     }
 }

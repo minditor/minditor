@@ -70,6 +70,7 @@ createRoot(debugRoot).render(
                                     return <div>
                                         <span>event: {event.method}</span>
                                         <span>  args: {JSON.stringify(event.args)}</span>
+                                        <span>  result: {JSON.stringify(event.result)}</span>
                                     </div>
                                 })}
                                 <div>-----------------</div>

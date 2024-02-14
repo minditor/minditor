@@ -28,10 +28,10 @@ describe('insert', () => {
             , BuiltinTypes)
         const view = (new DocumentContentView(doc, globalStates)).render()
 
-        doc.append(new Text({type: 'Text', value: '44'}), doc.firstChild!.firstChild!.next!)
+        doc.append(new Text({type: 'Text', value: '44'}), doc.firstChild!.firstChild!.next!, doc.firstChild!)
 
         expect(view.textContent).toBe('11224433')
-        doc.append(new Text({type: 'Text', value: '555'}), doc.firstChild!.firstChild!.next!.next!)
+        doc.append(new Text({type: 'Text', value: '555'}), doc.firstChild!.firstChild!.next!.next!, doc.firstChild!)
 
         expect(view.textContent).toBe('11224455533')
     })
@@ -62,7 +62,7 @@ describe('insert', () => {
         const view = new DocumentContentView(doc, globalStates).render()
 
         expect(view.textContent).toBe('title112233445566')
-        doc.append(new Text({type: 'Text', value: '99'}), doc.firstChild!.next!.firstChild!.next!)
+        doc.append(new Text({type: 'Text', value: '99'}), doc.firstChild!.next!.firstChild!.next!, doc.firstChild!.next!)
 
         expect(view.textContent).toBe('title11229933445566')
     })

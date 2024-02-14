@@ -23,7 +23,7 @@ test.beforeEach(async ({ page }) => {
 test.describe('keyboard Backspace actions', () => {
 
   test.describe('at head of content', () => {
-    test('Para content. Should combine two paras.', async ({page}) => {
+    test('Para content head. Should combine two paras.', async ({page}) => {
       await page.load('multiPara')
       const data = multiParaData
       const focusText = data.children[1].content[0].value
