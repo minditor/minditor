@@ -30,7 +30,7 @@
 
     #root {
       border: 1px #333 solid;
-      width: 500px;
+      /*width: 500px;*/
       margin: 0 auto;
       /*height: 100px;*/
       /*overflow-y: scroll;*/
@@ -38,6 +38,8 @@
       flex-shrink: 0;
       padding: 10px;
       position: relative;
+      /* CAUTION 用来控制空格正确显示的*/
+      white-space: pre-wrap;
     }
     #plugin-root{
         position: absolute;
@@ -52,11 +54,11 @@
     }
     #debug-root {
       border: 1px #333 solid;
-      width: 500px;
+      /*width: 500px;*/
       margin: 0 auto;
       /*height: 100px;*/
       overflow-y: scroll;
-      flex-grow: 1;
+      flex-grow: 2;
       flex-shrink: 0;
       padding: 10px;
     }

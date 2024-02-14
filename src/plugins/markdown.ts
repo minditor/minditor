@@ -46,7 +46,6 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
 
 
 
-//
 function createFormatCommands([startChars, closeChars]: [string, string], key: string, value = true) {
     return class FormatPlugin extends Plugin{
         public static displayName = `format(${startChars}-${closeChars})`

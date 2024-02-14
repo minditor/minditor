@@ -82,7 +82,7 @@ export type EmitData<T, U> = {
 export const EVENT_ANY = Symbol('ANY')
 
 // 方法装饰器
-function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: PropertyDescriptor) {
+export function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: PropertyDescriptor) {
     // 保存原始方法的引用
     const originalMethod = descriptor.value;
 
@@ -114,7 +114,6 @@ function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: Propert
 
 export class Text extends Inline {
     static displayName = 'Text'
-    // FIXME 互斥样式的处理
     static formatToStyle = ([formatName, formatValue]:[string, any]) => {
         if (formatName === 'bold') {
             return { fontWeight: formatValue ? 'bold' : undefined}
@@ -131,6 +130,7 @@ export class Text extends Inline {
         if (this.data.testid) {
             testIdProp['data-testid'] = this.data.testid
         }
+        // FIXME textDecoration 是可以多重的
         const formatStyle = Object.assign({}, ...Object.entries(this.data.formats || {}).map(Text.formatToStyle))
         return <span {...testIdProp} style={formatStyle}>{this.data.value.length ? this.data.value : ZWSP}</span>
     }
