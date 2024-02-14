@@ -81,7 +81,7 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
             const [firstFormattedText, lastFormattedText] = view.formatRange(matchedDocRange, {[key]: value})
             //3. 删掉 startText 和 endText 的 startChars 和 closeChars
             const newStartTextWithoutStartChars = firstFormattedText.data.value.slice(startChars.length)
-            
+
             content.updateText(newStartTextWithoutStartChars, firstFormattedText)
             const newEndTextWithoutCloseChars = lastFormattedText.data.value.slice(0, - closeChars.length)
             content.updateText(newEndTextWithoutCloseChars, lastFormattedText)
@@ -130,11 +130,42 @@ function createUnorderedListBlock() {
 // }
 
 
+
+class IndexedHeadingPlugin extends Plugin{
+    public static displayName = `IndexedHeading`
+    public static activateEvents = {
+        inputChar: onInputKey(' ')
+    }
+    run({  } : PluginRunArgv) : boolean | undefined{
+        // debugger
+        const { view, content, history } = this.document
+        const { startText,  startBlock,  isEndFull,isCollapsed, endText, endOffset } = view.state.selectionRange()!
+        //  1. 只能在 Heading 的 content 里面产生
+        if (!(startBlock instanceof Heading)) return false
+        // 2. 只能在头部输入
+        if (startBlock.firstChild !== startText) return false
+        // 3. 头部就必须匹配 x.x.x. 的形式
+        if (!/^(\d\.)+\s$/.test(startText.data.value.slice(0, endOffset))) return false
+
+        history.openPacket()
+        // TODO 应该允许只修改该 data，保持 reactive
+        const newHeading = new Heading({...startBlock.toJSON(), useIndex: true})
+        const headingContent = content.deleteBetween(startText, null, startBlock)
+        newHeading.firstChild = headingContent.retrieve() as Text
+        content.updateText(newHeading.firstChild!.data.value.slice(endOffset), newHeading.firstChild as Text)
+        content.replace(newHeading, startBlock)
+        view.setCursor(newHeading.firstChild!, 0)
+        history.closePacket()
+        return true
+    }
+}
+
 export const plugins: (typeof Plugin)[] = [
-    // createFormatCommands(['*', '*'], 'bold'),
-    // createFormatCommands(['**', '**'], 'italic'),
+    createFormatCommands(['*', '*'], 'bold'),
+    createFormatCommands(['**', '**'], 'italic'),
     createFormatCommands(['~', '~'], 'underline'),
-    // createFormatCommands(['~~', '~~'], 'lineThrough')
+    createFormatCommands(['~~', '~~'], 'lineThrough'),
+    IndexedHeadingPlugin
 ]
 
 const sectionMaxLevel = 3

@@ -717,7 +717,7 @@ export class DocumentContentView extends EventDelegator{
 const onNotComposing = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
 const onComposing = eventAlias((e: KeyboardEvent) => e.isComposing || e.keyCode === 229)
 
-const onCharKey = eventAlias((e: KeyboardEvent) => e.key.length === 1)
+const onCharKey = eventAlias((e: KeyboardEvent) => e.key.length === 1 && !e.altKey  && !e.metaKey && !e.ctrlKey)
 
 
 
