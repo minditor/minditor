@@ -114,6 +114,7 @@ export function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: 
 
 export class Text extends Inline {
     static displayName = 'Text'
+    static multipleValueStyleKeys = ['textDecoration']
     static formatToStyle = ([formatName, formatValue]:[string, any]) => {
         if (formatName === 'bold') {
             return { fontWeight: formatValue ? 'bold' : undefined}
@@ -123,6 +124,14 @@ export class Text extends Inline {
             return { textDecoration: formatValue ? 'underline' : undefined}
         } else if (formatName === 'lineThrough') {
             return { textDecoration: formatValue ? 'line-through' : undefined }
+        } else if (formatName=== 'color') {
+            return { color: formatValue }
+        } else if (formatName === 'fontSize') {
+            return { fontSize: formatValue }
+        } else if (formatName === 'fontFamily') {
+            return { fontFamily: formatValue }
+        } else if (formatName === 'backgroundColor') {
+            return { backgroundColor: formatValue }
         }
     }
     render() {
@@ -130,8 +139,16 @@ export class Text extends Inline {
         if (this.data.testid) {
             testIdProp['data-testid'] = this.data.testid
         }
-        // FIXME textDecoration 是可以多重的
-        const formatStyle = Object.assign({}, ...Object.entries(this.data.formats || {}).map(Text.formatToStyle))
+        // CAUTION textDecoration 是可以多重的
+        const formatStyle: {[k:string]: string} = {}
+        Object.entries(this.data.formats || {}).forEach(([formatName, formatValue]) => {
+            if (Text.multipleValueStyleKeys.includes(formatName)) {
+                if (!formatStyle[formatName]) formatStyle[formatName] = ''
+                formatStyle[formatName] = `${formatStyle[formatName]} ${formatValue}`
+            } else {
+                Object.assign(formatStyle, Text.formatToStyle([formatName, formatValue]))
+            }
+        })
         return <span {...testIdProp} style={formatStyle}>{this.data.value.length ? this.data.value : ZWSP}</span>
     }
 

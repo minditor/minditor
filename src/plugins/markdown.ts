@@ -20,6 +20,7 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
             // debugger
             const { view, content, history } = this.document
             const { startText,  startBlock,  isEndFull,isCollapsed, endText } = view.state.selectionRange()!
+            // FIXME 逻辑错误，应该是在头部输入完指令按空格就行，而不是之后
             //  1. 只能在 Para 的 content 里面产生
             if (!(startBlock instanceof Paragraph)) return false
             // 2. 只能是一个普通文字节点
@@ -56,6 +57,7 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
         run({ } : PluginRunArgv): boolean | undefined  {
             const { view, content, history } = this.document
             const { startText,  startBlock,  isEndFull,isCollapsed, endText, startOffset } = view.state.selectionRange()!
+            // FIXME 应该允许多个 text 的处理
             // 1. 目前只允许在一个 text 节点里面处理。
             if (!(startText === endText)) return false
 
