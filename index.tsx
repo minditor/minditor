@@ -34,18 +34,18 @@ myDoc.history.on(EVENT_ANY, () => {
 const debugRoot = document.getElementById('debug-root')!
 createRoot(debugRoot).render(
     <div style={{display: 'flex', height: '100%'}}>
-        <div style={{grow: 1}}>
+        <div style={{flexGrow: 1,  flexShrink:0, overflow:'auto'}}>
             <div>
                 <button onClick={() => myDoc.history.undo()}>undo</button>
                 <button onClick={() => myDoc.history.redo()}>redo</button>
             </div>
             <pre>
-            <code>
-            {() => JSON.stringify(myDoc.view.debugJSONContent(), null, 4)}
-            </code>
-        </pre>
+                <code>
+                {() => JSON.stringify(myDoc.view.debugJSONContent(), null, 4)}
+                </code>
+            </pre>
         </div>
-        <div style={{grow: 1}}>
+        <div style={{flexGrow: 1,flexShrink:0, overflow:'auto'}}>
             <div>undoIndex: {undoIndex}</div>
             <div>
                 <div>current packet stack</div>

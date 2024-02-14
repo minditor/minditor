@@ -552,7 +552,8 @@ export class DocumentContentView extends EventDelegator{
     }
     formatRange(docRange: DocRange, formatData: FormatData) {
         const {startText, startOffset, endText, endOffset, startBlock, isInSameInline, endBlock, isEndFull, isInSameBlock} = docRange
-
+        let lastFormattedText: Text
+        let firstFormattedText: Text
         if (isInSameBlock) {
             if (isInSameInline) {
                 let toFormatInline = startText
@@ -560,15 +561,18 @@ export class DocumentContentView extends EventDelegator{
                     toFormatInline = this.splitText(startText, startOffset)
                 }
                 if (!isEndFull) {
-                    this.splitText(endText, endOffset)
+                    this.splitText(toFormatInline, endOffset - startOffset)
                 }
 
                 this.doc.formatText(formatData, toFormatInline)
+                lastFormattedText = toFormatInline
+                firstFormattedText = toFormatInline
             } else {
                 let startInline = startText
                 if (startOffset !== 0) {
                     startInline = this.splitText(startText, startOffset)
                 }
+                firstFormattedText = startInline
                 let endInline = endText.next
                 if (!isEndFull) {
                     endInline = this.splitText(endText, endOffset)
@@ -577,6 +581,7 @@ export class DocumentContentView extends EventDelegator{
                 while (currentInline && currentInline !== endInline) {
                     if (currentInline instanceof Text) {
                         this.doc.formatText(formatData, currentInline )
+                        lastFormattedText = currentInline
                     }
                     currentInline = currentInline.next!
                 }
@@ -590,8 +595,8 @@ export class DocumentContentView extends EventDelegator{
                 startBlock,
                 startBlock.lastChild as Text,
                 startBlock.lastChild!.data.value.length
-            )
-            this.formatRange(startBlockRange, formatData)
+            );
+            firstFormattedText = this.formatRange(startBlockRange, formatData)[0]
             // 尾部的
             const endBlockRange = new DocRange(
                 endBlock,
@@ -601,7 +606,7 @@ export class DocumentContentView extends EventDelegator{
                 endText,
                 endOffset
             )
-            this.formatRange(endBlockRange, formatData)
+            lastFormattedText = this.formatRange(endBlockRange, formatData)[1]
 
             // 中间的
             let currentBlock: Block|null = startBlock.next
@@ -618,6 +623,8 @@ export class DocumentContentView extends EventDelegator{
                 currentBlock = currentBlock.next
             }
         }
+        return [firstFormattedText!, lastFormattedText!]
+
     }
     @saveHistoryPacket
     formatCurrentRange(formatData: FormatData) {

@@ -74,8 +74,9 @@ export class Heading extends Block {
         const indexContainer = <span contenteditable={false}></span> as unknown as HTMLElement
         this.indexRoot = createRoot(indexContainer)
         this.indexRoot.render(() => this.displayIndex())
+        const Tag = `h${this.level()+1}`
 
-        return <h1>{indexContainer}{children}</h1>
+        return <Tag>{indexContainer}{children}</Tag>
     }
 
     toJSON(): any {

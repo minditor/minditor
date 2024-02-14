@@ -1,3 +1,5 @@
+import {Block, Inline, Text} from "./DocumentContent.js";
+import {DocRange} from "./View.js";
 
 export function reversMatchStr(str: string, toMatch: string) : false | string {
     if (!toMatch) return ''
@@ -34,4 +36,45 @@ export function reverseMatchStrPair(str: string, [startStr, endStr] : [string, s
     if (endSkipped === false) return false // end 都没有match 成功
     return reversMatchStr(str.slice(0,  -(endStr.length + endSkipped.length)), startStr)
 
+}
+
+
+export function reverseFindMatchRange(inputEndText: Inline, inputEndOffset: number, startChars: string, closeChars: string, block:Block) {
+    let endText
+    let endOffset
+    let endPointer: Inline|null = inputEndText
+    while(endPointer) {
+        if (endPointer instanceof Text) {
+            const textToMatch = endPointer === inputEndText ? endPointer.data.value.slice(0, inputEndOffset) : endPointer.data.value
+            const skippedChars = reversMatchStr(textToMatch, closeChars)
+            if (skippedChars !== false) {
+                endText = endPointer
+                endOffset = textToMatch.length - skippedChars.length
+                break
+            }
+        }
+        endPointer = endPointer.prev()
+    }
+    // end 都没匹配，就不用考虑 start 了
+    if (!endText) return false
+
+    let startText
+    let startOffset
+    let startPointer: Inline|null = endText
+
+    while(startPointer) {
+        if (startPointer instanceof Text) {
+            const textToMatch = startPointer === endText ? startPointer.data.value.slice(0, endOffset! - closeChars.length) : startPointer.data.value
+            const skippedChars = reversMatchStr(textToMatch, startChars)
+            if (skippedChars !== false) {
+                startText = startPointer
+                startOffset = textToMatch.length - skippedChars.length - startChars.length
+                break
+            }
+        }
+        startPointer = startPointer.prev()
+    }
+    if (!startText) return false
+
+    return new DocRange(block, startText, startOffset!, block, endText, endOffset!)
 }

@@ -1,5 +1,5 @@
-import {reverseMatchStrPair, reversMatchStr} from "../helper";
-import {Paragraph, Text} from "../DocumentContent.js";
+import {reverseFindMatchRange, reverseMatchStrPair, reversMatchStr} from "../helper";
+import {DocNodeFragment, Paragraph, Text} from "../DocumentContent.js";
 import {Plugin, PluginRunArgv} from "../Plugin";
 import {Heading} from "../components/Heading.js";
 import {ULItem} from "../components/ULItem.js";
@@ -20,30 +20,37 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
             // debugger
             const { view, content, history } = this.document
             const { startText,  startBlock,  isEndFull,isCollapsed, endText } = view.state.selectionRange()!
-            // FIXME 逻辑错误，应该是在头部输入完指令按空格就行，而不是之后
             //  1. 只能在 Para 的 content 里面产生
-            if (!(startBlock instanceof Paragraph)) return false
-            // 2. 只能是一个普通文字节点
-            if (!isCollapsed || !(startText === endText)) return false
-            // 2. 只能是在尾部按空格
-            if (!(isEndFull)) return false
+            if (!(startBlock instanceof Paragraph || startBlock instanceof Heading)) return false
+            // 2. 只能在头部输入
+            if (startBlock.firstChild !== startText) return false
+            // 3. 头部就必须匹配
+            if (startText.data.value.slice(0, initialCharacters.length) !== initialCharacters) return false
+
             // 支持 # 类型的 也支持 ```js 类型的
             // 去掉结尾的空格
             const textToMatch = startText.data.value.slice(0, startText.data.value.length - 1)
-            const innerText = reversMatchStr(textToMatch, initialCharacters)
-            if (innerText === false) return false
+            const matchedText = reversMatchStr(textToMatch, initialCharacters)
+            if (matchedText === false) return false
 
             history.openPacket()
-            const newBlock = createBlock(innerText)
+            // 1. 先把 startText 中的 initialCharacters + 空格删掉
+            const newTextAfterCursor = startText.data.value.slice(initialCharacters.length + 1)
+            content.updateText(newTextAfterCursor, startText)
+            // 2. 把所有的 Text 取出来
+            const titleTextFrag = content.deleteBetween(startText, null, startBlock)
+            // 3. 替换成新的 Heading block
+            const newBlock = createBlock(titleTextFrag)
             content.replace(newBlock, startBlock, content)
             if (newBlock) {
-                view.setCursor(newBlock, Infinity)
+                view.setCursor(newBlock, 0)
             }
             history.closePacket()
             return true
         }
     }
 }
+
 
 
 
@@ -56,47 +63,33 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
         }
         run({ } : PluginRunArgv): boolean | undefined  {
             const { view, content, history } = this.document
-            const { startText,  startBlock,  isEndFull,isCollapsed, endText, startOffset } = view.state.selectionRange()!
-            // FIXME 应该允许多个 text 的处理
-            // 1. 目前只允许在一个 text 节点里面处理。
-            if (!(startText === endText)) return false
+            const { startText,  startBlock,  isEndFull,isCollapsed, endText, startOffset, endOffset } = view.state.selectionRange()!
 
-            const textToMatch = startText.data.value.slice(0, startOffset)
+            // debugger
 
-            const formatText = reverseMatchStrPair(textToMatch!, [startChars, closeChars])
-            if (!formatText) return false
+            // 1. 如果最后的末尾都没和 closeChars 匹配，就不用管了
+            if (endText.data.value.slice(endOffset - closeChars.length -1, endOffset-1) !== closeChars) return false
+            // 2. 没有找到匹配的 range
+            const matchedDocRange = reverseFindMatchRange(endText!, endOffset-1, startChars, closeChars, startBlock)
+            if (!matchedDocRange) return false
 
             history.openPacket()
-
-            console.info("running plugin for", {startChars, closeChars, text: textToMatch}, startOffset)
-            //1. 原节点先删了 starChar/closeChars
-            const originTextAfterCursor = startText.data.value.slice(startOffset!)
-            // CAUTION 注意后面计算式里的 +1，那个代表触发 command 的空格
-            const textBeforeFormat = textToMatch!.slice(0, -(startChars.length + formatText.length + closeChars.length+1))
-
-            let textNodeToFormat: Text
-            if (textBeforeFormat === '') {
-                textNodeToFormat = textBeforeFormat
-            } else {
-                textNodeToFormat = view.splitText(startText, textBeforeFormat.length!)
-            }
-            content.updateText(formatText, textNodeToFormat)
+            // 删除空格
+            const newEndTextWithoutSpace = endText.data.value.slice(0, endOffset-1) + endText.data.value.slice(endOffset)
+            content.updateText(newEndTextWithoutSpace, endText)
             //2. 再执行 format。
-            content.formatText({[key]: value}, textNodeToFormat)
-            //
-            // //3. 把原来身下的内容接上
-            if (originTextAfterCursor) {
-                // TODO 要不要考虑原来的样式？？？
-                const originText = new Text({ type: 'Text', value: originTextAfterCursor})
-                content.append(originText, textNodeToFormat)
-            } else  if (!textNodeToFormat.next) {
-                // 如果没有下一个节点，就再加一个空格
-                const emptyText = new Text({ type: 'Text', value: ''})
-                content.append(emptyText, textNodeToFormat)
-            }
-
+            const [firstFormattedText, lastFormattedText] = view.formatRange(matchedDocRange, {[key]: value})
+            //3. 删掉 startText 和 endText 的 startChars 和 closeChars
+            const newStartTextWithoutStartChars = firstFormattedText.data.value.slice(startChars.length)
+            
+            content.updateText(newStartTextWithoutStartChars, firstFormattedText)
+            const newEndTextWithoutCloseChars = lastFormattedText.data.value.slice(0, - closeChars.length)
+            content.updateText(newEndTextWithoutCloseChars, lastFormattedText)
+            // 穿件一个空字符 Text 用来放 cursor
+            const emptyText = new Text({value: ''})
+            content.append(emptyText, lastFormattedText)
             //4. restore selection 到下一个节点的空格后面
-            view.setCursor(textNodeToFormat.next!, 0)
+            view.setCursor(lastFormattedText.next!, 0)
             // CAUTION 异地昂要 return true，表示执行了
             history.closePacket()
             return true
@@ -117,9 +110,9 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
 //
 
 
-function createHeadingBlock(title: string, level: number) {
+function createHeadingBlock(titleTextFrag: DocNodeFragment, level: number) {
     const newHeading = new Heading({ level, useIndex: false})
-    newHeading.firstChild = new Text({value:title})
+    newHeading.firstChild = titleTextFrag.retrieve()
     return newHeading
 }
 
@@ -138,15 +131,15 @@ function createUnorderedListBlock() {
 
 
 export const plugins: (typeof Plugin)[] = [
-    createFormatCommands(['*', '*'], 'bold'),
-    createFormatCommands(['**', '**'], 'italic'),
+    // createFormatCommands(['*', '*'], 'bold'),
+    // createFormatCommands(['**', '**'], 'italic'),
     createFormatCommands(['~', '~'], 'underline'),
-    createFormatCommands(['~~', '~~'], 'lineThrough')
+    // createFormatCommands(['~~', '~~'], 'lineThrough')
 ]
 
 const sectionMaxLevel = 3
 for(let i = sectionMaxLevel; i> 0; i-- ) {
-    plugins.push(createBlockCommands('#'.repeat(i), (title: string) => createHeadingBlock(title, i), true))
+    plugins.push(createBlockCommands('#'.repeat(i), (titleTextFrag: DocNodeFragment) => createHeadingBlock(titleTextFrag, i), true))
 }
 
 plugins.push(createBlockCommands('-', createUnorderedListBlock, true))
