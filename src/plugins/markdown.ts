@@ -4,6 +4,7 @@ import {Plugin, PluginRunArgv} from "../Plugin";
 import {Heading} from "../components/Heading.js";
 import {ULItem} from "../components/ULItem.js";
 import {OLItem} from "../components/OLItem.js";
+import {InlineCode} from "../components/InlineCode.js";
 import {DocRange} from "../View.js";
 
 function onInputKey(key: string) {
@@ -126,13 +127,6 @@ function createUnorderedListBlock() {
     return newListItem
 }
 
-// function createOrderedListBlock() {
-//     // TODO 需要知道上个 block 的层级？
-//     const newListItem = new OLItem({})
-//     newListItem.firstChild = new Text({value:''})
-//     return newListItem
-// }
-
 
 class IndexedHeadingPlugin extends Plugin{
     public static displayName = `IndexedHeading`
@@ -194,13 +188,53 @@ class OrderedListPlugin extends Plugin{
     }
 }
 
+class InlineCodePlugin extends Plugin{
+    public static displayName = `InlineCode`
+    public static activateEvents = {
+        inputChar: onInputKey(' ')
+    }
+    run({  } : PluginRunArgv) : boolean | undefined{
+        const { view, content, history } = this.document
+        const startRange = view.state.selectionRange()
+        const { startText,  startBlock,  isEndFull, startOffset,isCollapsed, endText, endOffset } = startRange!
+
+        const textToMatch = startText.data.value.slice(0, startText.data.value.length - 1)
+        const matchedText = reverseMatchStrPair(textToMatch, ['`', '`'])
+        if (matchedText === false) return false
+
+        history.openPacket(startRange)
+        // 1.split text
+        let matchedTextNode = startText
+        if (startOffset > (matchedText.length +3)) {
+            matchedTextNode = view.splitText(startText, startOffset - matchedText.length -3, startBlock)
+        }
+        if (matchedTextNode.data.value.length > matchedText.length +3) {
+            view.splitText(matchedTextNode, matchedText.length +3, startBlock)
+        }
+
+        const newInlineCode = new InlineCode({value: matchedText})
+        content.replace(newInlineCode, matchedTextNode, startBlock)
+
+        if (!newInlineCode.next) {
+            const emptyText = new Text({value: ''})
+            content.append(emptyText, newInlineCode, startBlock)
+        }
+
+        view.setCursor(newInlineCode.next!, 0)
+        const endRange = DocRange.cursor(startBlock, matchedTextNode.next! as Text, 0)
+        history.closePacket(endRange)
+        return true
+    }
+}
+
 export const plugins: (typeof Plugin)[] = [
     createFormatCommands(['*', '*'], 'bold'),
     createFormatCommands(['**', '**'], 'italic'),
     createFormatCommands(['~', '~'], 'underline'),
     createFormatCommands(['~~', '~~'], 'lineThrough'),
     IndexedHeadingPlugin,
-    OrderedListPlugin
+    OrderedListPlugin,
+    InlineCodePlugin
 ]
 
 const sectionMaxLevel = 3

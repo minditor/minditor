@@ -187,7 +187,7 @@ describe('update range', () => {
             children: contentData
         }, BuiltinTypes, [])
         doc.render()
-        
+
         const element = doc.element!
         expect(element.textContent).toBe('sectionpt11pt12pt13pt21pt22pt23pt31pt32pt33')
 

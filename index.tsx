@@ -1,12 +1,12 @@
 import {createRoot, createElement, atom, Atom} from "axii";
 import jsonData from './readme1.json'
-import {Document, EmitData, EVENT_ANY, Heading, OLItem, Packet, Paragraph, Text, ULItem} from "./src/index.js";
+import {Document, EmitData, EVENT_ANY, Heading, OLItem, Packet, Paragraph, Text, ULItem, InlineCode} from "./src/index.js";
 import {plugins as markdownPlugins} from "./src/plugins/markdown.js";
 
 
 const docRoot= document.getElementById('doc-root')!
 const types = {
-    Paragraph, Text, Heading, OLItem, ULItem
+    Paragraph, Text, Heading, OLItem, ULItem, InlineCode
 }
 
 const myDoc = new Document(docRoot,  jsonData, types, [])
