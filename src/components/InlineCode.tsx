@@ -1,11 +1,11 @@
 import {createElement} from "axii";
-import {Inline} from "../DocumentContent.js";
+import {Inline, InlineComponent} from "../DocumentContent.js";
 
 type InlineCodeData = {
     value: string
 }
 
-export class InlineCode extends Inline {
+export class InlineCode extends InlineComponent {
     static displayName = 'InlineCode'
     constructor(public data: InlineCodeData) {
         super();

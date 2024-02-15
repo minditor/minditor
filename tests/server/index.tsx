@@ -1,7 +1,7 @@
 /**@jsx createElement*/
-import {createElement, expectDeepMatch, expectDOMMatch, expect, expectSelectionMatch} from "./util";
+import {createElement, expect, expectDeepMatch, expectDOMMatch, expectSelectionMatch} from "./util";
 import {screen} from "@testing-library/dom";
-import { state, actions, Document, Heading, OLItem, Paragraph, Text, ULItem } from 'minditor'
+import {actions, Document, Heading, InlineCode, OLItem, Paragraph, state, Text, ULItem} from 'minditor'
 import '../spec/test-extend.ts'
 
 const searchObj = Object.fromEntries(
@@ -22,10 +22,11 @@ const searchObj = Object.fromEntries(
 
 
 /* @vite-ignore */
-const { data } = await import(`../spec/data/${searchObj.data || 'singlePara'}`)
+const {data} = await import(`../spec/data/${searchObj.data || 'singlePara'}`)
 const rootElement = document.getElementById('root')!
 const types = {
-    Paragraph, Text, Heading, OLItem, ULItem
+    Paragraph, Text, Heading, OLItem, ULItem, InlineCode
+
 }
 
 rootElement.style.position = 'relative'

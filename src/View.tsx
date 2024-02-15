@@ -1,13 +1,13 @@
 import {atom, createElement, eventAlias, onBackspaceKey, onEnterKey, onTabKey} from 'axii'
 import {
     Block,
-    BlockData,
+    BlockData, Component,
     DocNode,
     DocNodeFragment,
     DocumentContent,
     EmitData,
     FormatData,
-    Inline, Paragraph, Text
+    Inline, InlineComponent, Paragraph, Text
 } from "./DocumentContent.js";
 import {
     assert,
@@ -393,7 +393,7 @@ export class DocumentContentView extends EventDelegator{
         this.dispatch(new CustomEvent('inputChar', {detail: e.data}))
 
         return {
-            shouldSetRange: true,
+            shouldSetRange: !succeed,
             range: DocRange.cursor(cursorBeforeComposition.startBlock, cursorBeforeComposition.startText, cursorBeforeComposition.startOffset + e.data.length)
         }
     }
@@ -426,6 +426,27 @@ export class DocumentContentView extends EventDelegator{
 
         return { shouldSetRange: !succeed, range: DocRange.cursor(endCursorBlock!, endCursorText as Text, endCursorOffset)}
     }
+    deleteLastChar() {
+        const range = this.state.selectionRange()!
+        const { startText, startOffset, startBlock } = range
+        // 文章开头，不做任何操作
+        let endCursorBlock = startBlock
+        let endCursorText = startText
+        let endCursorOffset = startOffset - 1
+
+        if (startText.data.value.length === 1 && startText.prev() instanceof Text) {
+            // 不管前面是什么，都设置到末尾
+            endCursorBlock = startBlock
+            endCursorText = startText.prev()! as Text
+            endCursorOffset = Infinity
+            this.doc.deleteBetween(startText, startText.next, startBlock)
+        } else {
+            this.doc.updateText(startText.data.value.slice(0, startOffset - 1) + startText.data.value.slice( startOffset), startText)
+        }
+
+        return DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)
+    }
+
     @saveHistoryPacket
     @setEndRange
     deleteLast(e: KeyboardEvent) {
@@ -436,65 +457,81 @@ export class DocumentContentView extends EventDelegator{
         let endCursorText
         let endCursorOffset
 
-        const succeed = this.tryUseDefaultBehaviorForRange(range, e)
-        if (startOffset === 0) {
-            // 理论上不会发生前面还有text，但当前是 offset 0 的情况，因为我们默认只能选中文字的尾部。
-            assert(!(startText.prev() instanceof Text), 'should not happen')
-            if (!startText.prev()) {
-                if (startBlock.prev() instanceof Paragraph && (startBlock.prev() as Paragraph).isEmpty) {
-                    // 删除上一个空的 Para
-                    this.doc.deleteBetween(startBlock.prev()!, startBlock, this.doc)
-                } else {
-                    if ((startBlock.constructor as typeof Block).unwrap) {
-                        // heading/listItem 之类的在头部删除会变成 paragraph
-                        const newPara = (startBlock.constructor as typeof Block).unwrap!(this.doc, startBlock)
-                        endCursorBlock = newPara
-                        endCursorText = newPara.firstChild as Text
-                        endCursorOffset = 0
-                    } else if(startBlock.prev()){
-                        // 往上合并
-                        // FIXME 判断 paragraph 之类的能不能合并
-                        // CAUTION 这里不用考虑 startBlock 是 Component 的情况，因为 Component 无法 focus 在头部
-                        const previousBlock = startBlock.prev()!
-                        // CAUTION  先把 block detach，再去操作 inline，性能高点
-                        this.doc.deleteBetween(startBlock, startBlock.next, this.doc)
-                        const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null, startBlock)
-                        const previousBlockLastChild = previousBlock.lastChild!
-                        this.doc.append(inlineFrag, previousBlock.lastChild!, previousBlock)
-                        endCursorBlock = previousBlock
-                        endCursorText = previousBlockLastChild
-                        endCursorOffset = previousBlockLastChild.data.value.length
-                    }
-                }
-
-            } else {
-                // TODO 删除删一个 InlineComponent
-                //  如果只有一个组件，那么还要生成一个空的 Text
-            }
-        } else {
-            if (startText.data.value.length === 1) {
-                if (startText.prev()) {
-                    // 不管前面是什么，都设置到末尾
-                    endCursorBlock = startBlock
-                    endCursorText = startText.prev()!
-                    endCursorOffset = Infinity
-                    this.doc.deleteBetween(startText, startText.next, startBlock)
-                } else {
-                    this.doc.updateText('', startText)
-                }
-            } else {
-                this.doc.updateText(startText.data.value.slice(0, startOffset - 1) + startText.data.value.slice( startOffset), startText)
-                if (!succeed) {
-                    endCursorBlock = startBlock
-                    endCursorText = startText
-                    endCursorOffset = startOffset - 1
-                }
-            }
+        // 1. 在 text 的中间删除，可以尝试使用默认行为
+        if (startOffset !== 0) {
+            const succeed = this.tryUseDefaultBehaviorForRange(range, e)
+            const nextRange = this.deleteLastChar()
+            this.resetUseDefaultBehavior()
+            return { shouldSetRange: !succeed, range: nextRange}
         }
 
-        this.resetUseDefaultBehavior()
+        // 下面的全部不用默认行为
+        e.preventDefault()
 
-        return { shouldSetRange: !succeed, range: DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)}
+        // 2. 在段落头部(!startText.prev() && startOffset === 0)
+        if (!startText.prev()) {
+            // 2.1 如果自己有 unwrap
+            if ((startBlock.constructor as typeof Block).unwrap) {
+                // 1.2.1 这个 block 有 unwrap 方法，那么调用 unwrap 方法
+                // heading/listItem 之类的在头部删除会变成 paragraph
+                const newPara = (startBlock.constructor as typeof Block).unwrap!(this.doc, startBlock)
+                endCursorBlock = newPara
+                endCursorText = newPara.firstChild as Text
+                endCursorOffset = 0
+                return { shouldSetRange: true, range: DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)}
+
+            }
+
+            // 2.2. 前面没有了，什么也不发生
+            if (!startBlock.prev()) return { shouldSetRange: true, range }
+
+
+            // 2.3. 如果上一个是 Component
+            if (startBlock.prev() instanceof Component) {
+                this.doc.deleteBetween(startBlock.prev()!, startBlock, this.doc)
+                return { shouldSetRange: true, range }
+            }
+
+            // 2.4. 如果上一个段落是空段落。
+            if (startBlock.prev() instanceof Paragraph && (startBlock.prev() as Paragraph).isEmpty) {
+                // 删除上一个空的 Para
+                this.doc.deleteBetween(startBlock.prev()!, startBlock, this.doc)
+                return { shouldSetRange: true, range }
+            }
+
+            // 2.5. 上一个段落是非空段落或者其他与 Para 兼容的 block。（不兼容的需要继承 Component）
+            // 2.5.1. 自己是 Component，等同与 focus 到上个段落的极为
+            if(startBlock instanceof Component) {
+                return { shouldSetRange: true, range: DocRange.cursor(startBlock.prev()!, startBlock.prev()?.lastChild! as Text, Infinity)}
+            }
+
+            // 2.5.2. 自己是普通的 block，都是可以兼容的。那么把自己的内容移到上一个段落
+            if(startBlock.prev()){
+                const previousBlock = startBlock.prev()!
+                this.doc.deleteBetween(startBlock, startBlock.next, this.doc)
+                const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null, startBlock)
+                const previousBlockLastChild = previousBlock.lastChild!
+                this.doc.append(inlineFrag, previousBlock.lastChild!, previousBlock)
+                endCursorBlock = previousBlock
+                endCursorText = previousBlockLastChild
+                endCursorOffset = previousBlockLastChild.data.value.length
+            }
+
+            return { shouldSetRange: true, range: DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)}
+        }
+
+
+        // 3. 在非段落头部，但仍然是 startOffset === 0 的情况
+        //  CAUTION 能 focus 在 0 说明上一个节点一定是 InlineComponent，因为如果是 Text，就会自动 focus 到上个节点尾部。
+        //   自身一定是 Text，InlineComponent 的内部 focus 我们不管理。
+        assert(startText.prev() instanceof InlineComponent, 'prev should only be InlineComponent when startOffset === 0')
+        // 上一个节点是 InlineComponent，直接删除
+        this.doc.deleteBetween(startText.prev()!, startText, startBlock)
+        // 转移到上一个 Text 结尾
+        const nextRange = startText.prev()! instanceof Text ?
+            DocRange.cursor(startBlock, startText.prev()! as Text, startText.prev()!.data.value.length) :
+            range
+        return { shouldSetRange: true, range: nextRange}
     }
     @saveHistoryPacket
     @setEndRange

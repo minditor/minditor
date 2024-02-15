@@ -9,6 +9,7 @@ import { data as multiSectionData } from './data/multiSection'
 // import { data } from './data/component'
 import { data as nestedListData } from './data/nestedList'
 import { data as multiParaData } from './data/multiPara'
+import { data as inlineComponentData } from './data/inlineComponent'
 // import { data } from './data/playgroundMultiPara'
 import {extend, stringifyNodeData} from "./extend";
 
@@ -247,5 +248,52 @@ test.describe('keyboard Backspace actions', () => {
     })
   })
 
+
+  test.describe('after InlineComponent', () => {
+    test('should delete the component', async ({page}) => {
+      await page.load('inlineComponent')
+      const data = inlineComponentData
+      const focusText = data.children[0].content[2].value
+
+      const focusTextEl = await page.getByText(focusText).elementHandle()
+
+      // 1.1 设置焦点
+      await page.setSelection(focusTextEl, 0)
+      await page.expect(() => window.getSelection()!.rangeCount === 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Backspace')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data);
+      dataToCompare.children[0].content.splice(1, 1)
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
+
+      // 2.2 测试 dom
+      await page.evaluate(([focusText]) => {
+        const contentContainer = window.page.getByText(focusText as string).parentElement!
+        window.expectDOMMatch(contentContainer,
+          <any>
+            <span>a</span>
+            <span>c</span>
+          </any>
+        )
+      }, [focusText])
+
+      const newFocusText = data.children[0].content[0].value
+
+      // 新的 selection 应该变成了第一个 Text 的尾部
+      // // 2.3 range 测试
+      await page.evaluate(([newFocusText]) => {
+        const focusEl = window.page.getByText(newFocusText)
+        window.expectSelectionMatch({
+          startContainer: focusEl!.firstChild,
+          startOffset: 1,
+          collapsed: true
+        })
+      }, [newFocusText])
+
+    })
+  })
 
 })

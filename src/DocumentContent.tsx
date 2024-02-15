@@ -430,3 +430,6 @@ export class InlineComponent extends Inline {
 export type InlineComponentContext = {
     block: Block
 }
+
+export class Component extends Block {
+}
