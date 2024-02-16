@@ -1,12 +1,13 @@
 import {createRoot, createElement, atom, Atom} from "axii";
 import jsonData from './readme1.json'
-import {Document, EmitData, EVENT_ANY, Heading, OLItem, Packet, Paragraph, Text, ULItem, InlineCode} from "./src/index.js";
+import {Document, EmitData, EVENT_ANY, Heading, OLItem, Packet, Paragraph, Text, ULItem, InlineCode, Code} from "./src/index.js";
 import {plugins as markdownPlugins} from "./src/plugins/markdown.js";
+import { createBlockTool, InsertBlockToolItem } from "./src/plugins/BlockTool.js";
 
 
 const docRoot= document.getElementById('doc-root')!
 const types = {
-    Paragraph, Text, Heading, OLItem, ULItem, InlineCode
+    Paragraph, Text, Heading, OLItem, ULItem, InlineCode, Code
 }
 
 const myDoc = new Document(docRoot,  jsonData, types, [])
@@ -14,7 +15,8 @@ myDoc.render()
 
 
 const pluginRoot = document.getElementById('plugin-root')!
-markdownPlugins.forEach(Plugin => {
+const plugins = [...markdownPlugins, createBlockTool([InsertBlockToolItem])]
+plugins.forEach(Plugin => {
     const plugin  = new Plugin(myDoc)
     plugin.renderPluginView()
     pluginRoot.appendChild(plugin.root?.element!)

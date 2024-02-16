@@ -1,6 +1,6 @@
 import {atom, Atom} from 'axii'
 import {idleThrottle, nextJob} from "./util";
-import {DocNode} from "./DocumentContent.js";
+import {Block, DocNode} from "./DocumentContent.js";
 import {CONTENT_RANGE_CHANGE, DocRange, DocumentContentView} from "./View";
 
 type Rect = {
@@ -89,7 +89,7 @@ export class ReactiveViewState {
     public selectionRange: Atom<DocRange|null> = atom(null)
     public rangeBeforeComposition: Atom<DocRange|null> = atom(null)
     public mouseEnteredBlockUnit: Atom<HTMLElement|null> = atom(null)
-    public lastMouseEnteredBlockDocNode: Atom<DocNode|null> = atom(null)
+    public lastMouseEnteredBlock: Atom<Block|null> = atom(null)
     public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null> = atom(null)
     constructor(public view: DocumentContentView) {
         this.activateUserMousePosition()
@@ -208,12 +208,9 @@ export class ReactiveViewState {
         })
     }
     activateMouseEnteredBlockNode() {
-        // this.view.listen('block:mouseenter', (e: MouseEvent) => {
-        //     // FIXME
-        //     const docNode = this.view.blockUnitToDocNode.get(e.target as HTMLElement)
-        //     assert(!!docNode, 'can not find docNode from element')
-        //     this.lastMouseEnteredBlockDocNode(docNode)
-        // })
+        this.view.listen('block:mouseenter', (e: CustomEvent) => {
+            this.lastMouseEnteredBlock(this.view.elementToDocNode.get(e.target as HTMLElement) as Block)
+        })
     }
 
 }

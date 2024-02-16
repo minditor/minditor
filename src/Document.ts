@@ -33,6 +33,7 @@ export class Document {
     }
     render() {
         const element = this.renderDoc()
+        // FIXME 这里怎么处理？plugin views 应该和 doc 同一级？
         // const pluginViews = this.renderPluginViews()
         // 注意这里
         if (!this.container.style.position) this.container.style.position = 'relative'

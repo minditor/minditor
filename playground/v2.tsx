@@ -4,14 +4,14 @@ import {ANY, DocumentContent} from "../src/DocumentContent.js";
 import { DocumentContentView } from "../src/View";
 import {Document} from "../src/Document";
 import {Paragraph, Section, Text, ListItem} from "../src/DocNode";
-import { Image, ImageSuggestionWidget } from "../src/components/Image";
+import { ImageBlock, ImageSuggestionWidget } from "../src/components/Image.js";
 import { Code, CodeSuggestionWidget} from "../src/components/Code";
 import { createRoot, createElement } from 'axii'
 import { atom } from 'rata'
 import { plugins as markdownPlugins } from "../src/plugins/markdown";
 import { createRangeTool, defaultFormatWidgets } from '../src/plugins/RangeTool'
 import { createSuggestionTool, defaultBlockSuggestionWidgets } from '../src/plugins/SuggestionTool'
-import { BlockTool } from "../src/plugins/BlockTool";
+import { BlockToolPlugin } from "../src/plugins/BlockToolPlugin.js";
 
 import {nextTask} from "../src/util";
 
@@ -45,7 +45,7 @@ const doc = new Document(
     // data.singleList,
     // data.nestedList,
     data.misc,
-    {Paragraph, Section, Text, ListItem, Image, Code},
+    {Paragraph, Section, Text, ListItem, Image: ImageBlock, Code},
     [
         ...markdownPlugins,
         createRangeTool(defaultFormatWidgets),
@@ -53,7 +53,7 @@ const doc = new Document(
             ImageSuggestionWidget,
             CodeSuggestionWidget
         )),
-        BlockTool
+        BlockToolPlugin
     ]
 )
 

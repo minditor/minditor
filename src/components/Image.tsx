@@ -1,51 +1,48 @@
-import {DocNode, DocNodeData, IsolatedComponent, RenderContext, RenderProps} from "../DocNode";
-import { atom } from 'axii'
-import {createElement} from 'axii'
-import {SuggestionWidget} from "../plugins/SuggestionTool";
-import ImageIcon  from "../icons/Image";
+import { createElement } from "axii";
+import Uppy from '@uppy/core';
+import Dashboard from '@uppy/dashboard';
 
-export class Image extends IsolatedComponent {
-    public value: Atom<string>
-    constructor(public data: DocNodeData, parent?: DocNode) {
-        super(data, parent);
-        this.value = atom(data.value)
-    }
-    toJSON() {
-        return {type: 'Image', value: this.value()}
-    }
-    render({content}:RenderProps, {createElement}: RenderContext) : HTMLElement{
-        return <div style={{maxWidth: "100%"}}>
-            <img src={this.value} style={{width: "100%"}}/>
-        </div> as unknown as HTMLElement
-    }
+import '@uppy/core/dist/style.min.css';
+import '@uppy/dashboard/dist/style.min.css';
+import ImageEditor from '@uppy/image-editor';
+import '@uppy/image-editor/dist/style.min.css';
+import {Component} from "../DocumentContent.js";
+
+
+type ImageData = {
+    src: string
+    isNew?: boolean
+    alt?: string
 }
 
-export class ImageSuggestionWidget extends SuggestionWidget {
-    static displayName =`ImageSuggestionWidget`
-    insertImage = (event: Event) =>{
-        const imageFiles = event.target.files;
-        const imageFilesLength = imageFiles.length;
-        if (imageFilesLength > 0) {
-            const imageSrc = URL.createObjectURL(imageFiles[0]);
-
-            const imageDocNode = new Image({type: 'Image', value: imageSrc})
-            this.document.content.replaceDocNode(imageDocNode, this.document.view.state.selectionRange().startNode)
-            this.parent.activated(false)
-            // TODO 如果有 nextSibling ，就 focus 上去，如果没有，就创建一个新的 para，然后 focus
-            let nextFocus
-            if (imageDocNode.nextSiblingInTree) {
-                nextFocus = imageDocNode.nextSiblingInTree
-            } else {
-                nextFocus = new DocNode.ParagraphType!({type: 'Paragraph'})
-                this.document.content.appendNextSibling(imageDocNode, nextFocus)
-            }
-            this.document.view.setCursor(nextFocus, 0)
+export class ImageBlock extends Component {
+    static displayName = 'Image'
+    public element?: HTMLElement
+    constructor(public data: ImageData) {
+        super(data);
+    }
+    onMount = () => {
+        console.log(111111)
+        if (this.data.isNew) {
+            new Uppy()
+                .use(Dashboard, { inline: true, target: this.element })
+                .use(ImageEditor, { target: Dashboard })
+                .on('upload-success', (file, response) => {
+                    // console.log(file.name, response.uploadURL);
+                    // const img = new Image();
+                    // img.width = 300;
+                    // img.alt = file.id;
+                    // img.src = response.uploadURL;
+                    // document.body.appendChild(img);
+                    // FIXME 更新自己 block
+                });
         }
     }
     render() {
-        return <span>
-            <ImageIcon size={16}/>
-            <input type="file" id="file-upload" accept="image/*" onChange={this.insertImage}/>
-        </span>
+        this.element = (this.data.isNew  ?
+            <div></div> :
+            <img src={this.data.src} alt={this.data.alt}/>) as unknown as HTMLElement
+
+        return this.element
     }
 }

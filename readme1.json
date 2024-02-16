@@ -68,12 +68,16 @@
       "type": "Heading",
       "useIndex": true,
       "level": 0,
-      "content": [{"type": "Text", "value": "title"}]
+      "content": [{
+        "type": "Text", "value": "title"
+      }]
     },{
       "type": "Paragraph",
       "content": [
-        {"type": "Text", "value": "11"},
-        {"type": "Text", "value": "22"},
+        {
+          "type": "Text", "value": "11"},
+        {
+          "type": "Text", "value": "22"},
         {"type": "Text", "value": "33"}
       ]
     }, {
@@ -87,6 +91,18 @@
         {"type": "Text", "value": "44"},
         {"type": "Text", "value": "55"},
         {"type": "Text", "value": "66"}
+      ]
+    },
+    {
+      "type": "Code",
+      "content": [],
+      "language": "javascript",
+      "value": "function(e){ console.log(e);}; let a = 1;"
+    }
+  ,{
+      "type": "Paragraph",
+      "content": [
+        {"type": "Text", "value": ""}
       ]
     }
   ]

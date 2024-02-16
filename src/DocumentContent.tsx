@@ -425,6 +425,12 @@ export type InlineData = {
 
 
 export class InlineComponent extends Inline {
+    onMount() {
+
+    }
+    onUnmount(){
+
+    }
 }
 
 export type InlineComponentContext = {
@@ -432,4 +438,13 @@ export type InlineComponentContext = {
 }
 
 export class Component extends Block {
+    onMount() {
+
+    }
+    onUnmount(){
+
+    }
+    focus(offset: number) {
+
+    }
 }

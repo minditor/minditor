@@ -1,34 +1,43 @@
-import {DocNode, DocNodeData, IsolatedComponent, RenderContext, RenderProps} from "../DocNode";
-import { atom } from 'axii'
 import {createElement} from 'axii'
-import {SuggestionWidget} from "../plugins/SuggestionTool";
 import highlight from 'highlight.js';
-import 'highlight.js/styles/tokyo-night-light.css'
-import {deepClone, setNativeCursor} from "../util";
+import 'highlight.js/styles/xcode.css'
+import {setNativeCursor} from "../util";
+import {Component} from "../DocumentContent.js";
 
-export class Code extends IsolatedComponent {
-    public value: string
+
+export type CodeData = {
+    value: string,
+    language: string
+}
+
+export class Code extends Component {
+    static displayName = 'Code'
     public element?: HTMLElement
-    public props: {[k: string]: any}
-    constructor(public data: DocNodeData, parent?: DocNode) {
-        super(data, parent);
-        this.value = data.value || ``
-        this.props = data.props || { language: 'javascript'}
+    static langAlias = {
+        'js' : 'javascript',
+        'ts': 'typescript',
+    } as any
+    constructor(public data: CodeData) {
+        super(data);
     }
     focus(offset: number = 0) {
         setNativeCursor(this.element!, offset)
     }
     getHighlightCode() {
-        return highlight.highlight(this.element?.innerText||this.value, { language: this.props.language }).value
+        return highlight.highlight(this.element?.innerText||this.data.value, { language: this.data.language }).value
     }
     onBlur = () => {
         this.element!.innerHTML = this.getHighlightCode()
     }
     toJSON() {
-        return {type: 'Code', value: this.element.innerText, props: deepClone(this.props)}
+        return {
+            type: 'Code',
+            value: this.element!.innerText,
+            language: Code.langAlias[this.data.language] || this.data.language
+        }
     }
     // TODO language selection
-    render({content}:RenderProps, {createElement}: RenderContext) : HTMLElement{
+    render() : HTMLElement{
         this.element = <code
             contenteditable={true}
             dangerouslySetInnerHTML={this.getHighlightCode()}
@@ -39,7 +48,7 @@ export class Code extends IsolatedComponent {
             style={{background:"#eee", padding:10}}
             contenteditable={false}
             onFocusout={this.onBlur}
-            onKeydown={e => {
+            onKeydown={(e: KeyboardEvent) => {
                 e.stopPropagation()
             }}
         >
@@ -48,18 +57,3 @@ export class Code extends IsolatedComponent {
     }
 }
 
-export class CodeSuggestionWidget extends SuggestionWidget {
-    static displayName =`ImageSuggestionWidget`
-    insertCodeBlock = (event: Event) =>{
-        const codeDocNode = new Code({type: 'Code', value: ''})
-        this.document.content.replaceDocNode(codeDocNode, this.document.view.state.selectionRange().startNode)
-        this.parent.activated(false)
-        // TODO 如果有 nextSibling ，就 focus 上去，如果没有，就创建一个新的 para，然后 focus
-        codeDocNode.focus()
-    }
-    render() {
-        return <div >
-            <button onClick={this.insertCodeBlock}>code</button>
-        </div>
-    }
-}

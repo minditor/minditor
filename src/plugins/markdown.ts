@@ -6,6 +6,7 @@ import {ULItem} from "../components/ULItem.js";
 import {OLItem} from "../components/OLItem.js";
 import {InlineCode} from "../components/InlineCode.js";
 import {DocRange} from "../View.js";
+import {Code} from "../components/CodeMirror.js";
 
 function onInputKey(key: string) {
     return (e: unknown): boolean => {
@@ -227,6 +228,38 @@ class InlineCodePlugin extends Plugin{
     }
 }
 
+class BlockCodePlugin extends Plugin{
+    public static displayName = `IndexedHeading`
+    public static activateEvents = {
+        inputChar: onInputKey(' ')
+    }
+    run({  } : PluginRunArgv) : boolean | undefined{
+        const { view, content, history } = this.document
+        const startRange = view.state.selectionRange()
+        const { startText,  startBlock,  isEndFull,isCollapsed, endText, endOffset } = startRange!
+        //  1. 只能在 Heading 的 content 里面产生
+        if (!(startBlock instanceof Paragraph)) return false
+        // 2. 只能在头部输入的唯一的字符里面输入
+        if (startText.prev() || startText.next) return false
+        // 3. 必须匹配 ```lang 的形式
+        const matched = startText.data.value.match(/^```(\w+)\s$/)
+        if (!matched) return false
+        const language = matched?.[1]
+
+        history.openPacket(startRange)
+        // TODO 应该允许只修改该 data，保持 reactive
+        const newCodeBlock = new Code({value:'', language})
+        content.replace(newCodeBlock, startBlock)
+        if (!newCodeBlock.next) {
+            content.append(content.createParagraph(), newCodeBlock, content)
+        }
+        newCodeBlock.focus(0)
+        // TODO DocRange 需要支持表达为 Component 里面的情况.
+        history.closePacket(null)
+        return true
+    }
+}
+
 export const plugins: (typeof Plugin)[] = [
     createFormatCommands(['*', '*'], 'bold'),
     createFormatCommands(['**', '**'], 'italic'),
@@ -234,7 +267,9 @@ export const plugins: (typeof Plugin)[] = [
     createFormatCommands(['~~', '~~'], 'lineThrough'),
     IndexedHeadingPlugin,
     OrderedListPlugin,
-    InlineCodePlugin
+    // CAUTION Code Block 应该在 InlineCode 之上，不然匹配顺序错了
+    BlockCodePlugin,
+    InlineCodePlugin,
 ]
 
 const sectionMaxLevel = 3

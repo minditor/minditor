@@ -27,6 +27,7 @@ type CallbackType = (...arg: any[]) => any
 
 
 export const CONTENT_RANGE_CHANGE = 'contentrangechange'
+export const INPUT_CHAR_EVENT= 'inputChar'
 
 
 function saveHistoryPacket(target: DocumentContentView, propertyKey: string, descriptor: PropertyDescriptor) {
@@ -85,6 +86,9 @@ export class DocumentContentView extends EventDelegator{
     public usingDefaultBehavior = false
     public globalState: GlobalState
     public history?: DocumentContentHistory
+    public attached = false
+    public componentsToCallOnMount =  new Set<Component|InlineComponent>()
+    public componentsToCallOnUnmount =  new Set<Component|InlineComponent>()
     public debugJSONContent = atom<BlockData>(null)
 
     constructor(public doc: DocumentContent, globalState: GlobalState, history?: DocumentContentHistory ) {
@@ -196,14 +200,15 @@ export class DocumentContentView extends EventDelegator{
                 element.style[styleName] = styleValue
             }
         })
-
-
     }
 
     renderInline(inline: Inline) {
         const element = inline.render()
         this.docNodeToElement.set(inline, element)
         this.elementToDocNode.set(element, inline)
+        if (inline instanceof InlineComponent) {
+            this.componentsToCallOnMount.add(inline)
+        }
         return element
     }
     renderInlineList(head: Inline, end?: Inline){
@@ -219,6 +224,10 @@ export class DocumentContentView extends EventDelegator{
         const element =  block.render({ children:  this.renderInlineList(block.firstChild!) })
         this.docNodeToElement.set(block, element)
         this.elementToDocNode.set(element, block)
+        this.childDelegators['block'].bindElement(element)
+        if (block instanceof Component) {
+            this.componentsToCallOnMount.add(block)
+        }
         return element
     }
     renderBlockList(head: Block, end?: Block) {
@@ -361,7 +370,7 @@ export class DocumentContentView extends EventDelegator{
 
         this.resetUseDefaultBehavior()
 
-        this.dispatch(new CustomEvent('inputChar', {detail: e.key}))
+        this.dispatch(new CustomEvent(INPUT_CHAR_EVENT, {detail: e.key}))
 
         return {
             shouldSetRange: !succeed,
@@ -390,7 +399,7 @@ export class DocumentContentView extends EventDelegator{
 
         this.resetUseDefaultBehavior()
 
-        this.dispatch(new CustomEvent('inputChar', {detail: e.data}))
+        this.dispatch(new CustomEvent(INPUT_CHAR_EVENT, {detail: e.data}))
 
         return {
             shouldSetRange: !succeed,
@@ -616,11 +625,26 @@ export class DocumentContentView extends EventDelegator{
         ) as unknown as HTMLElement
 
         // FIXME 好像还是得知道具体的 append to document 的时机，不然有时候 IntersectionObserver 可能会出问题
-        nextTask(() => {
-            this.bindElement(this.element!)
-        })
+        this.onMount()
 
         return this.element
+    }
+    // 这个函数被外部手动调用。用户可以自己决定什么时候把 element append 到 document 上。
+    onMount() {
+        if(!document.body.contains(this.element!)) return
+
+        this.attached = true
+        this.bindElement(this.element!)
+        this.callComponentOnMount()
+    }
+    callComponentOnMount() {
+        this.componentsToCallOnMount.forEach(c => c.onMount())
+        this.componentsToCallOnMount.clear()
+    }
+    // TODO 真正才从内存 history 里面销毁的时候调用，不然元素还是可以留着复用。
+    callComponentOnUnmount() {
+        this.componentsToCallOnUnmount.forEach(c => c.onUnmount())
+        this.componentsToCallOnUnmount.clear()
     }
     setCursor(docNode: DocNode, offset: number) {
         // FIXME 没考虑 InlineComponent 和 Component
@@ -803,6 +827,10 @@ export class DocumentContentView extends EventDelegator{
         const startBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(startText!)!)
         const endBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(endInline!)!)
         return new DocRange(startBlock!, startText!, docStartOffset, endBlock!, endInline!, docEndOffset)
+    }
+    getBoundingRectOfBlock(block: Block) {
+        const element = this.docNodeToElement.get(block)! as HTMLElement
+        return element.getBoundingClientRect()
     }
     onRangeNotCollapsed = eventAlias<KeyboardEvent>(() => {
         return this.globalState.selectionRange?.collapsed === false
