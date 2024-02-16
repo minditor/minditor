@@ -35,6 +35,7 @@ export class Code extends Component {
         javascript: javascript(),
         js: javascript(),
         typescript: javascript({ typescript: true}),
+        ts: javascript({ typescript: true}),
         jsx: javascript({ jsx: true}),
         tsx: javascript({ jsx: true, typescript: true}),
         python: python(),
