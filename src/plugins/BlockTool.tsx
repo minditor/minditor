@@ -72,7 +72,7 @@ export class InsertBlockToolItem extends BlockToolItem {
         const { lastMouseEnteredBlock } = this.document.view.state
         // FIXME 需要使用 view 提供个 util 来控制，因为要检查下面是不是还有空的 paragraph。没有就要创建
         const newImageBlock = new ImageBlock({ src: '', isNew:true })
-        this.document.content.replace(newImageBlock, lastMouseEnteredBlock()!, this.document.content)
+        this.document.view.replace(newImageBlock, lastMouseEnteredBlock()!, this.document.content)
         this.document.history.closePacket(null)
     }
     renderInsertImage() {

@@ -273,11 +273,11 @@ export class DocumentContentView extends EventDelegator{
             // TODO 还要判断是不是 endText 也删完了。
             if (remainEndFragment) {
                 if (!dontMergeBlock) {
-                    this.doc.append(remainEndFragment, startText, startBlock)
+                    this.append(remainEndFragment, startText, startBlock)
                 } else {
                     // 创建个新的 para
                     const newPara = this.doc.createParagraph(remainEndFragment)
-                    this.doc.append(newPara, startBlock, this.doc)
+                    this.append(newPara, startBlock, this.doc)
                 }
             }
         }
@@ -285,18 +285,18 @@ export class DocumentContentView extends EventDelegator{
         // 2. 再更新 startText 和 endText 的值
         if (range.isInSameInline) {
             const newTextValue = startText.data.value.slice(0, startOffset) + replaceTextValue + startText.data.value.slice(endOffset)
-            this.doc.updateText(newTextValue, startText)
+            this.updateText(newTextValue, startText)
         } else {
             const newStartTextValue = startText.data.value.slice(0, startOffset) + replaceTextValue
             const newEndTextValue = endText.data.value.slice(endOffset)
 
             // CAUTION 分开更新才是正确的。因为加入 startText 上面有 format，那么合并进来的 endText 也会带上，这就不符合预期了。
-            this.doc.updateText(newStartTextValue, startText)
+            this.updateText(newStartTextValue, startText)
 
             if (newEndTextValue.length) {
-                this.doc.updateText(newEndTextValue, endText)
+                this.updateText(newEndTextValue, endText)
             } else {
-                this.doc.deleteBetween(endText, endText.next, endBlock)
+                this.deleteBetween(endText, endText.next, endBlock)
             }
         }
 
@@ -473,7 +473,7 @@ export class DocumentContentView extends EventDelegator{
                 this.doc.deleteBetween(startBlock, startBlock.next, this.doc)
                 const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null, startBlock)
                 const previousBlockLastChild = previousBlock.lastChild!
-                this.doc.append(inlineFrag, previousBlock.lastChild!, previousBlock)
+                this.append(inlineFrag, previousBlock.lastChild!, previousBlock)
                 endCursorBlock = previousBlock
                 endCursorText = previousBlockLastChild
                 endCursorOffset = previousBlockLastChild.data.value.length
@@ -830,39 +830,80 @@ export class DocumentContentView extends EventDelegator{
 
         // cursor 在段尾，产生一个新的空的 para
         if (!inline) {
-            this.doc.append(newBlock, block, this.doc)
+            this.append(newBlock, block, this.doc)
             return newBlock
         }
 
         // cursor 在段首，上面产生一个新的 Para
         if (!inline.prev()) {
-            this.doc.prepend(newBlock, block, this.doc)
+            this.prepend(newBlock, block, this.doc)
             return block
         }
 
         // 在中间
-        const inlineFrag = this.doc.deleteBetween(inline, null, block)
-        this.doc.replace(inlineFrag, newBlock.firstChild!, newBlock)
+        const inlineFrag = this.deleteBetween(inline, null, block)
+        this.replace(inlineFrag, newBlock.firstChild!, newBlock)
 
-        this.doc.append(newBlock, block, this.doc)
+        this.append(newBlock, block, this.doc)
         return newBlock
     }
     splitText(text:Text, offset: number, block: Block) {
         const originValue = text.data.value
         this.doc.updateText(originValue.slice(0, offset), text)
         const splitInline = new Text({value: originValue.slice(offset)})
-        this.doc.append(splitInline, text, block)
+        this.append(splitInline, text, block)
         return splitInline
     }
     // 相比 content 的 api，下面 View 的同名 api 会自动检查是否需要在头部尾部增加 ZWSP 或者空 Para。
-    append() {
+    append(...args: Parameters<DocumentContent["append"]>) {
+        const result = this.doc.append(...args)
+        if (!result.next) {
+            if (result instanceof Component) {
+                this.doc.append(this.doc.createParagraph(), result, this.doc)
+            } else if (result instanceof InlineComponent) {
+                this.doc.append(this.doc.createText(), result, args[2])
+            }
+        }
 
+
+        return result
     }
-    prepend() {
-
+    prepend(...args: Parameters<DocumentContent["prepend"]>) {
+        const result = this.doc.prepend(...args)
+        if (result instanceof InlineComponent && !result.prev()) {
+            this.doc.prepend(this.doc.createText(), result, args[2])
+        }
+        return result
     }
-    replace() {
+    replace(...args: Parameters<DocumentContent["replace"]>) {
+        const result = this.doc.replace(...args)
+        const newItem = args[0]
+        if (newItem instanceof InlineComponent ) {
+            if (!newItem.prev()) {
+                this.doc.prepend(this.doc.createText(), newItem, args[2])
+            }
 
+            if (!newItem.next) {
+                this.doc.append(this.doc.createText(), newItem, args[2]!)
+            }
+        } else if (newItem instanceof Component) {
+
+            if (!newItem.next) {
+                this.doc.append(this.doc.createParagraph(), newItem, args[2]!)
+            }
+        }
+        return result
+    }
+    // 下面三个只是为了保持接口一致，实际上只是转发调用。
+    deleteBetween(...args: Parameters<DocumentContent["deleteBetween"]>) {
+        // FIXME deleteBetween 之后也要考虑是否需要增加 ZWSP 和空 Para
+        return this.doc.deleteBetween(...args)
+    }
+    updateText(...args: Parameters<DocumentContent["updateText"]>) {
+        return this.doc.updateText(...args)
+    }
+    formatText(...args: Parameters<DocumentContent["formatText"]>) {
+        return this.doc.formatText(...args)
     }
 }
 

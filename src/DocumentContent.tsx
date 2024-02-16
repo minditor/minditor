@@ -242,6 +242,9 @@ export class DocumentContent extends EventEmitter {
         para.firstChild = child ? (child instanceof DocNodeFragment ? child.retrieve() : child) : new Text({value: ''})
         return para
     }
+    createText(value: string = '', formats?: FormatData) {
+        return new Text({value, formats})
+    }
 
     @AutoEmit
     append(docNode: DocNode | DocNodeFragment, ref: DocNode|null, parent : DocumentContent|Block) {

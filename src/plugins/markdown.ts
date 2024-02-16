@@ -22,7 +22,7 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
         }
         run({  } : PluginRunArgv) : boolean | undefined{
             // debugger
-            const { view, content, history } = this.document
+            const { view, history } = this.document
             const startRange = view.state.selectionRange()
             const { startText,  startBlock,  isEndFull,isCollapsed, endText } = startRange!
             //  1. 只能在 Para 的 content 里面产生
@@ -41,12 +41,12 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
             history.openPacket(startRange)
             // 1. 先把 startText 中的 initialCharacters + 空格删掉
             const newTextAfterCursor = startText.data.value.slice(initialCharacters.length + 1)
-            content.updateText(newTextAfterCursor, startText)
+            view.updateText(newTextAfterCursor, startText)
             // 2. 把所有的 Text 取出来
-            const titleTextFrag = content.deleteBetween(startText, null, startBlock)
+            const titleTextFrag = view.deleteBetween(startText, null, startBlock)
             // 3. 替换成新的 Heading block
             const newBlock = createBlock(titleTextFrag)
-            content.replace(newBlock, startBlock, content)
+            view.replace(newBlock, startBlock, this.document.content)
             view.setCursor(newBlock, 0)
             const endRange = new DocRange(newBlock, newBlock.firstChild!, 0, newBlock, newBlock.firstChild!, 0, )
             history.closePacket(endRange)
@@ -66,7 +66,7 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
             inputChar: onInputKey(' ')
         }
         run({ } : PluginRunArgv): boolean | undefined  {
-            const { view, content, history } = this.document
+            const { view, history } = this.document
             const startRange = view.state.selectionRange()
             const { startText,  startBlock,  isEndFull,isCollapsed, endText, startOffset, endOffset } = startRange!
 
@@ -81,18 +81,18 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
             history.openPacket(startRange)
             // 删除空格
             const newEndTextWithoutSpace = endText.data.value.slice(0, endOffset-1) + endText.data.value.slice(endOffset)
-            content.updateText(newEndTextWithoutSpace, endText)
+            view.updateText(newEndTextWithoutSpace, endText)
             //2. 再执行 format。
             const [firstFormattedText, lastFormattedText] = view.formatRange(matchedDocRange, {[key]: value})
             //3. 删掉 startText 和 endText 的 startChars 和 closeChars
             const newStartTextWithoutStartChars = firstFormattedText.data.value.slice(startChars.length)
 
-            content.updateText(newStartTextWithoutStartChars, firstFormattedText)
+            view.updateText(newStartTextWithoutStartChars, firstFormattedText)
             const newEndTextWithoutCloseChars = lastFormattedText.data.value.slice(0, - closeChars.length)
-            content.updateText(newEndTextWithoutCloseChars, lastFormattedText)
+            view.updateText(newEndTextWithoutCloseChars, lastFormattedText)
             // 穿件一个空字符 Text 用来放 cursor
             const emptyText = new Text({value: ''})
-            content.append(emptyText, lastFormattedText, startBlock)
+            view.append(emptyText, lastFormattedText, startBlock)
             //4. restore selection 到下一个节点的空格后面
             view.setCursor(emptyText!, 0)
             // CAUTION 异地昂要 return true，表示执行了
@@ -135,7 +135,7 @@ class IndexedHeadingPlugin extends Plugin{
         inputChar: onInputKey(' ')
     }
     run({  } : PluginRunArgv) : boolean | undefined{
-        const { view, content, history } = this.document
+        const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock,  isEndFull,isCollapsed, endText, endOffset } = startRange!
         //  1. 只能在 Heading 的 content 里面产生
@@ -148,10 +148,10 @@ class IndexedHeadingPlugin extends Plugin{
         history.openPacket(startRange)
         // TODO 应该允许只修改该 data，保持 reactive
         const newHeading = new Heading({...startBlock.toJSON(), useIndex: true})
-        const headingContent = content.deleteBetween(startText, null, startBlock)
+        const headingContent = view.deleteBetween(startText, null, startBlock)
         newHeading.firstChild = headingContent.retrieve() as Text
-        content.updateText(newHeading.firstChild!.data.value.slice(endOffset), newHeading.firstChild as Text)
-        content.replace(newHeading, startBlock)
+        view.updateText(newHeading.firstChild!.data.value.slice(endOffset), newHeading.firstChild as Text)
+        view.replace(newHeading, startBlock)
         view.setCursor(newHeading.firstChild!, 0)
         const endRange = new DocRange(newHeading, newHeading.firstChild! as Text, 0, newHeading, newHeading.firstChild! as Text, 0)
         history.closePacket(endRange)
@@ -165,7 +165,7 @@ class OrderedListPlugin extends Plugin{
         inputChar: onInputKey(' ')
     }
     run({  } : PluginRunArgv) : boolean | undefined{
-        const { view, content, history } = this.document
+        const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock,  isEndFull,isCollapsed, endText, endOffset } = startRange!
         //  1. 只能在 Heading 的 content 里面产生
@@ -178,10 +178,10 @@ class OrderedListPlugin extends Plugin{
         history.openPacket(startRange)
         // TODO 应该允许只修改该 data，保持 reactive
         const newHeading = new OLItem({level:0})
-        const headingContent = content.deleteBetween(startText, null, startBlock)
+        const headingContent = view.deleteBetween(startText, null, startBlock)
         newHeading.firstChild = headingContent.retrieve() as Text
-        content.updateText(newHeading.firstChild!.data.value.slice(endOffset), newHeading.firstChild as Text)
-        content.replace(newHeading, startBlock)
+        view.updateText(newHeading.firstChild!.data.value.slice(endOffset), newHeading.firstChild as Text)
+        view.replace(newHeading, startBlock)
         view.setCursor(newHeading.firstChild!, 0)
         const endRange = new DocRange(newHeading, newHeading.firstChild! as Text, 0, newHeading, newHeading.firstChild! as Text, 0)
         history.closePacket(endRange)
@@ -195,7 +195,7 @@ class InlineCodePlugin extends Plugin{
         inputChar: onInputKey(' ')
     }
     run({  } : PluginRunArgv) : boolean | undefined{
-        const { view, content, history } = this.document
+        const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock,  isEndFull, startOffset,isCollapsed, endText, endOffset } = startRange!
 
@@ -214,12 +214,7 @@ class InlineCodePlugin extends Plugin{
         }
 
         const newInlineCode = new InlineCode({value: matchedText})
-        content.replace(newInlineCode, matchedTextNode, startBlock)
-
-        if (!newInlineCode.next) {
-            const emptyText = new Text({value: ''})
-            content.append(emptyText, newInlineCode, startBlock)
-        }
+        view.replace(newInlineCode, matchedTextNode, startBlock)
 
         view.setCursor(newInlineCode.next!, 0)
         const endRange = DocRange.cursor(startBlock, matchedTextNode.next! as Text, 0)
@@ -234,7 +229,7 @@ class BlockCodePlugin extends Plugin{
         inputChar: onInputKey(' ')
     }
     run({  } : PluginRunArgv) : boolean | undefined{
-        const { view, content, history } = this.document
+        const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock,  isEndFull,isCollapsed, endText, endOffset } = startRange!
         //  1. 只能在 Heading 的 content 里面产生
@@ -249,12 +244,9 @@ class BlockCodePlugin extends Plugin{
         history.openPacket(startRange)
         // TODO 应该允许只修改该 data，保持 reactive
         const newCodeBlock = new Code({value:'', language})
-        content.replace(newCodeBlock, startBlock)
-        if (!newCodeBlock.next) {
-            content.append(content.createParagraph(), newCodeBlock, content)
-        }
+        view.replace(newCodeBlock, startBlock)
+
         newCodeBlock.focus()
-        // TODO DocRange 需要支持表达为 Component 里面的情况.
         history.closePacket(null)
         return true
     }
