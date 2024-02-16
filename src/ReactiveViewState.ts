@@ -1,7 +1,8 @@
 import {atom, Atom} from 'axii'
 import {idleThrottle, nextJob} from "./util";
 import {Block, DocNode} from "./DocumentContent.js";
-import {CONTENT_RANGE_CHANGE, DocRange, DocumentContentView} from "./View";
+import {CONTENT_RANGE_CHANGE, DocumentContentView} from "./View";
+import {DocRange} from "./Range.js";
 
 type Rect = {
     top: number,

@@ -5,8 +5,8 @@ import {Heading} from "../components/Heading.js";
 import {ULItem} from "../components/ULItem.js";
 import {OLItem} from "../components/OLItem.js";
 import {InlineCode} from "../components/InlineCode.js";
-import {DocRange} from "../View.js";
 import {Code} from "../components/CodeMirror.js";
+import {DocRange} from "../Range.js";
 
 function onInputKey(key: string) {
     return (e: unknown): boolean => {
@@ -253,7 +253,7 @@ class BlockCodePlugin extends Plugin{
         if (!newCodeBlock.next) {
             content.append(content.createParagraph(), newCodeBlock, content)
         }
-        newCodeBlock.focus(0)
+        newCodeBlock.focus()
         // TODO DocRange 需要支持表达为 Component 里面的情况.
         history.closePacket(null)
         return true

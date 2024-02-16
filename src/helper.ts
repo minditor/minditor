@@ -1,5 +1,6 @@
 import {Block, Inline, Text} from "./DocumentContent.js";
-import {DocRange} from "./View.js";
+
+import {DocRange} from "./Range.js";
 
 export function reversMatchStr(str: string, toMatch: string) : false | string {
     if (!toMatch) return ''

@@ -1,18 +1,22 @@
 import {atom, createElement, eventAlias, onBackspaceKey, onEnterKey, onTabKey} from 'axii'
 import {
     Block,
-    BlockData, Component,
+    BlockData,
+    Component,
     DocNode,
     DocNodeFragment,
     DocumentContent,
     EmitData,
     FormatData,
-    Inline, InlineComponent, Paragraph, Text
+    Inline,
+    InlineComponent,
+    Paragraph,
+    Text
 } from "./DocumentContent.js";
 import {
     assert,
-    nextTask,
-    setNativeCursor, setNativeRange,
+    setNativeCursor,
+    setNativeRange,
     SHOULD_FIX_OFFSET_LAST,
     SHOULD_RESET_CURSOR_AFTER_BACKSPACE,
     ZWSP
@@ -21,6 +25,7 @@ import {ReactiveViewState} from "./ReactiveViewState.js";
 import {EventDelegator} from "./EventDelegator";
 import {GlobalState} from "./globals.js";
 import {DocumentContentHistory} from "./DocumentContentHistory.js";
+import {DocRange} from "./Range.js";
 
 
 type CallbackType = (...arg: any[]) => any
@@ -143,6 +148,8 @@ export class DocumentContentView extends EventDelegator{
             }
         }
 
+        this.callComponentOnMount()
+
     }
     @preventPatchIfUseDefaultBehavior
     patchPrepend ({ args }: EmitData<Parameters<DocumentContent["prepend"]>, ReturnType<DocumentContent["prepend"]>>) {
@@ -151,6 +158,8 @@ export class DocumentContentView extends EventDelegator{
         const refElement = this.docNodeToElement.get(ref)!as HTMLElement
         const element = this.renderDocNodeOrFragment(docNode)
         insertBefore(element!, refElement)
+        this.callComponentOnMount()
+
     }
 
     @preventPatchIfUseDefaultBehavior
@@ -162,6 +171,7 @@ export class DocumentContentView extends EventDelegator{
             const element = this.renderDocNodeOrFragment(docNode)
             refElement.replaceWith(element!)
         }
+        this.callComponentOnMount()
     }
     @preventPatchIfUseDefaultBehavior
     patchDeleteBetween({ args, result }: EmitData<Parameters<DocumentContent["deleteBetween"]>, ReturnType<DocumentContent["deleteBetween"]>>) {
@@ -319,45 +329,7 @@ export class DocumentContentView extends EventDelegator{
     resetUseDefaultBehavior() {
         this.usingDefaultBehavior = false
     }
-    splitByInline(block: Block, inline: Inline|null) {
 
-        let newBlock: Block
-
-        const currentType = block.constructor as typeof Block
-        if (currentType.splitAsSameType) {
-            const Type = block.constructor as typeof Block
-            newBlock = Type.createEmpty()
-        } else {
-            newBlock = this.doc.createParagraph()
-        }
-
-
-        // cursor 在段尾，产生一个新的空的 para
-        if (!inline) {
-            this.doc.append(newBlock, block, this.doc)
-            return newBlock
-        }
-
-        // cursor 在段首，上面产生一个新的 Para
-        if (!inline.prev()) {
-            this.doc.prepend(newBlock, block, this.doc)
-            return block
-        }
-
-        // 在中间
-        const inlineFrag = this.doc.deleteBetween(inline, null, block)
-        this.doc.replace(inlineFrag, newBlock.firstChild!, newBlock)
-
-        this.doc.append(newBlock, block, this.doc)
-        return newBlock
-    }
-    splitText(text:Text, offset: number, block: Block) {
-        const originValue = text.data.value
-        this.doc.updateText(originValue.slice(0, offset), text)
-        const splitInline = new Text({value: originValue.slice(offset)})
-        this.doc.append(splitInline, text, block)
-        return splitInline
-    }
     @saveHistoryPacket
     @setEndRange
     inputOrReplaceWithChar ( e: KeyboardEvent) {
@@ -435,26 +407,7 @@ export class DocumentContentView extends EventDelegator{
 
         return { shouldSetRange: !succeed, range: DocRange.cursor(endCursorBlock!, endCursorText as Text, endCursorOffset)}
     }
-    deleteLastChar() {
-        const range = this.state.selectionRange()!
-        const { startText, startOffset, startBlock } = range
-        // 文章开头，不做任何操作
-        let endCursorBlock = startBlock
-        let endCursorText = startText
-        let endCursorOffset = startOffset - 1
 
-        if (startText.data.value.length === 1 && startText.prev() instanceof Text) {
-            // 不管前面是什么，都设置到末尾
-            endCursorBlock = startBlock
-            endCursorText = startText.prev()! as Text
-            endCursorOffset = Infinity
-            this.doc.deleteBetween(startText, startText.next, startBlock)
-        } else {
-            this.doc.updateText(startText.data.value.slice(0, startOffset - 1) + startText.data.value.slice( startOffset), startText)
-        }
-
-        return DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)
-    }
 
     @saveHistoryPacket
     @setEndRange
@@ -598,6 +551,15 @@ export class DocumentContentView extends EventDelegator{
         // TODO
         return null
     }
+
+    @saveHistoryPacket
+    @setEndRange
+    formatCurrentRange(formatData: FormatData) {
+        const currentRange = this.state.selectionRange()!
+        const [firstFormattedText, lastFormattedText] = this.formatRange(currentRange, formatData)
+        // 重置 range
+        return {shouldSetRange:true, range: new DocRange(currentRange.startBlock, firstFormattedText, 0, currentRange.endBlock, lastFormattedText, lastFormattedText.data.value.length)}
+    }
     render() {
         this.element = (
             <div
@@ -624,9 +586,6 @@ export class DocumentContentView extends EventDelegator{
             </div>
         ) as unknown as HTMLElement
 
-        // FIXME 好像还是得知道具体的 append to document 的时机，不然有时候 IntersectionObserver 可能会出问题
-        this.onMount()
-
         return this.element
     }
     // 这个函数被外部手动调用。用户可以自己决定什么时候把 element append 到 document 上。
@@ -638,6 +597,7 @@ export class DocumentContentView extends EventDelegator{
         this.callComponentOnMount()
     }
     callComponentOnMount() {
+        console.log(111)
         this.componentsToCallOnMount.forEach(c => c.onMount())
         this.componentsToCallOnMount.clear()
     }
@@ -646,6 +606,69 @@ export class DocumentContentView extends EventDelegator{
         this.componentsToCallOnUnmount.forEach(c => c.onUnmount())
         this.componentsToCallOnUnmount.clear()
     }
+
+    get boundaryContainer() {
+        return this.element?.parentElement
+    }
+
+    // deleteRangeForComposition 是 replace，要允许 allowOffset0
+    createDocRange(range: Range){
+        // CAUTION 为了统一所有浏览器的行为，这里创造出来的 docRange 和实际的 dom Range 不一致。
+        //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
+        //  2. cursor 默认 focus 到上一个文字的尾部.
+        //  3. range 默认头部是自己的，尾部也是自己的
+        const { startContainer, startOffset, endContainer, endOffset, collapsed } = range
+        const startContainerText = this.findFirstTextFromElement(startContainer)!
+        const endContainerInline = this.findFirstTextFromElement(endContainer)
+        // setNativeCursor 时会调用 removeAllRange，会触发 range 重新计算，此时是不合法的。
+        if (!startContainerText || !endContainerInline) return null
+
+        let startText = startContainerText
+        let endInline = endContainerInline
+        let docStartOffset = startOffset
+        let docEndOffset = endOffset
+
+        if (collapsed) {
+            if (startOffset === 1 && startText.isEmpty) {
+                //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
+                docStartOffset = 0
+            } else if (startOffset === 0 && !startText.isEmpty && startContainerText.prev() instanceof Text) {
+                //  2. cursor 默认 focus 到上一个文字的尾部.
+                startText = startContainerText.prev() as Text
+                docStartOffset = startText.data.value.length
+                endInline = startText
+                docEndOffset = docStartOffset
+            }
+        } else {
+            // 3. range 默认头部是自己的，尾部也是自己的
+            if (startOffset!==0 && startOffset === startContainerText.data.value.length && startContainerText.next instanceof Text) {
+                startText = startContainerText.next
+                docStartOffset = 0
+            }
+
+            if (endOffset === 0 && endContainerInline?.prev() instanceof Text) {
+                endInline = endContainerInline.prev() as Text
+                docEndOffset = endInline.data.value.length
+            }
+        }
+
+        const startBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(startText!)!)
+        const endBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(endInline!)!)
+        return new DocRange(startBlock!, startText!, docStartOffset, endBlock!, endInline!, docEndOffset)
+    }
+    getBoundingRectOfBlock(block: Block) {
+        const element = this.docNodeToElement.get(block)! as HTMLElement
+        return element.getBoundingClientRect()
+    }
+    onRangeNotCollapsed = eventAlias<KeyboardEvent>(() => {
+        return this.globalState.selectionRange?.collapsed === false
+    })
+    onRangeCollapsed = eventAlias<KeyboardEvent>(() => {
+        return this.globalState.selectionRange?.collapsed === true
+    })
+    /**
+     * 下面是 Utils
+     **/
     setCursor(docNode: DocNode, offset: number) {
         // FIXME 没考虑 InlineComponent 和 Component
         const isNodeBlock = docNode instanceof Block
@@ -747,17 +770,6 @@ export class DocumentContentView extends EventDelegator{
         return [firstFormattedText!, lastFormattedText!]
 
     }
-    @saveHistoryPacket
-    @setEndRange
-    formatCurrentRange(formatData: FormatData) {
-        const currentRange = this.state.selectionRange()!
-        const [firstFormattedText, lastFormattedText] = this.formatRange(currentRange, formatData)
-        // 重置 range
-        return {shouldSetRange:true, range: new DocRange(currentRange.startBlock, firstFormattedText, 0, currentRange.endBlock, lastFormattedText, lastFormattedText.data.value.length)}
-    }
-    get boundaryContainer() {
-        return this.element?.parentElement
-    }
     findFirstTextFromElement(startContainer: Node): Text|undefined {
         let current = startContainer
         let result = this.elementToDocNode.get(current as HTMLElement)
@@ -783,61 +795,75 @@ export class DocumentContentView extends EventDelegator{
         }
         return result
     }
-    // deleteRangeForComposition 是 replace，要允许 allowOffset0
-    createDocRange(range: Range){
-        // CAUTION 为了统一所有浏览器的行为，这里创造出来的 docRange 和实际的 dom Range 不一致。
-        //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
-        //  2. cursor 默认 focus 到上一个文字的尾部.
-        //  3. range 默认头部是自己的，尾部也是自己的
-        const { startContainer, startOffset, endContainer, endOffset, collapsed } = range
-        const startContainerText = this.findFirstTextFromElement(startContainer)!
-        const endContainerInline = this.findFirstTextFromElement(endContainer)
-        // setNativeCursor 时会调用 removeAllRange，会触发 range 重新计算，此时是不合法的。
-        if (!startContainerText || !endContainerInline) return null
+    deleteLastChar() {
+        const range = this.state.selectionRange()!
+        const { startText, startOffset, startBlock } = range
+        // 文章开头，不做任何操作
+        let endCursorBlock = startBlock
+        let endCursorText = startText
+        let endCursorOffset = startOffset - 1
 
-        let startText = startContainerText
-        let endInline = endContainerInline
-        let docStartOffset = startOffset
-        let docEndOffset = endOffset
-
-        if (collapsed) {
-            if (startOffset === 1 && startText.isEmpty) {
-                //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
-                docStartOffset = 0
-            } else if (startOffset === 0 && !startText.isEmpty && startContainerText.prev() instanceof Text) {
-                //  2. cursor 默认 focus 到上一个文字的尾部.
-                startText = startContainerText.prev() as Text
-                docStartOffset = startText.data.value.length
-                endInline = startText
-                docEndOffset = docStartOffset
-            }
+        if (startText.data.value.length === 1 && startText.prev() instanceof Text) {
+            // 不管前面是什么，都设置到末尾
+            endCursorBlock = startBlock
+            endCursorText = startText.prev()! as Text
+            endCursorOffset = Infinity
+            this.doc.deleteBetween(startText, startText.next, startBlock)
         } else {
-            // 3. range 默认头部是自己的，尾部也是自己的
-            if (startOffset!==0 && startOffset === startContainerText.data.value.length && startContainerText.next instanceof Text) {
-                startText = startContainerText.next
-                docStartOffset = 0
-            }
-
-            if (endOffset === 0 && endContainerInline?.prev() instanceof Text) {
-                endInline = endContainerInline.prev() as Text
-                docEndOffset = endInline.data.value.length
-            }
+            this.doc.updateText(startText.data.value.slice(0, startOffset - 1) + startText.data.value.slice( startOffset), startText)
         }
 
-        const startBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(startText!)!)
-        const endBlock = this.findFirstBlockFromElement(this.docNodeToElement.get(endInline!)!)
-        return new DocRange(startBlock!, startText!, docStartOffset, endBlock!, endInline!, docEndOffset)
+        return DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)
     }
-    getBoundingRectOfBlock(block: Block) {
-        const element = this.docNodeToElement.get(block)! as HTMLElement
-        return element.getBoundingClientRect()
+    splitByInline(block: Block, inline: Inline|null) {
+
+        let newBlock: Block
+
+        const currentType = block.constructor as typeof Block
+        if (currentType.splitAsSameType) {
+            const Type = block.constructor as typeof Block
+            newBlock = Type.createEmpty()
+        } else {
+            newBlock = this.doc.createParagraph()
+        }
+
+
+        // cursor 在段尾，产生一个新的空的 para
+        if (!inline) {
+            this.doc.append(newBlock, block, this.doc)
+            return newBlock
+        }
+
+        // cursor 在段首，上面产生一个新的 Para
+        if (!inline.prev()) {
+            this.doc.prepend(newBlock, block, this.doc)
+            return block
+        }
+
+        // 在中间
+        const inlineFrag = this.doc.deleteBetween(inline, null, block)
+        this.doc.replace(inlineFrag, newBlock.firstChild!, newBlock)
+
+        this.doc.append(newBlock, block, this.doc)
+        return newBlock
     }
-    onRangeNotCollapsed = eventAlias<KeyboardEvent>(() => {
-        return this.globalState.selectionRange?.collapsed === false
-    })
-    onRangeCollapsed = eventAlias<KeyboardEvent>(() => {
-        return this.globalState.selectionRange?.collapsed === true
-    })
+    splitText(text:Text, offset: number, block: Block) {
+        const originValue = text.data.value
+        this.doc.updateText(originValue.slice(0, offset), text)
+        const splitInline = new Text({value: originValue.slice(offset)})
+        this.doc.append(splitInline, text, block)
+        return splitInline
+    }
+    // 相比 content 的 api，下面 View 的同名 api 会自动检查是否需要在头部尾部增加 ZWSP 或者空 Para。
+    append() {
+
+    }
+    prepend() {
+
+    }
+    replace() {
+
+    }
 }
 
 const onNotComposing = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
@@ -857,27 +883,3 @@ function insertBefore(newEle: HTMLElement|DocumentFragment|Comment, refEle: HTML
 
 
 
-export class DocRange {
-    static cursor(startBlock: Block,  startText: Text,  startOffset: number,) {
-        return new DocRange(startBlock, startText, startOffset, startBlock, startText, startOffset)
-    }
-    constructor(public startBlock: Block, public startText: Text, public startOffset: number, public endBlock: Block, public endText: Text, public endOffset: number) {}
-    get isCollapsed() {
-        return this.startText === this.endText && this.startOffset === this.endOffset
-    }
-    get isInSameBlock() {
-        return this.startBlock === this.endBlock
-    }
-    get isInSameInline() {
-        return this.startText === this.endText
-    }
-    get isSibling() {
-        return this.startText.next === this.endText
-    }
-    get isFull() {
-        return this.startOffset === 0 && this.endOffset === this.endText.data.value.length
-    }
-    get isEndFull() {
-        return this.endOffset === this.endText.data.value.length
-    }
-}

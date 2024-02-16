@@ -2,8 +2,8 @@ import {AutoEmit, DocNodeFragment, DocumentContent, EmitData, EVENT_ANY, Text} f
 import { Document } from "./Document.js";
 import {assert} from "./util.js";
 import EventEmitter from "eventemitter3";
-import {DocRange} from "./View.js";
 import {Options} from "pretty-format";
+import {DocRange} from "./Range.js";
 
 type appendEmitData = EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>
 type prependEmitData = EmitData<Parameters<DocumentContent["prepend"]>, ReturnType<DocumentContent["prepend"]>>

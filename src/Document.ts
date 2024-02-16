@@ -39,6 +39,8 @@ export class Document {
         if (!this.container.style.position) this.container.style.position = 'relative'
 
         this.container.appendChild(element)
+        // 通知插件挂载事件。
+        this.view.onMount()
         // this.container.appendChild(pluginViews)
     }
     renderDoc() {

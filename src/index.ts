@@ -11,3 +11,4 @@ export { Code } from "./components/CodeMirror.js";
 
 export {Text} from "./DocumentContent.js";
 export {Paragraph} from "./DocumentContent.js";
+export {DocRange} from "./Range.js";
