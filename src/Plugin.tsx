@@ -1,6 +1,6 @@
 import {Document} from "./Document";
 import {state as globalKM} from "./globals";
-import {atom, createRoot} from 'axii'
+import {atom, createRoot, createElement} from 'axii'
 import {assert, nextJob, nextTask} from "./util";
 
 export type EventMatchHandle = (e: unknown) => boolean
@@ -8,6 +8,7 @@ export type EventCallback = (e: unknown, args?: PluginRunArgv) => any
 export type PluginRunArgv = {
 
 }
+
 
 export class Plugin {
     public static displayName = 'Plugin'
@@ -29,7 +30,8 @@ export class Plugin {
     }
     renderPluginView() {
         assert(!this.root, 'plugin view should only render once')
-        const element = document.createElement('div')
+        // CAUTION 注意这里的 userSelect: 'none' 非常重要，防止了正文中触发的 selection change，以及对依赖于 selectionRange 的各种功能的破坏。
+        const element = <div style={{userSelect: 'none'}}/> as unknown as HTMLElement
         this.root = createRoot(element)
         this.root.render(this.render()!)
         return this

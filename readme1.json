@@ -104,6 +104,12 @@
       "content": [
         {"type": "Text", "value": ""}
       ]
+    },
+    {
+      "type": "Paragraph",
+      "content": [
+        {"type": "Text", "value": "  - docScrollContainer（只要保持在 container 的 0,0 位置就行了，因为后面的 plugins 也是根据这个定位来算自己应该在的位置的，那为什么 plugins 的位置不用 fixed ？因为用 fixed 虽然简单，但假设用户还想把整个文档包在一个窗口里面）（这一层的 overflow 是用来控制 doc 的 scroll 的， 高度必须  inherit  from parent ）"}
+      ]
     }
   ]
 }

@@ -56,7 +56,7 @@ stateRoot.render(() => <div>
     </div>
     <div>
         <span>selection range rect:</span>
-        <span>{() => JSON.stringify(doc.view.state.visibleRangeRect())}</span>
+        <span>{() => JSON.stringify(doc.view.state.invertVisibleRangeRect())}</span>
     </div>
     <div>
         <span>last active device:</span>

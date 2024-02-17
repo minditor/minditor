@@ -43,8 +43,8 @@ export function createSuggestionTool(triggerChar: string, atFront: boolean, Sugg
             const style = () => {
 
                 // range 看不见了，display 要 none
-                const { visibleRangeRect } = this.document.view.state
-                if (!this.activated() || !visibleRangeRect()) return { display: 'none'}
+                const { invertVisibleRangeRect } = this.document.view.state
+                if (!this.activated() || !invertVisibleRangeRect()) return { display: 'none'}
                 const {boundaryContainer} = this.document.view
                 // const boundaryRect = boundaryContainer!.getBoundingClientRect()
 
@@ -52,9 +52,9 @@ export function createSuggestionTool(triggerChar: string, atFront: boolean, Sugg
                     display: 'block',
                     position: 'absolute', // CAUTION 注意 rangePosition 拿到的是相对于 modal boundary 的，所以我们这里也是相对于 modal boundary 的 absolute
                     // top: visibleRangeRect().top - boundaryRect.top + boundaryContainer!.scrollTop -50,
-                    top: visibleRangeRect().bottom + 10,
+                    top: invertVisibleRangeRect().bottom + 10,
                     // left: visibleRangeRect().left - boundaryRect.left,
-                    left: visibleRangeRect().left,
+                    left: invertVisibleRangeRect().left,
                     padding: 10,
                     borderRadius: 4,
                     background: '#fff',

@@ -30,8 +30,9 @@ function DebugApp({  doc }: {doc: Document}) {
 
     const contentData = atom(doc.content.toJSON())
     doc.content.on(EVENT_ANY, () => contentData(doc.content.toJSON()))
+    const a = <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:12}}></div>
     return (
-        <div style={{display: 'flex', maxHeight: '100%'}}>
+        <div style={{display: 'flex', maxHeight: '100%', overflow: "auto"}}>
             <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:11}}>
                 <pre>
                 <code>
@@ -96,7 +97,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     const docApp = (
         <>
             {docScrollContainer =
-                <div className="doc-scroll-container" style={{flexGrow: 1, overflowY: 'scroll'}}/>}
+                <div className="doc-scroll-container" style={{flexGrow: 1, flexBasis:300, minWidth:300, flexShrink: 0, overflowY: 'scroll'}}/>}
             {pluginContainer =
                 <div className="plugin-container" style={{position: 'absolute', left: 0, top: 0, height:0, width:0, overflow: 'visible'}}/>}
         </>
@@ -105,9 +106,13 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     const doc = new Document(docScrollContainer as unknown as HTMLElement, docConfig.data, docConfig.types, docConfig.globalState)
 
     const appElement = config?.debug ? (
-        <div style={{display:"flex", height:'100%', maxHeight:'100%'}}>
-            {docApp}
-            <DebugApp doc={doc} />
+        <div style={{flexGrow:1, display:"flex", minHeight: 0}}>
+            <div style={{flexGrow:1, display:"flex", flexDirection: 'column'}}>
+                {docApp}
+            </div>
+            <div style={{flexGrow:2, overflow:'auto'}}>
+                <DebugApp doc={doc} />
+            </div>
         </div>
     ) : docApp
 

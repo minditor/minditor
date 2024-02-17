@@ -1,6 +1,6 @@
 /**@jsx createElement*/
 import {atom, createElement} from 'axii'
-import {Plugin} from "../Plugin";
+import {Plugin} from "../Plugin.js";
 import {Document} from "../Document.js";
 import {Paragraph} from "../DocumentContent.js";
 import {ImageBlock} from "../components/Image.js";

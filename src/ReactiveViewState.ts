@@ -4,11 +4,11 @@ import {Block, DocNode} from "./DocumentContent.js";
 import {CONTENT_RANGE_CHANGE, DocumentContentView} from "./View";
 import {DocRange} from "./Range.js";
 
-type Rect = {
+type Position = {
     top: number,
     left: number,
-    right: number,
-    bottom: number
+    right?: number,
+    bottom?: number
 }
 
 type DeviceInfo = {
@@ -20,9 +20,11 @@ type DeviceInfo = {
 
 export class ReactiveViewState {
     public lastActiveDeviceType: Atom<'mouse'|'keyboard'|null> = atom(null)
-    public lastUsedDevice: Atom<DeviceInfo|null> = atom(null)
+    public lastMouseSelectionEvent: Atom<Position|null> = atom(null)
+    public lastMouseUpPositionAfterRangeChange: Atom<Position|null> = atom(null)
     public mousePosition: Atom<{clientX: number, clientY: number}|null> = atom(null)
     public selectionRange: Atom<DocRange|null> = atom(null)
+    public hasRange!: Atom<boolean>
     public rangeBeforeComposition: Atom<DocRange|null> = atom(null)
     public lastMouseEnteredBlock: Atom<Block|null> = atom(null)
     public visibleRangeRect!: Atom<{top:number, left: number, height:number, width: number}|null>
@@ -32,11 +34,11 @@ export class ReactiveViewState {
         this.destroyHandles.add(this.activateUserMousePosition())
         this.destroyHandles.add(this.activateDocSelectionRange())
         this.destroyHandles.add(this.activateLastActiveDevice())
-        this.destroyHandles.add(this.activateLastUsedDevice())
         this.destroyHandles.add(this.activateMouseEnteredBlockNode())
         this.destroyHandles.add(this.activateVisibleRangeRect())
         this.destroyHandles.add(this.activateRangeBeforeComposition())
-
+        this.destroyHandles.add(this.activateHasRange())
+        this.destroyHandles.add(this.activateLastMouseUpPositionAfterRangeChange())
     }
     activateVisibleRangeRect() {
         const lastScrollEvent = atom<Event>(null)
@@ -52,7 +54,7 @@ export class ReactiveViewState {
             lastScrollEvent()
 
             const range = this.view.globalState.selectionRange!
-            return range.getBoundingClientRect()
+            return range?.getBoundingClientRect()
         })
 
         return () => {
@@ -74,20 +76,25 @@ export class ReactiveViewState {
             removeInputListener()
         }
     }
-    activateLastUsedDevice() {
-        const removeMoveListener = this.view.listen('mouseup', (e: MouseEvent) => {
-            this.lastUsedDevice({type: 'mouse', key: '', top: e.clientY, left: e.clientX})
+    activateLastMouseUpPositionAfterRangeChange() {
+        const removeMouseUpListener =  this.view.listen('mouseup', (e: MouseEvent) => {
+            if (this.selectionRange() && !this.selectionRange()?.isCollapsed) {
+                console.log(111, e.target, e)
+                this.lastMouseUpPositionAfterRangeChange({left: e.clientX, top: e.clientY})
+            }
         })
 
-        const removeInputListener = this.view.listen('keyup', (e: KeyboardEvent) => {
-            this.lastUsedDevice({type: 'keyboard', key: e.key, top: 0, left: 0})
+        const removeRangeChangeListener = this.view.globalState.onSelectionChange(() => {
+            console.log("selection changed")
+            this.lastMouseUpPositionAfterRangeChange(null)
         })
 
         return () => {
-            removeMoveListener()
-            removeInputListener()
+            removeMouseUpListener()
+            removeRangeChangeListener()
         }
     }
+
     activateUserMousePosition() {
         const debouncedUpdateMousePosition = idleThrottle((e: MouseEvent) => {
             const {clientX, clientY} = e
@@ -104,6 +111,15 @@ export class ReactiveViewState {
                 this.selectionRange(docRange)
             }
         })
+    }
+    activateHasRange() {
+        this.hasRange = atomComputed(() => {
+            return Boolean(this.selectionRange() && !this.selectionRange()?.isCollapsed)
+        })
+
+        return () => {
+            destroyComputed(this.hasRange)
+        }
     }
     lastRangeBeforeComposition: Range|undefined = undefined
     activateRangeBeforeComposition() {
