@@ -31,12 +31,7 @@ const types = {
 
 rootElement.style.position = 'relative'
 
-const doc = new Document(
-    rootElement,
-    data,
-    types,
-    []
-)
+const doc = new Document(rootElement, data, types)
 
 
 Object.assign(window, {

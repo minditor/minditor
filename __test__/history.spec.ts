@@ -25,7 +25,7 @@ describe('insert', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: originContent
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -74,7 +74,7 @@ describe('insert', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -126,7 +126,7 @@ describe('update range', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: docData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -185,7 +185,7 @@ describe('update range', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
 
         const element = doc.element!
@@ -261,7 +261,7 @@ describe('update range', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -316,7 +316,7 @@ describe('update range', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -354,7 +354,7 @@ describe('delete at content head', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -432,7 +432,7 @@ describe('delete at content head', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -508,7 +508,7 @@ describe('delete at content head', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -587,7 +587,7 @@ describe('delete at content head', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -661,7 +661,7 @@ describe('change line', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -706,7 +706,7 @@ describe('change line', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -757,7 +757,7 @@ describe('change line', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -806,7 +806,7 @@ describe('change line', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -857,7 +857,7 @@ describe('format range', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -934,7 +934,7 @@ describe('format range', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -1029,7 +1029,7 @@ describe('list update', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 
@@ -1115,7 +1115,7 @@ describe('list update', () => {
         const doc = new Document(document.body, {
             name: 'doc',
             children: contentData
-        }, BuiltinTypes, [])
+        }, BuiltinTypes)
         doc.render()
         const element = doc.element!
 

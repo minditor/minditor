@@ -17,6 +17,7 @@ export class Plugin {
     public static deactivateEvents: {[k: string]: (e:unknown) => boolean}
     public activated = atom(false)
     public root?: ReturnType<typeof createRoot>
+    public removeListenerHandles = new Set<() => any>()
     constructor(public document: Document) {
         this.addActivateEventListeners()
     }
@@ -34,6 +35,7 @@ export class Plugin {
         return this
     }
     destroy() {
+        this.removeListenerHandles.forEach(h => h())
         this.root?.dispose()
         delete this.root
     }
@@ -44,7 +46,7 @@ export class Plugin {
             if (!callbacks) {
                 Plugin.activateEventListeners.set(eventName, (callbacks = new Set()))
 
-                this.document.view.listen(eventName, (e:any) => {
+                const remove = this.document.view.listen(eventName, (e:any) => {
                     const args = {
                         content: this.document.content,
                         view: this.document.view,
@@ -61,6 +63,7 @@ export class Plugin {
                     })
 
                 },  true)
+                this.removeListenerHandles.add(remove)
             }
 
             callbacks.add((e: unknown, args?: PluginRunArgv) => {
@@ -75,11 +78,12 @@ export class Plugin {
             let callbacks = Plugin.deactivateEventListeners.get(eventName)
             if (!callbacks) {
                 Plugin.deactivateEventListeners.set(eventName, (callbacks = new Set()))
-                this.document.view.listen(eventName, (e:any) => {
+                const remove = this.document.view.listen(eventName, (e:any) => {
                     for(let callback of callbacks!) {
                         callback(e)
                     }
                 })
+                this.removeListenerHandles.add(remove)
             }
 
             callbacks.add((e: unknown) => {

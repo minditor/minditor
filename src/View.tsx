@@ -6,7 +6,7 @@ import {
     DocNode,
     DocNodeFragment,
     DocumentContent,
-    EmitData,
+    EmitData, EVENT_ANY,
     FormatData,
     Inline,
     InlineComponent,
@@ -77,7 +77,6 @@ function preventPatchIfUseDefaultBehavior(target: DocumentContentView, propertyK
         if (!this.usingDefaultBehavior) {
             originalMethod.apply(this, args)
         }
-        this.debugJSONContent(this.doc.toJSON())
     };
 
     return descriptor
@@ -94,20 +93,19 @@ export class DocumentContentView extends EventDelegator{
     public attached = false
     public componentsToCallOnMount =  new Set<Component|InlineComponent>()
     public componentsToCallOnUnmount =  new Set<Component|InlineComponent>()
-    public debugJSONContent = atom<BlockData>(null)
 
-    constructor(public doc: DocumentContent, globalState: GlobalState, history?: DocumentContentHistory ) {
+    constructor(public content: DocumentContent, globalState: GlobalState, history?: DocumentContentHistory ) {
         super()
         this.globalState = globalState
         this.history = history
         this.state = new ReactiveViewState(this)
 
-        this.doc.on('append', this.patchAppend.bind(this))
-        this.doc.on('prepend', this.patchPrepend.bind(this))
-        this.doc.on('replace', this.patchReplace.bind(this))
-        this.doc.on('deleteBetween', this.patchDeleteBetween.bind(this))
-        this.doc.on('updateText', this.patchUpdateText.bind(this))
-        this.doc.on('formatText', this.patchFormatText.bind(this))
+        this.content.on('append', this.patchAppend.bind(this))
+        this.content.on('prepend', this.patchPrepend.bind(this))
+        this.content.on('replace', this.patchReplace.bind(this))
+        this.content.on('deleteBetween', this.patchDeleteBetween.bind(this))
+        this.content.on('updateText', this.patchUpdateText.bind(this))
+        this.content.on('formatText', this.patchFormatText.bind(this))
     }
     renderDocNodeOrFragment(docNode: DocNode|DocNodeFragment) {
         let element = this.docNodeToElement.get(docNode)
@@ -258,16 +256,16 @@ export class DocumentContentView extends EventDelegator{
         // 1. 先更新大的 block 和 inline 结构
         if (range.isInSameBlock ) {
             if (!range.isInSameInline&& !range.isSibling) {
-                this.doc.deleteBetween(startText.next!, endText, startBlock)
+                this.content.deleteBetween(startText.next!, endText, startBlock)
             }
         } else {
             // 跨越 block 的输入
             if (startText.next) {
-                this.doc.deleteBetween(startText.next!, null, startBlock)
+                this.content.deleteBetween(startText.next!, null, startBlock)
             }
-            const remainEndFragment = this.doc.deleteBetween(endText, null, endBlock)
+            const remainEndFragment = this.content.deleteBetween(endText, null, endBlock)
             // 删除中间和结尾的的 block
-            this.doc.deleteBetween(startBlock.next!, endBlock.next, this.doc)
+            this.content.deleteBetween(startBlock.next!, endBlock.next, this.content)
 
             // 如果有剩余的 fragment，插入到 startBlock 后面
             // TODO 还要判断是不是 endText 也删完了。
@@ -276,8 +274,8 @@ export class DocumentContentView extends EventDelegator{
                     this.append(remainEndFragment, startText, startBlock)
                 } else {
                     // 创建个新的 para
-                    const newPara = this.doc.createParagraph(remainEndFragment)
-                    this.append(newPara, startBlock, this.doc)
+                    const newPara = this.content.createParagraph(remainEndFragment)
+                    this.append(newPara, startBlock, this.content)
                 }
             }
         }
@@ -401,7 +399,7 @@ export class DocumentContentView extends EventDelegator{
                 endCursorText = range.startText.prev()! as Text
                 endCursorOffset = range.startText.prev()!.data.value.length
                 // 头也没有文字了，删除掉
-                this.doc.deleteBetween(range.startText, range.startText.next, range.startBlock)
+                this.content.deleteBetween(range.startText, range.startText.next, range.startBlock)
             }
         }
 
@@ -436,7 +434,7 @@ export class DocumentContentView extends EventDelegator{
             if ((startBlock.constructor as typeof Block).unwrap) {
                 // 1.2.1 这个 block 有 unwrap 方法，那么调用 unwrap 方法
                 // heading/listItem 之类的在头部删除会变成 paragraph
-                const newPara = (startBlock.constructor as typeof Block).unwrap!(this.doc, startBlock)
+                const newPara = (startBlock.constructor as typeof Block).unwrap!(this.content, startBlock)
                 endCursorBlock = newPara
                 endCursorText = newPara.firstChild as Text
                 endCursorOffset = 0
@@ -450,14 +448,14 @@ export class DocumentContentView extends EventDelegator{
 
             // 2.3. 如果上一个是 Component
             if (startBlock.prev() instanceof Component) {
-                this.doc.deleteBetween(startBlock.prev()!, startBlock, this.doc)
+                this.content.deleteBetween(startBlock.prev()!, startBlock, this.content)
                 return { shouldSetRange: true, range }
             }
 
             // 2.4. 如果上一个段落是空段落。
             if (startBlock.prev() instanceof Paragraph && (startBlock.prev() as Paragraph).isEmpty) {
                 // 删除上一个空的 Para
-                this.doc.deleteBetween(startBlock.prev()!, startBlock, this.doc)
+                this.content.deleteBetween(startBlock.prev()!, startBlock, this.content)
                 return { shouldSetRange: true, range }
             }
 
@@ -470,8 +468,8 @@ export class DocumentContentView extends EventDelegator{
             // 2.5.2. 自己是普通的 block，都是可以兼容的。那么把自己的内容移到上一个段落
             if(startBlock.prev()){
                 const previousBlock = startBlock.prev()!
-                this.doc.deleteBetween(startBlock, startBlock.next, this.doc)
-                const inlineFrag = this.doc.deleteBetween(startBlock.firstChild!, null, startBlock)
+                this.content.deleteBetween(startBlock, startBlock.next, this.content)
+                const inlineFrag = this.content.deleteBetween(startBlock.firstChild!, null, startBlock)
                 const previousBlockLastChild = previousBlock.lastChild!
                 this.append(inlineFrag, previousBlock.lastChild!, previousBlock)
                 endCursorBlock = previousBlock
@@ -488,7 +486,7 @@ export class DocumentContentView extends EventDelegator{
         //   自身一定是 Text，InlineComponent 的内部 focus 我们不管理。
         assert(startText.prev() instanceof InlineComponent, 'prev should only be InlineComponent when startOffset === 0')
         // 上一个节点是 InlineComponent，直接删除
-        this.doc.deleteBetween(startText.prev()!, startText, startBlock)
+        this.content.deleteBetween(startText.prev()!, startText, startBlock)
         // 转移到上一个 Text 结尾
         const nextRange = startText.prev()! instanceof Text ?
             DocRange.cursor(startBlock, startText.prev()! as Text, startText.prev()!.data.value.length) :
@@ -536,7 +534,7 @@ export class DocumentContentView extends EventDelegator{
             const newPara = this.splitByInline(startBlock, startText.next)
             // 处理 startText 也变空的问题
             if(startText.data.value.length === 0 && startText.prev()) {
-                this.doc.deleteBetween(startText, startText.next, startBlock)
+                this.content.deleteBetween(startText, startText.next, startBlock)
             }
             endCursorBlock = newPara
             endCursorText = newPara.firstChild as Text
@@ -582,7 +580,7 @@ export class DocumentContentView extends EventDelegator{
                 // safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
                 onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))}
             >
-                {this.renderBlockList(this.doc.firstChild!)}
+                {this.renderBlockList(this.content.firstChild!)}
             </div>
         ) as unknown as HTMLElement
 
@@ -597,7 +595,6 @@ export class DocumentContentView extends EventDelegator{
         this.callComponentOnMount()
     }
     callComponentOnMount() {
-        console.log(111)
         this.componentsToCallOnMount.forEach(c => c.onMount())
         this.componentsToCallOnMount.clear()
     }
@@ -708,7 +705,7 @@ export class DocumentContentView extends EventDelegator{
                     this.splitText(toFormatInline, endOffset - startOffset, startBlock)
                 }
 
-                this.doc.formatText(formatData, toFormatInline)
+                this.content.formatText(formatData, toFormatInline)
                 lastFormattedText = toFormatInline
                 firstFormattedText = toFormatInline
             } else {
@@ -724,7 +721,7 @@ export class DocumentContentView extends EventDelegator{
                 let currentInline: Inline = startInline
                 while (currentInline && currentInline !== endInline) {
                     if (currentInline instanceof Text) {
-                        this.doc.formatText(formatData, currentInline )
+                        this.content.formatText(formatData, currentInline )
                         lastFormattedText = currentInline
                     }
                     currentInline = currentInline.next!
@@ -808,9 +805,9 @@ export class DocumentContentView extends EventDelegator{
             endCursorBlock = startBlock
             endCursorText = startText.prev()! as Text
             endCursorOffset = Infinity
-            this.doc.deleteBetween(startText, startText.next, startBlock)
+            this.content.deleteBetween(startText, startText.next, startBlock)
         } else {
-            this.doc.updateText(startText.data.value.slice(0, startOffset - 1) + startText.data.value.slice( startOffset), startText)
+            this.content.updateText(startText.data.value.slice(0, startOffset - 1) + startText.data.value.slice( startOffset), startText)
         }
 
         return DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)
@@ -824,19 +821,19 @@ export class DocumentContentView extends EventDelegator{
             const Type = block.constructor as typeof Block
             newBlock = Type.createEmpty()
         } else {
-            newBlock = this.doc.createParagraph()
+            newBlock = this.content.createParagraph()
         }
 
 
         // cursor 在段尾，产生一个新的空的 para
         if (!inline) {
-            this.append(newBlock, block, this.doc)
+            this.append(newBlock, block, this.content)
             return newBlock
         }
 
         // cursor 在段首，上面产生一个新的 Para
         if (!inline.prev()) {
-            this.prepend(newBlock, block, this.doc)
+            this.prepend(newBlock, block, this.content)
             return block
         }
 
@@ -844,24 +841,24 @@ export class DocumentContentView extends EventDelegator{
         const inlineFrag = this.deleteBetween(inline, null, block)
         this.replace(inlineFrag, newBlock.firstChild!, newBlock)
 
-        this.append(newBlock, block, this.doc)
+        this.append(newBlock, block, this.content)
         return newBlock
     }
     splitText(text:Text, offset: number, block: Block) {
         const originValue = text.data.value
-        this.doc.updateText(originValue.slice(0, offset), text)
+        this.content.updateText(originValue.slice(0, offset), text)
         const splitInline = new Text({value: originValue.slice(offset)})
         this.append(splitInline, text, block)
         return splitInline
     }
     // 相比 content 的 api，下面 View 的同名 api 会自动检查是否需要在头部尾部增加 ZWSP 或者空 Para。
     append(...args: Parameters<DocumentContent["append"]>) {
-        const result = this.doc.append(...args)
+        const result = this.content.append(...args)
         if (!result.next) {
             if (result instanceof Component) {
-                this.doc.append(this.doc.createParagraph(), result, this.doc)
+                this.content.append(this.content.createParagraph(), result, this.content)
             } else if (result instanceof InlineComponent) {
-                this.doc.append(this.doc.createText(), result, args[2])
+                this.content.append(this.content.createText(), result, args[2])
             }
         }
 
@@ -869,27 +866,27 @@ export class DocumentContentView extends EventDelegator{
         return result
     }
     prepend(...args: Parameters<DocumentContent["prepend"]>) {
-        const result = this.doc.prepend(...args)
+        const result = this.content.prepend(...args)
         if (result instanceof InlineComponent && !result.prev()) {
-            this.doc.prepend(this.doc.createText(), result, args[2])
+            this.content.prepend(this.content.createText(), result, args[2])
         }
         return result
     }
     replace(...args: Parameters<DocumentContent["replace"]>) {
-        const result = this.doc.replace(...args)
+        const result = this.content.replace(...args)
         const newItem = args[0]
         if (newItem instanceof InlineComponent ) {
             if (!newItem.prev()) {
-                this.doc.prepend(this.doc.createText(), newItem, args[2])
+                this.content.prepend(this.content.createText(), newItem, args[2])
             }
 
             if (!newItem.next) {
-                this.doc.append(this.doc.createText(), newItem, args[2]!)
+                this.content.append(this.content.createText(), newItem, args[2]!)
             }
         } else if (newItem instanceof Component) {
 
             if (!newItem.next) {
-                this.doc.append(this.doc.createParagraph(), newItem, args[2]!)
+                this.content.append(this.content.createParagraph(), newItem, args[2]!)
             }
         }
         return result
@@ -897,13 +894,16 @@ export class DocumentContentView extends EventDelegator{
     // 下面三个只是为了保持接口一致，实际上只是转发调用。
     deleteBetween(...args: Parameters<DocumentContent["deleteBetween"]>) {
         // FIXME deleteBetween 之后也要考虑是否需要增加 ZWSP 和空 Para
-        return this.doc.deleteBetween(...args)
+        return this.content.deleteBetween(...args)
     }
     updateText(...args: Parameters<DocumentContent["updateText"]>) {
-        return this.doc.updateText(...args)
+        return this.content.updateText(...args)
     }
     formatText(...args: Parameters<DocumentContent["formatText"]>) {
-        return this.doc.formatText(...args)
+        return this.content.formatText(...args)
+    }
+    destroy() {
+        // TODO 销毁 ReactiveState 中的监听？
     }
 }
 

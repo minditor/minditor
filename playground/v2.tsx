@@ -36,26 +36,14 @@ const searchObj = Object.fromEntries(
 // const { data } = await import(`@tests/data/${searchObj.data || 'singlePara'}`)
 // const { data } = await import(`../../tests/server/data/${'singlePara'}`)
 
-const doc = new Document(
-    document.getElementById('root')!,
-    // data.singlePara,
-    // data.multiPara,
-    // data.multiSection,
-    // data.singleSection,
-    // data.singleList,
-    // data.nestedList,
-    data.misc,
-    {Paragraph, Section, Text, ListItem, Image: ImageBlock, Code},
-    [
-        ...markdownPlugins,
-        createRangeTool(defaultFormatWidgets),
-        createSuggestionTool('/', true, defaultBlockSuggestionWidgets.concat(
-            ImageSuggestionWidget,
-            CodeSuggestionWidget
-        )),
-        BlockToolPlugin
-    ]
-)
+const doc = new Document(document.getElementById('root')!, data.misc, {
+    Paragraph,
+    Section,
+    Text,
+    ListItem,
+    Image: ImageBlock,
+    Code
+})
 
 doc.render()
 

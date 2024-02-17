@@ -63,7 +63,7 @@ export class Code extends Component {
     toJSON() {
         return {
             type: 'Code',
-            value: this.element!.innerText,
+            value: this.element?.innerText ?? this.data.value,
             language: this.data.language
         }
     }

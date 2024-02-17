@@ -8,60 +8,19 @@
       outline: none;
     }
 
-    [data-type-list] {
-      margin: 10px 0;
-    }
-
-    [data-type-listitem] {
-      padding-left: 20px;
-      position: relative;
-    }
-
-    [data-type-listitem]:before {
-      content: ' ';
-      position: absolute;
-      margin-left: -10px;
-      margin-top: 10px;
-      display: inline-block;
-      width: 4px;
-      height: 4px;
-      background: #37a8f8;
-    }
 
     #root {
-      border: 1px #333 solid;
-      margin: 0 0 0 200px;
-      min-width: 300px;
-      /*height: 100px;*/
-      /*overflow-y: scroll;*/
-      flex-grow: 1;
-      flex-shrink: 0;
-      padding: 10px;
+      /* 必须提供 position 后面 pluginContainer 要用于定位*/
       position: relative;
-      /* CAUTION 用来控制空格正确显示的*/
-      white-space: pre-wrap;
-    }
-    #plugin-root{
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 0;
-        height: 0;
-        overflow: visible;
-        z-index: 1;
-    }
-    #debug-root {
       border: 1px #333 solid;
-      /*width: 500px;*/
-      margin: 0 auto;
-      /*height: 100px;*/
-      overflow-y: scroll;
-      flex-grow: 2;
-      flex-shrink: 0;
-      padding: 10px;
+      height: 100%;
+      /* 留给旁边 blockTool 的*/
+      margin-left: 200px;
+      overflow: visible;
+      width: 100%;
+      box-sizing: border-box;
     }
+
 
     html, body {
       height: 100%;
@@ -80,10 +39,7 @@
 </head>
 <body>
 <div id="root">
-  <div id="doc-root"></div>
-  <div id="plugin-root"></div>
 </div>
-<div id="debug-root"></div>
 <script type="module" src="/index.tsx"></script>
 </body>
 </html>

@@ -35,6 +35,7 @@
     "editor.tsx",
     "tests/**/*",
     "index.tsx",
+    "index2.tsx",
     "readme.tsx",
     "__test__/**/*",
   ],
