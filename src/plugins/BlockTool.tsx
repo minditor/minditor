@@ -7,14 +7,14 @@ import {ImageBlock} from "../components/Image.js";
 
 class BlockToolPlugin extends Plugin{
     public static displayName = `BlockTool`
-    public items: BlockToolItem[] = []
+    public items: BlockToolWidget[] = []
 }
 
-export function createBlockTool(BlockToolItems: Array<typeof BlockToolItem>){
+export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>){
     return class OneBlockToolPlugin extends BlockToolPlugin{
         constructor(doc:Document) {
             super(doc);
-            this.items = BlockToolItems.map(Item => new Item(doc, this))
+            this.items = BlockToolWidgets.map(Item => new Item(doc, this))
         }
         render() {
             const hover = atom(false)
@@ -57,7 +57,7 @@ export function createBlockTool(BlockToolItems: Array<typeof BlockToolItem>){
 
 
 
-export class BlockToolItem {
+export class BlockToolWidget {
     constructor(public document: Document, public blockTool: BlockToolPlugin) {
     }
     render(): any {
@@ -65,7 +65,7 @@ export class BlockToolItem {
     }
 }
 
-export class InsertBlockToolItem extends BlockToolItem {
+export class InsertWidget extends BlockToolWidget {
     public static displayName = `InsertBlockToolItem`
     insertImage = () => {
         this.document.history.openPacket(this.document.view.state.selectionRange())

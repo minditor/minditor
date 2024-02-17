@@ -16,13 +16,18 @@ export class RangeWidget {
     }
 }
 
-export function createRangeTool(RangeWidgetClasses: (typeof RangeWidget)[] ) {
+class RangeTool extends Plugin{
+    public rangeWidgets: RangeWidget[] = []
+}
 
-    return class RangeTool extends Plugin{
+
+export function createRangeTool(RangeWidgets: (typeof RangeWidget)[] ) {
+
+    return class OneRangeTool extends RangeTool{
         public rangeWidgets: RangeWidget[]
         constructor(public document: Document) {
             super(document);
-            this.rangeWidgets = RangeWidgetClasses.map(RangeWidgetClass => {
+            this.rangeWidgets = RangeWidgets.map(RangeWidgetClass => {
                 return new RangeWidgetClass(this.document)
             })
         }

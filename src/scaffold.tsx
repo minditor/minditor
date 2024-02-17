@@ -31,15 +31,15 @@ function DebugApp({  doc }: {doc: Document}) {
     const contentData = atom(doc.content.toJSON())
     doc.content.on(EVENT_ANY, () => contentData(doc.content.toJSON()))
     return (
-        <div style={{display: 'flex', height: '100%'}}>
-            <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', height: '100%', fontSize:11}}>
+        <div style={{display: 'flex', maxHeight: '100%'}}>
+            <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:11}}>
                 <pre>
                 <code>
                 {() => JSON.stringify(contentData(), null, 4)}
                 </code>
             </pre>
             </div>
-            <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', height: '100%', fontSize:12}}>
+            <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:12}}>
                 <div>
                     <button onClick={() => doc.history.undo()}>undo</button>
                     <button onClick={() => doc.history.redo()}>redo</button>
@@ -87,19 +87,25 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     let docScrollContainer
     let pluginContainer
 
+    // CAUTION 为了实现 doc-scroll-container 在外层控了高度的时候不超出高度，没控制高度的时候能自由增长，必须用 flex 的这个方案。
+    container.style.display = 'flex'
+    container.style.flexDirection = 'column'
+
+    // TODO 检查父元素的 overflow 设置会不会到值 plugin 显示不出来。
+
     const docApp = (
         <>
             {docScrollContainer =
-                <div className="doc-scroll-container" style={{height: 'inherit', overflowY: 'scroll'}}/>}
-            {pluginContainer = <div className="plugin-container"
-                                    style={{position: 'absolute', left: 0, top: 0, overflow: 'visible'}}/>}
+                <div className="doc-scroll-container" style={{flexGrow: 1, overflowY: 'scroll'}}/>}
+            {pluginContainer =
+                <div className="plugin-container" style={{position: 'absolute', left: 0, top: 0, height:0, width:0, overflow: 'visible'}}/>}
         </>
     )
 
     const doc = new Document(docScrollContainer as unknown as HTMLElement, docConfig.data, docConfig.types, docConfig.globalState)
 
     const appElement = config?.debug ? (
-        <div style={{display:"flex", height:'inherit'}}>
+        <div style={{display:"flex", height:'100%', maxHeight:'100%'}}>
             {docApp}
             <DebugApp doc={doc} />
         </div>
