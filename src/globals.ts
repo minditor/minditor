@@ -1,11 +1,17 @@
+export type ExtendedDocument = {
+    addEventListener(...args: Parameters<Document["addEventListener"]>): () => void
+}
+
 export type GlobalState = {
     readonly isMouseDown: boolean,
     readonly hasCursor: boolean,
     readonly selection: Selection|null,
     readonly selectionRange: Range| null,
     readonly rangeBeforeComposition:Range|null
-    onSelectionChange: (callback: SelectionChangeCallback) => void
+    readonly document: ExtendedDocument
+    onSelectionChange: (callback: SelectionChangeCallback) => () => void
 }
+
 
 export type SelectionChangeCallback = (e: Event) => any
 
@@ -74,6 +80,24 @@ export const state:GlobalState = (function() {
         },
         onSelectionChange(callback: SelectionChangeCallback) {
             callbacks.add(callback)
+            return () => {
+                callbacks.delete(callback)
+            }
+        },
+        get document() {
+            return new Proxy(document, {
+                get (target, p, receiver) {
+                    if (p === 'addEventListener') {
+                        return (...args: Parameters<Document["addEventListener"]>) => {
+                            target.addEventListener(...args)
+                            return () => {
+                                target.removeEventListener(...args)
+                            }
+                        }
+                    }
+                    return Reflect.get(target, p, receiver)
+                }
+            }) as unknown as ExtendedDocument
         }
 
     }
@@ -81,7 +105,6 @@ export const state:GlobalState = (function() {
 
 export type GlobalActions = {
     setSelection: (startContainer: Node, startOffset: number, endContainer?: Node, endOffset?: number) => void,
-
 }
 
 export const actions: GlobalActions = {

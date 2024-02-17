@@ -1,6 +1,6 @@
 /* @jsx createElement*/
 import {createElementNS as createElement} from "axii";
-export default function({ size }) {
+export default function({ size }: {size: number}) {
     return (
         <svg width={size} height={size} viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
             <g fill="none" fill-rule="evenodd" stroke="#000" stroke-linecap="round" stroke-linejoin="round" stroke-width="4" clip-rule="evenodd">

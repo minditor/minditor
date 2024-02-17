@@ -18,26 +18,25 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
         }
         render() {
             const hover = atom(false)
-            const { lastMouseEnteredBlock, lastActiveDevice } = this.document.view.state
+            const { lastMouseEnteredBlock, lastActiveDeviceType } = this.document.view.state
 
             const style = () => {
                 // range 看不见了，display 要 none
-                console.log(lastMouseEnteredBlock(), lastActiveDevice())
-                if (!hover() &&( !lastMouseEnteredBlock() || lastActiveDevice() !== 'mouse')) return { display: 'none'}
+                console.log(lastMouseEnteredBlock(), lastActiveDeviceType())
+                if (!hover() &&( !lastMouseEnteredBlock() || lastActiveDeviceType() !== 'mouse')) return { display: 'none'}
                 // if (!hover() &&( !lastMouseEnteredBlock())) return { display: 'none'}
-                // const boundaryRect = boundaryContainer!.getBoundingClientRect()
+                const boundaryRect = this.document.view.getContainerBoundingRect()!
                 const blockUnitRect = this.document.view.getBoundingRectOfBlock(lastMouseEnteredBlock()!)
+
 
                 return {
                     display: 'block',
-                    position: 'absolute', // CAUTION 注意 rangePosition 拿到的是相对于 modal boundary 的，所以我们这里也是相对于 modal boundary 的 absolute
-                    // top: visibleRangeRect().top - boundaryRect.top + boundaryContainer!.scrollTop -50,
-                    top: blockUnitRect.top,
-                    // left: visibleRangeRect().left - boundaryRect.left,
+                    // plugin container 确保了自己是相对于 container 定位的，所以这里可以用 absolute。
+                    position: 'absolute',
+                    // top: blockUnitRect.top,
+                    top: blockUnitRect.top - boundaryRect.top,
                     right: '100%',
-                    marginRight: -1,
-                    // left: 0,
-                    // marginLeft: '-100%',
+                    marginRight: 10,
                     padding: 10,
                     borderRadius: 4,
                     background: '#fff',
@@ -82,7 +81,7 @@ export class InsertWidget extends BlockToolWidget {
 
     }
     render() {
-        const { lastMouseEnteredBlock, lastActiveDevice } = this.document.view.state
+        const { lastMouseEnteredBlock, lastActiveDeviceType } = this.document.view.state
 
         return () => {
 

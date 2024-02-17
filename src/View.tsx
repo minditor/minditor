@@ -607,6 +607,9 @@ export class DocumentContentView extends EventDelegator{
     get boundaryContainer() {
         return this.element?.parentElement
     }
+    getContainerBoundingRect() {
+        return this.boundaryContainer?.getBoundingClientRect()
+    }
 
     // deleteRangeForComposition 是 replace，要允许 allowOffset0
     createDocRange(range: Range){

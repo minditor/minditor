@@ -1,4 +1,4 @@
-import {atom, Atom} from 'axii'
+import {atom, Atom, atomComputed, destroyComputed} from 'axii'
 import {idleThrottle, nextJob} from "./util";
 import {Block, DocNode} from "./DocumentContent.js";
 import {CONTENT_RANGE_CHANGE, DocumentContentView} from "./View";
@@ -11,177 +11,93 @@ type Rect = {
     bottom: number
 }
 
-
-// CAUTION 默认range 头和尾一定是在同一个 scroll container 中，不存在 头有 scroll，尾却没有的情况
-
-function buildThresholdList(numSteps = 100) {
-    let thresholds: number[] = [];
-
-    for (let i=1.0; i<=numSteps; i++) {
-        let ratio = i/numSteps;
-        thresholds.push(ratio);
-    }
-
-    thresholds.push(0);
-    return thresholds;
+type DeviceInfo = {
+    type: 'mouse'|'keyboard',
+    key: string,
+    top: number,
+    left: number
 }
-
-function isPathHasScroll(start: HTMLElement, ancestor: HTMLElement) {
-    let pointer: HTMLElement|null = start
-    let result = false
-    while(pointer && pointer !== ancestor) {
-        if (pointer.scrollHeight > pointer.clientHeight || pointer.scrollWidth > pointer.clientWidth) {
-            result = true
-            break
-        } else {
-            pointer = pointer.parentElement
-        }
-    }
-    return result
-}
-
-function findClosestElement(target: Element|Node) : HTMLElement {
-    return (target instanceof HTMLElement ? target : target.parentElement)  as HTMLElement
-}
-
-
-
-function getRectIntersecting(rectA: Rect, rectB: Rect, offset: number) {
-    const rect = {
-        left : Math.max(rectA.left, rectB.left - offset),
-        top:Math.max(rectA.top, rectB.top - offset),
-        right: Math.min(rectA.right, rectB.right + offset),
-        bottom: Math.min(rectA.bottom, rectB.bottom + offset),
-        width: 0,
-        height: 0,
-    }
-
-    if (rect.left <= rect.right && rect.top <= rect.bottom) {
-        rect.width = rect.right - rect.left
-        rect.height = rect.bottom - rect.top
-        return rect
-    } else {
-        console.warn('no intersecting rect', rectA, rectB)
-    }
-}
-
-// CAUTION 第三参数 offset 是用来修正有时候 intersectingRect 不准确的问题。非常重要
-function getRangeRectsIntersecting(rects: Rect[], targetRect: Rect, offset = 30) {
-    // CAUTION 这里为了简化计算，所以直接算出一个 combinedRect
-    const head = rects[0]
-    const tail = rects.at(-1)!
-
-    const combinedRect = {
-        top: head.top,
-        left: Math.min(tail.left, head.left),
-        right: Math.max(head.right, tail.right),
-        bottom: tail.bottom,
-    }
-
-
-    return getRectIntersecting(combinedRect, targetRect, offset)
-}
-
 
 export class ReactiveViewState {
-    public lastActiveDevice: Atom<'mouse'|'keyboard'|null> = atom(null)
+    public lastActiveDeviceType: Atom<'mouse'|'keyboard'|null> = atom(null)
+    public lastUsedDevice: Atom<DeviceInfo|null> = atom(null)
     public mousePosition: Atom<{clientX: number, clientY: number}|null> = atom(null)
-    public fixedMousePosition: {clientX: number, clientY: number}|null = null
     public selectionRange: Atom<DocRange|null> = atom(null)
     public rangeBeforeComposition: Atom<DocRange|null> = atom(null)
-    public mouseEnteredBlockUnit: Atom<HTMLElement|null> = atom(null)
     public lastMouseEnteredBlock: Atom<Block|null> = atom(null)
-    public visibleRangeRect: Atom<{top:number, left: number, height:number, width: number}|null> = atom(null)
+    public visibleRangeRect!: Atom<{top:number, left: number, height:number, width: number}|null>
+    public destroyHandles: Set<(() => any)|void>
     constructor(public view: DocumentContentView) {
-        this.activateUserMousePosition()
-        this.activateDocSelectionRange()
-        this.activateLastActiveDevice()
-        this.activateMouseEnteredBlockNode()
-        this.activateVisibleRangeRect()
-        this.activateRangeBeforeComposition()
+        this.destroyHandles = new Set()
+        this.destroyHandles.add(this.activateUserMousePosition())
+        this.destroyHandles.add(this.activateDocSelectionRange())
+        this.destroyHandles.add(this.activateLastActiveDevice())
+        this.destroyHandles.add(this.activateLastUsedDevice())
+        this.destroyHandles.add(this.activateMouseEnteredBlockNode())
+        this.destroyHandles.add(this.activateVisibleRangeRect())
+        this.destroyHandles.add(this.activateRangeBeforeComposition())
+
     }
     activateVisibleRangeRect() {
-        let updateRangeClientRectCallback: EventListenerOrEventListenerObject
-        let stopListenSelectionChange: () => void
-        const globalState = this.view.globalState
-
-        this.view.listen('bindElement', (e: CustomEvent) => {
-            const { element: docElement } = e.detail
-            if (!window.IntersectionObserver) {
-                console.warn('IntersectionObserver not supported')
-                return
-            }
-            // doc 本身的显隐藏回调
-            const observer = new IntersectionObserver(([docEntry]) => {
-                const boundaryContainer = this.view.boundaryContainer!
-
-                if (stopListenSelectionChange) stopListenSelectionChange()
-                if (updateRangeClientRectCallback) boundaryContainer.removeEventListener('scroll', updateRangeClientRectCallback)
-
-                // FIXME 保证一定要产生监听？不然会出现时有时没有的情况，改成这样了还是有 bug。还是出现了 rsecting @ ReactiveS
-                if(!docEntry.isIntersecting) {
-                    this.visibleRangeRect(null)
-                } else {
-                    stopListenSelectionChange = this.view.listen(CONTENT_RANGE_CHANGE, () => {
-                        if (updateRangeClientRectCallback) boundaryContainer.removeEventListener('scroll', updateRangeClientRectCallback)
-
-                        if (!globalState.selectionRange) {
-                            return
-                        }
-
-                        const range = globalState.selectionRange!
-                        if (range.collapsed) {
-                            this.visibleRangeRect(null)
-                            return
-                        }
-
-                        // 有 range 才监听 scroll
-                        updateRangeClientRectCallback = idleThrottle( () => {
-                            this.visibleRangeRect(getRangeRectsIntersecting(Array.from(range.getClientRects()), docEntry.intersectionRect))
-                        }, 100)
-
-                        // 存在 scroll 要就监听 scroll
-                        if (isPathHasScroll(findClosestElement(range.startContainer), boundaryContainer)) {
-                            boundaryContainer.addEventListener('scroll', updateRangeClientRectCallback, true)
-                        }
-
-                        // 立刻更新一下。一定要 nextJob，不然当前无限循环了
-                        nextJob(updateRangeClientRectCallback)
-                    })
-                }
-            }, {
-                root: null,
-                rootMargin: "0px",
-                threshold: buildThresholdList()
-            } as IntersectionObserverInit);
-
-            observer.observe(docElement)
-
-            return () => {
-                observer.disconnect()
-            }
+        const lastScrollEvent = atom<Event>(null)
+        // 这里的 this.view.globalState.document.addEventListener 是改造过的。
+        const removeScrollListener = this.view.globalState.document.addEventListener('scroll', (event) => {
+            lastScrollEvent(event)
         })
+
+        // TODO 处理是否可见的问题？
+        this.visibleRangeRect = atomComputed(() => {
+            if (!this.selectionRange()) return null
+            // CAUTION 读一下，这样每次 scrollEvent 都会触发重新计算 range.getBoundingClientRect()
+            lastScrollEvent()
+
+            const range = this.view.globalState.selectionRange!
+            return range.getBoundingClientRect()
+        })
+
+        return () => {
+            removeScrollListener()
+            destroyComputed(this.visibleRangeRect)
+        }
     }
     activateLastActiveDevice() {
-        this.view.listen('mousemove', () => {
-            this.lastActiveDevice('mouse')
+        const removeMoveListener = this.view.listen('mousemove', idleThrottle((e: MouseEvent) => {
+            this.lastActiveDeviceType('mouse')
+        }))
+
+        const removeInputListener = this.view.listen('inputChar', (e: KeyboardEvent) => {
+            this.lastActiveDeviceType('keyboard')
         })
 
-        this.view.listen('inputChar', () => {
-            this.lastActiveDevice('keyboard')
+        return () => {
+            removeMoveListener()
+            removeInputListener()
+        }
+    }
+    activateLastUsedDevice() {
+        const removeMoveListener = this.view.listen('mouseup', (e: MouseEvent) => {
+            this.lastUsedDevice({type: 'mouse', key: '', top: e.clientY, left: e.clientX})
         })
+
+        const removeInputListener = this.view.listen('keyup', (e: KeyboardEvent) => {
+            this.lastUsedDevice({type: 'keyboard', key: e.key, top: 0, left: 0})
+        })
+
+        return () => {
+            removeMoveListener()
+            removeInputListener()
+        }
     }
     activateUserMousePosition() {
         const debouncedUpdateMousePosition = idleThrottle((e: MouseEvent) => {
             const {clientX, clientY} = e
             this.mousePosition({clientX, clientY})
-            this.fixedMousePosition = {clientX, clientY}
         }, 200)
 
-        this.view.listen('mousemove', debouncedUpdateMousePosition)
+        return this.view.listen('mousemove', debouncedUpdateMousePosition)
     }
     activateDocSelectionRange() {
-        this.view.globalState.onSelectionChange(() => {
+        return this.view.globalState.onSelectionChange(() => {
             if (this.view.element && this.view.element.contains(this.view.globalState.selectionRange?.commonAncestorContainer!) ) {
                 const range = this.view.globalState.selection!.rangeCount ? this.view.globalState.selection!.getRangeAt(0) : null
                 const docRange = range ? this.view.createDocRange(range) : null
@@ -191,7 +107,7 @@ export class ReactiveViewState {
     }
     lastRangeBeforeComposition: Range|undefined = undefined
     activateRangeBeforeComposition() {
-        this.view.globalState.onSelectionChange(() => {
+        return this.view.globalState.onSelectionChange(() => {
             if (this.view.element && this.view.element.contains(this.view.globalState.rangeBeforeComposition?.commonAncestorContainer!) ) {
 
                 const range = this.view.globalState.rangeBeforeComposition!
@@ -209,7 +125,7 @@ export class ReactiveViewState {
         })
     }
     activateMouseEnteredBlockNode() {
-        this.view.listen('block:mouseenter', (e: CustomEvent) => {
+        return this.view.listen('block:mouseenter', (e: CustomEvent) => {
             this.lastMouseEnteredBlock(this.view.elementToDocNode.get(e.target as HTMLElement) as Block)
         })
     }

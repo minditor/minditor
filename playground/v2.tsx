@@ -60,7 +60,7 @@ stateRoot.render(() => <div>
     </div>
     <div>
         <span>last active device:</span>
-        <span>{() => JSON.stringify(doc.view.state.lastActiveDevice())}</span>
+        <span>{() => JSON.stringify(doc.view.state.lastActiveDeviceType())}</span>
     </div>
 </div>)
 
