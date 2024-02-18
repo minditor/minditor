@@ -61,8 +61,7 @@ export class Index extends InlineComponent{
         destroyComputed(this.displayIndex)
     }
     render() {
-        // FIXME type
-        const rootElement = <span></span> as unknown as HTMLElement
+        const rootElement = <span></span> as HTMLElement
         createRoot(rootElement).render(() => this.displayIndex())
         return rootElement
     }

@@ -103,7 +103,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
         </>
     )
 
-    const doc = new Document(docScrollContainer as unknown as HTMLElement, docConfig.data, docConfig.types, docConfig.globalState)
+    const doc = new Document(docScrollContainer as HTMLElement, docConfig.data, docConfig.types, docConfig.globalState)
 
     const appElement = config?.debug ? (
         <div style={{flexGrow:1, display:"flex", minHeight: 0}}>

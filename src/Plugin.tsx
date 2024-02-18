@@ -31,7 +31,7 @@ export class Plugin {
     renderPluginView() {
         assert(!this.root, 'plugin view should only render once')
         // CAUTION 注意这里的 userSelect: 'none' 非常重要，防止了正文中触发的 selection change，以及对依赖于 selectionRange 的各种功能的破坏。
-        const element = <div style={{userSelect: 'none'}}/> as unknown as HTMLElement
+        const element = <div style={{userSelect: 'none'}}/>  as HTMLElement
         this.root = createRoot(element)
         this.root.render(this.render()!)
         return this

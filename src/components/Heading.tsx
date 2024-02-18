@@ -71,7 +71,7 @@ export class Heading extends Block {
     }
 
     render({children}: { children: any }) {
-        const indexContainer = <span contenteditable={false}></span> as unknown as HTMLElement
+        const indexContainer = <span contenteditable={false}></span> as HTMLElement
         this.indexRoot = createRoot(indexContainer)
         this.indexRoot.render(() => this.displayIndex())
         const Tag = `h${this.level()+1}`

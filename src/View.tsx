@@ -582,7 +582,7 @@ export class DocumentContentView extends EventDelegator{
             >
                 {this.renderBlockList(this.content.firstChild!)}
             </div>
-        ) as unknown as HTMLElement
+        ) as HTMLElement
 
         return this.element
     }

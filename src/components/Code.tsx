@@ -37,11 +37,11 @@ export class Code extends Component {
         }
     }
     // TODO language selection
-    render() : HTMLElement{
+    render(){
         this.element = <code
             contenteditable={true}
             dangerouslySetInnerHTML={this.getHighlightCode()}
-        ></code> as unknown as HTMLElement
+        ></code> as HTMLElement
 
         return <pre
             data-isolated
@@ -53,7 +53,7 @@ export class Code extends Component {
             }}
         >
             {this.element}
-        </pre> as unknown as HTMLElement
+        </pre>
     }
 }
 

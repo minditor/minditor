@@ -85,7 +85,7 @@ export class Code extends Component {
         })
     }
     render() : HTMLElement{
-        this.element = <div contenteditable={false} onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}/> as unknown as HTMLElement
+        this.element = <div contenteditable={false} onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}/>  as HTMLElement
         return this.element
     }
 }
