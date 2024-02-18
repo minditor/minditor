@@ -1,12 +1,12 @@
 import {Atom, atom, computed, createElement, createRoot, destroyComputed, reactive} from "axii";
-import {Block, DocumentContent, Text} from "../DocumentContent.js";
+import {Block, DocumentContent, Text, TextBasedBlock} from "../DocumentContent.js";
 
 type IndexData = {
     level: number,
     manualIndex?: number[],
 }
 
-export class OLItem extends Block {
+export class OLItem extends TextBasedBlock {
     static displayName = 'OLItem'
 
     static unwrap(doc: DocumentContent, block:Block) {
@@ -84,8 +84,9 @@ export class OLItem extends Block {
     }
 
     toJSON() {
+        const baseData = super.toJSON()
         return {
-            type: 'OLItem',
+            ...baseData,
             level: this.level(),
             manualIndex: this.manualIndex
         }

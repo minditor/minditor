@@ -13,4 +13,7 @@ export class InlineCode extends InlineComponent {
     render()  {
         return <span style={{display:'inline-block', background:'#eee', padding:'4px 8px'}}>{this.data.value}</span>
     }
+    toText() {
+        return this.data.value
+    }
 }

@@ -21,7 +21,7 @@ export class Document {
         public docNodeTypes: { [p: string]: typeof DocNode },
         public globalState: GlobalState = defaultGlobalState
     ) {
-        this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.children, docNodeTypes))
+        this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.children, docNodeTypes), docNodeTypes)
         this.history = new DocumentContentHistory(this)
         this.view = new DocumentContentView(this.content, globalState, this.history)
     }

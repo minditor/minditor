@@ -36,6 +36,9 @@ export class Code extends Component {
             language: Code.langAlias[this.data.language] || this.data.language
         }
     }
+    toText() {
+        return this.element!.innerText
+    }
     // TODO language selection
     render(){
         this.element = <code

@@ -1,7 +1,7 @@
 import {createElement} from "axii";
-import {Block, DocumentContent, Text} from "../DocumentContent.js";
+import {Block, DocumentContent, Text, TextBasedBlock} from "../DocumentContent.js";
 
-export class ULItem extends Block {
+export class ULItem extends TextBasedBlock {
     static displayName = 'ULItem'
 
     static unwrap(doc: DocumentContent, ulItem: ULItem) {
@@ -29,12 +29,5 @@ export class ULItem extends Block {
 
     render({children}: { children: any }) {
         return <div>{children}</div>
-    }
-
-    toJSON() {
-        return {
-            type: 'ULItem',
-            level: this.data.level
-        }
     }
 }

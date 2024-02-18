@@ -63,9 +63,12 @@ export class Code extends Component {
     toJSON() {
         return {
             type: 'Code',
-            value: this.element?.innerText ?? this.data.value,
+            value: this.editor?.state.doc.toString() ?? this.data.value,
             language: this.data.language
         }
+    }
+    toText() {
+        return this.editor?.state.doc.toString() ?? this.data.value
     }
     onMount() {
         console.log('code mirror mount')

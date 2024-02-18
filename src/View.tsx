@@ -1,4 +1,4 @@
-import {atom, createElement, eventAlias, onBackspaceKey, onEnterKey, onTabKey} from 'axii'
+import {atom, createElement, eventAlias, onBackspaceKey, onEnterKey, onTabKey, onKey} from 'axii'
 import {
     Block,
     BlockData,
@@ -562,6 +562,7 @@ export class DocumentContentView extends EventDelegator{
         // 重置 range
         return {shouldSetRange:true, range: new DocRange(currentRange.startBlock, firstFormattedText, 0, currentRange.endBlock, lastFormattedText, lastFormattedText.data.value.length)}
     }
+
     render() {
         this.element = (
             <div
@@ -579,7 +580,14 @@ export class DocumentContentView extends EventDelegator{
 
                     onNotComposing(onTabKey(this.changeLevel.bind(this))),
                     // 有 range 时的输入法开始处理，等同于先删除 range
+                    onNotComposing(onKey('a', {meta:true})(this.selectAll.bind(this))),
+                    // onNotComposing(onKey('x', {meta:true})(this.copy.bind(this))),
+                    // onNotComposing(onKey('c', {meta:true})(this.cut.bind(this))),
+                    onNotComposing(onKey('z', {meta:true})(this.undo.bind(this))),
                 ]}
+                onPaste={this.paste.bind(this)}
+                onCut={this.cut.bind(this)}
+                onCopy={this.copy.bind(this)}
                 onCompositionEndCapture={this.inputComposedData.bind(this)}
                 // safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
                 onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))}
@@ -673,6 +681,18 @@ export class DocumentContentView extends EventDelegator{
     /**
      * 下面是 Utils
      **/
+    selectAll(e: KeyboardEvent) {
+        e.stopPropagation()
+        e.preventDefault()
+        const { isInSameBlock, startBlock, startText, endText, isFullBlock } = this.state.selectionRange()!
+        if (!isInSameBlock || isFullBlock) {
+            // 选中全文
+            this.setRange(new DocRange(this.content.firstChild!, this.content.firstChild!.firstChild as Text, 0, this.content.lastChild!, this.content.lastChild!.lastChild as Text, Infinity))
+        } else {
+            // 选中完整的 block
+            this.setRange(new DocRange(startBlock, startBlock.firstChild as Text, 0, startBlock, startBlock.lastChild as Text, Infinity))
+        }
+    }
     setCursor(docNode: DocNode, offset: number) {
         // FIXME 没考虑 InlineComponent 和 Component
         const isNodeBlock = docNode instanceof Block
@@ -690,7 +710,9 @@ export class DocumentContentView extends EventDelegator{
     setRange(docRange: DocRange) {
         const startContainer = this.docNodeToElement.get(docRange.startText)!.firstChild!
         // CAUTION 注意这里，如果是空节点，会渲染出一个 ZWSP，要调整到这个后面，不然有的浏览器就回自动插入到上一元素的末尾。
-        const startOffset = docRange.startText.isEmpty ? 1 : docRange.startOffset
+        const startOffset = docRange.startText.isEmpty ?
+            1 :
+            (docRange.startOffset === Infinity ? docRange.startText.data.value.length : docRange.startOffset)
         const endOffset = docRange.endText.isEmpty ?
             1 :
             (docRange.endOffset === Infinity ? docRange.endText.data.value.length : docRange.endOffset)
@@ -773,6 +795,116 @@ export class DocumentContentView extends EventDelegator{
         }
         return [firstFormattedText!, lastFormattedText!]
 
+    }
+    @saveHistoryPacket
+    @setEndRange
+    paste(e: ClipboardEvent) {
+        // TODO 根据是否有 shift  key 来决定是粘贴纯文本还是格式化的内容。
+        e.preventDefault()
+
+        const range = this.state.selectionRange()!
+        const {startText, startBlock, isCollapsed, startOffset} = range
+
+        // 先清理完 selection
+        if (!isCollapsed) {
+            this.updateRange(range, '')
+        }
+        if (startOffset !== startText.data.value.length) {
+            this.splitText(startText, startOffset, startBlock)
+        }
+
+        // CAUTION 特别注意，由于上面对 range 进行了操作，所以下面始终只能使用 startText/startBlock，因为 endText/endBlock 很可能已经变了
+
+        if(e.clipboardData?.types.includes('text/miditor')){
+
+            const data = JSON.parse(e.clipboardData.getData('text/miditor')) as BlockData[]
+            if (data.length === 0) return
+            if (data.length === 1) {
+                // inline
+                const head = DocumentContent.createInlinesFromData(data[0].content, this.content.types)
+                const frag = new DocNodeFragment(head)
+                const lastInFrag = frag.tail as Text
+                this.append(frag, startText, startBlock)
+                return { shouldSetRange: true, range: DocRange.cursor(startBlock, lastInFrag, Infinity)}
+
+            } else {
+                const headParaFrag = new DocNodeFragment(DocumentContent.createInlinesFromData(data[0].content, this.content.types))
+                const endParaFrag = new DocNodeFragment(DocumentContent.createInlinesFromData(data.at(-1)!.content, this.content.types))
+                const middleBlockFrag = data.slice(1, -1).length ? new DocNodeFragment(DocumentContent.createBlocksFromData(data.slice(1, -1), this.content.types)) : null
+
+
+                let afterCursorFrag = startText.next ? this.content.deleteBetween(startText.next, null, startBlock) : null
+
+                // 1. 先处理头部的合并
+                if (startText.isEmpty) {
+                    //replace 掉这个空节点
+                    this.replace(headParaFrag, startText, startBlock)
+                }else {
+                    // append 到后面
+                    this.append(headParaFrag, startText, startBlock)
+                }
+
+                // 2. 处理结尾。创建新的 Para
+                const newPara = this.content.createParagraph(endParaFrag)
+                const lastInNewPara = newPara.lastChild as Text
+                this.append(newPara, startBlock, this.content)
+                if (afterCursorFrag) {
+                    this.append(afterCursorFrag, newPara.lastChild!, newPara)
+                }
+
+                // 3. 因为中间可能有 Component，我们用 append 的时候会自动在后面价格空的 Para。而这里不需要，因为一定有后面的 Para
+                if (middleBlockFrag) {
+                    this.append(middleBlockFrag, startBlock, this.content)
+                }
+
+                return { shouldSetRange: true, range: DocRange.cursor(newPara, lastInNewPara, Infinity)}
+            }
+
+
+
+        } else {
+            const range = this.state.selectionRange()!
+            const dataToPaste = e.clipboardData!.getData('text/plain')
+            this.updateRange(this.state.selectionRange()!, dataToPaste)
+            return {
+                shouldSetRange: true,
+                range: DocRange.cursor(range.startBlock, range.startText, range.startOffset + dataToPaste.length)
+            }
+        }
+        // TODO 解析  DOM 内容?
+        // const domparser = new DOMParser()
+        // const result = domparser.parseFromString(e.clipboardData!.getData('text/html'), 'text/html')
+        // console.log(result)
+
+    }
+    @saveHistoryPacket
+    @setEndRange
+    cut(e: ClipboardEvent) {
+        e.preventDefault()
+        const range = this.state.selectionRange()!
+        const rangeData = JSON.stringify(range.toJSON())
+        e.clipboardData!.setData('text/miditor', rangeData)
+        // 存一下纯文字版本？
+        e.clipboardData!.setData('text/plain', range.toText())
+
+        this.updateRange(this.state.selectionRange()!, '')
+        return {
+            shouldSetRange: true,
+            range: DocRange.cursor(range.startBlock, range.startText, range.startOffset)
+        }
+    }
+    copy(e: ClipboardEvent) {
+        e.preventDefault()
+        console.log('copy', e)
+        const range = this.state.selectionRange()!
+        const rangeData = JSON.stringify(range.toJSON())
+        e.clipboardData!.setData('text/miditor', rangeData)
+        // 存一下纯文字版本？
+        e.clipboardData!.setData('text/plain', range.toText())
+    }
+    undo(e: KeyboardEvent) {
+        e.preventDefault()
+        this.history?.undo()
     }
     findFirstTextFromElement(startContainer: Node): Text|undefined {
         let current = startContainer

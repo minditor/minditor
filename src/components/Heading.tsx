@@ -1,5 +1,5 @@
 import {Atom, atom, computed, createElement, createRoot, destroyComputed, reactive} from "axii";
-import {Block, DocumentContent} from "../DocumentContent.js";
+import {Block, DocumentContent, TextBasedBlock} from "../DocumentContent.js";
 
 
 type HeadingData = {
@@ -8,7 +8,7 @@ type HeadingData = {
     manualIndex?: number[],
 }
 
-export class Heading extends Block {
+export class Heading extends TextBasedBlock {
     static displayName = 'Heading'
 
     static unwrap(doc: DocumentContent, block: Block) {
@@ -80,8 +80,9 @@ export class Heading extends Block {
     }
 
     toJSON(): any {
+        const baseData = super.toJSON()
         return {
-            type: 'Heading',
+            ...baseData,
             level: this.level(),
             useIndex: this.useIndex(),
             manualIndex: this.manualIndex

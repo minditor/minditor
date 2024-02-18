@@ -50,7 +50,7 @@ export class DocNode {
 export class Block extends DocNode {
     static displayName = 'Block'
     // 在头部按 backspace 是否变成一个普通的 Paragraph
-    static unwrap?: (doc: DocumentContent, block: Block) => Block
+    static unwrap?: (doc: DocumentContent, block: any) => Block
     // 在 content 中间按回车的时候，是否应该分割成同样类型的新 Block，如果不是就默认创建 Paragraph。
     static splitAsSameType = false
     // 如果 splitAsSameType 为 true，就必须重写这个函数
@@ -68,6 +68,19 @@ export class Block extends DocNode {
             current = current.next
         }
         return current
+    }
+    toJSON() {
+        let content: InlineData[] = []
+        let current = this.firstChild
+        while (current) {
+            content.push(current.toJSON())
+            current = current.next
+        }
+        return {
+            ...this.data,
+            type: (this.constructor as typeof Block).displayName,
+            content
+        }
     }
 }
 
@@ -162,7 +175,9 @@ export class Text extends Inline {
     get isEmpty() {
         return this.data.value === ''
     }
-
+    toText()  {
+        return this.data.value
+    }
     toJSON() {
         return {
             type: 'Text',
@@ -171,21 +186,33 @@ export class Text extends Inline {
     }
 }
 
-export class Paragraph extends Block {
+
+export class TextBasedBlock extends Block {
+    toText() {
+        let content = ''
+        let current = this.firstChild
+        while (current) {
+            if (current instanceof Text) {
+                content += current.data.value
+            } else if( (current as Text).toText ){
+                content += (current as Text).toText()
+            } else {
+                // 忽略不能 toText 的
+            }
+            current = current.next
+        }
+        return content
+    }
+}
+
+export class Paragraph extends TextBasedBlock {
     static displayName = 'Paragraph'
 
     get isEmpty() {
         return this.firstChild instanceof Text && this.firstChild.isEmpty
     }
-
     render({children}: { children: any }) {
         return <p>{children}</p>
-    }
-
-    toJSON() {
-        return {
-            type: 'Paragraph',
-        }
     }
 }
 
@@ -197,7 +224,10 @@ export class DocumentContent extends EventEmitter {
             const BlockClass = docNodeTypes[docNodeData.type]! as typeof Block
             const docNode = new BlockClass(docNodeData)
 
-            docNode.firstChild = DocumentContent.createInlinesFromData(docNodeData.content, docNodeTypes)
+            if(docNodeData.content) {
+                // 如果不是 TextBasedBlock，就不会有 content，像 Code 等 Component，使用其他字段来存值的。
+                docNode.firstChild = DocumentContent.createInlinesFromData(docNodeData.content, docNodeTypes)
+            }
 
             if (!head) {
                 head = docNode
@@ -230,10 +260,10 @@ export class DocumentContent extends EventEmitter {
     }
 
     static fromData(jsonData: BlockData[], docNodeTypes: { [k: string]: typeof DocNode }) {
-        return new DocumentContent(DocumentContent.createBlocksFromData(jsonData, docNodeTypes))
+        return new DocumentContent(DocumentContent.createBlocksFromData(jsonData, docNodeTypes), docNodeTypes)
     }
 
-    constructor(public firstChild: Block) {
+    constructor(public firstChild: Block, public types: {[k:string]: typeof DocNode}) {
         super();
     }
 
@@ -392,16 +422,7 @@ export class DocumentContent extends EventEmitter {
         const result: BlockData[] = []
         let current = this.firstChild
         while (current) {
-            const inlineData: InlineData[] = []
-            let currentInline = current.firstChild
-            while (currentInline) {
-                inlineData.push(currentInline.toJSON())
-                currentInline = currentInline.next as Inline
-            }
-            result.push({
-                ...current.toJSON(),
-                content: inlineData
-            })
+            result.push(current.toJSON())
             current = current.next as Block
         }
         return result
