@@ -467,11 +467,15 @@ export class DocumentContentView extends EventDelegator{
 
             // 2.5.2. 自己是普通的 block，都是可以兼容的。那么把自己的内容移到上一个段落
             if(startBlock.prev()){
+                const isStartBlockEmptyPara = (startBlock instanceof Paragraph) &&  (startBlock as Paragraph).isEmpty
                 const previousBlock = startBlock.prev()!
                 this.content.deleteBetween(startBlock, startBlock.next, this.content)
                 const inlineFrag = this.content.deleteBetween(startBlock.firstChild!, null, startBlock)
                 const previousBlockLastChild = previousBlock.lastChild!
-                this.append(inlineFrag, previousBlock.lastChild!, previousBlock)
+                if(!isStartBlockEmptyPara){
+                    // 如果自己是 empty para，那么自己的 空 Text 不要插入到上面去
+                    this.append(inlineFrag, previousBlock.lastChild!, previousBlock)
+                }
                 endCursorBlock = previousBlock
                 endCursorText = previousBlockLastChild
                 endCursorOffset = previousBlockLastChild.data.value.length

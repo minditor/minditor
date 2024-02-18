@@ -32,15 +32,15 @@ function DebugApp({  doc }: {doc: Document}) {
     doc.content.on(EVENT_ANY, () => contentData(doc.content.toJSON()))
     const a = <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:12}}></div>
     return (
-        <div style={{display: 'flex', maxHeight: '100%', overflow: "auto"}}>
-            <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:11}}>
+        <div style={{display: 'flex', maxHeight: '100%', overflow: "auto", flexShrink:0, minWidth:0}}>
+            <div style={{flexGrow: 1, overflow: 'auto', maxHeight: '100%', fontSize:11}}>
                 <pre>
                 <code>
                 {() => JSON.stringify(contentData(), null, 4)}
                 </code>
             </pre>
             </div>
-            <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:12}}>
+            <div style={{flexGrow: 1, overflow: 'auto', maxHeight: '100%', fontSize:12, flexShrink:0, minWidth:0}}>
                 <div>
                     <button onClick={() => doc.history.undo()}>undo</button>
                     <button onClick={() => doc.history.redo()}>redo</button>
@@ -97,7 +97,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     const docApp = (
         <>
             {docScrollContainer =
-                <div className="doc-scroll-container" style={{flexGrow: 1, flexBasis:300, minWidth:300, flexShrink: 0, overflowY: 'scroll'}}/>}
+                <div className="doc-scroll-container" style={{flexGrow: 1, flexBasis:300, minWidth:300,  overflowY: 'scroll'}}/>}
             {pluginContainer =
                 <div className="plugin-container" style={{position: 'absolute', left: 0, top: 0, height:0, width:0, overflow: 'visible'}}/>}
         </>
@@ -106,8 +106,8 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     const doc = new Document(docScrollContainer as HTMLElement, docConfig.data, docConfig.types, docConfig.globalState)
 
     const appElement = config?.debug ? (
-        <div style={{flexGrow:1, display:"flex", minHeight: 0}}>
-            <div style={{flexGrow:1, display:"flex", flexDirection: 'column'}}>
+        <div style={{flexGrow:1, display:"flex", minHeight: 0 }}>
+            <div style={{flexGrow:1, display:"flex", flexDirection: 'column', maxWidth:300}}>
                 {docApp}
             </div>
             <div style={{flexGrow:2, overflow:'auto'}}>

@@ -1,5 +1,5 @@
 /**@jsx createElement*/
-import {createElement} from 'axii'
+import {createElement, atom} from 'axii'
 import {Plugin} from "../Plugin.js";
 import {Document} from "../Document.js";
 import Bold from "../icons/Bold";
@@ -66,31 +66,33 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
                     ...positionAttrs,
                     transform: 'translateX(-50%)',
                     left: lastMouseUpPositionAfterRangeChange()!.left - boundaryRect.left,
-                    padding: 10,
-                    borderRadius: 4,
+                    padding: 8,
+                    borderRadius: 6,
                     background: '#fff',
                     border: '1px solid #eee',
                     boxShadow: '2px 2px 5px #dedede',
                     transition: 'all',
                     // 一定要设置，不然在 chrome 上好像有 bug
                     height: 'fit-content',
+                    // 不换行
+                    whiteSpace: 'nowrap'
                 }
             }
 
             // CAUTION 特别注意这里的 stopPropagation，不然会影响到 document 的 mouseup 等事件
             return <div style={style}>
-                <div>
+                <div style={{display:'flex', whiteSpace: 'nowrap'}}>
                     {() => this.rangeWidgets.map((widget: RangeWidget) => {
                         return widget.render()
                     })}
                 </div>
-                <div>{() => this.document.view.state.mousePosition() && JSON.stringify(this.document.view.state.mousePosition())}</div>
+                {/*<div>{() => this.document.view.state.mousePosition() && JSON.stringify(this.document.view.state.mousePosition())}</div>*/}
             </div>
         }
     }
 }
 
-class FormatWidget extends RangeWidget {
+class DecorationWidget extends RangeWidget {
     static displayName = `FormatRangeWidget`
     static formatAndIcons: [any, string][] = [
         [<Bold size={16}/>, 'bold'],
@@ -99,29 +101,171 @@ class FormatWidget extends RangeWidget {
         [<Linethrough size={16}/>, 'lineThrough'],
     ]
     toggleFormat = (formatName: string) => {
-        // TODO 获取原来的 format。展示到  icon 上
         this.document.view.formatCurrentRange({[formatName]: true})
     }
 
+    // TODO 获取原来的 format。展示到  icon 上
     render() {
-        return <span>
+        return <div style={{display:'flex', flexWrap: 'nowrap'}}>
             {
-                FormatWidget.formatAndIcons.map(([icon, formatName]) => (
-                    <span style={{cursor: 'pointer'}}
+                DecorationWidget.formatAndIcons.map(([icon, formatName]) => (
+                    <span style={{cursor: 'pointer',marginLeft:8, display:'flex', alignItems: 'center', width:24, height:24, justifyContent: 'center'}}
                           onClick={(e:MouseEvent) => this.toggleFormat(formatName)}
-                    >{icon}
-                    </span>
+                    >{icon}</span>
                 ))
             }
-        </span>
+        </div>
     }
 }
 
-// TODO 字体颜色
-// TODO 背景颜色
+
+type ColorItemProp = {
+    showText?: boolean
+    color?: string,
+    backgroundColor?: string,
+    onClick: (color?:string, bgColor?: string) => any
+}
+
+function ColorItem({ showText, color, backgroundColor, onClick}: ColorItemProp) {
+    return (
+        <span
+            style={{
+                display: 'flex',
+                cursor: 'pointer',
+                marginLeft: 8,
+                alignItems: 'center',
+                width: 24,
+                height: 24,
+                justifyContent: 'center',
+                color,
+                backgroundColor
+            }}
+            onClick={() => onClick(color, backgroundColor)}
+        >{showText ? 'A' : null}</span>
+    )
+}
+
+type ColorPickerProp = {
+    onColorClick: (color: string) => any
+    onBackgroundColorClick: (color: string) => any
+}
+
+function ColorPicker({onColorClick, onBackgroundColorClick}: ColorPickerProp) {
+    const fontColors = [
+        'rgb(31, 35, 41)',
+        'rgb(143, 149, 158)',
+        'rgb(216, 57, 49)',
+        'rgb(222, 120, 2)',
+        'rgb(220, 155, 4)',
+        'rgb(46, 161, 33)',
+        'rgb(36, 91, 219)',
+        'rgb(100, 37, 208)'
+    ]
+
+    const backgroundColors = [
+        "transparent",
+        "#e91e63",
+        "#9c27b0",
+        "#673ab7",
+        "#3f51b5",
+        "#2196f3",
+        "#03a9f4",
+        "#00bcd4",
+        "#009688",
+        "#4caf50",
+        "#8bc34a",
+        "#cddc39",
+        "#ffeb3b",
+        "#ffc107",
+        "#ff9800",
+        "#ff5722",
+    ]
+
+
+    return <div>
+        <div style={{display: 'flex', flexWrap: 'nowrap'}}>
+            {
+                fontColors.map((color) => (
+                    <ColorItem showText onClick={(color) => onColorClick(color!)} color={color}/>
+                ))
+            }
+        </div>
+        <div style={{display: 'flex', flexWrap: 'nowrap'}}>
+            {
+                backgroundColors.slice(0, backgroundColors.length / 2).map((color) => (
+                    <ColorItem onClick={(_, bgColor) => onBackgroundColorClick(bgColor!)} backgroundColor={color}/>
+                ))
+            }
+        </div>
+        <div style={{display: 'flex', flexWrap: 'nowrap', marginTop: 8}}>
+            {
+                backgroundColors.slice(backgroundColors.length / 2).map((color) => (
+                    <ColorItem onClick={(_, bgColor) => onBackgroundColorClick(bgColor!)} backgroundColor={color}/>
+                ))
+            }
+        </div>
+    </div>
+
+}
+
+
+class ColorWidget extends RangeWidget {
+    static displayName = `ColorRangeWidget`
+    useColor = (color: string) => {
+        this.document.view.formatCurrentRange({color})
+    }
+    useBackgroundColor = (backgroundColor: string) => {
+        this.document.view.formatCurrentRange({backgroundColor})
+    }
+
+    render() {
+        // TODO 获取原来的 format。展示到  icon 上
+
+        const hover = atom(false)
+
+        const pickerStyle = () => {
+            console.log('hover', hover())
+            return ({
+                display: hover() ? 'block' : 'none',
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                transform: 'translateX(-50%)',
+                padding: 8,
+                borderRadius: 6,
+                background: '#fff',
+                border: '1px solid #eee',
+                boxShadow: '2px 2px 5px #dedede',
+                transition: 'all',
+                // 一定要设置，不然在 chrome 上好像有 bug
+                height: 'fit-content',
+                // 不换行
+                whiteSpace: 'nowrap'
+            })
+        }
+
+
+        const picker = (
+            <div style={pickerStyle}>
+                <ColorPicker onColorClick={this.useColor} onBackgroundColorClick={this.useBackgroundColor}/>
+            </div>
+        )
+        return (
+            <div style={{display:'flex', position:'relative', width:24, height:24, alignItems: 'center',justifyContent: 'center'}}
+                 onmouseenter={() => hover(true)}
+                 onmouseleave={() => hover(false)}
+            >
+                <span style={{cursor: 'pointer',marginLeft:8, fontSize:18}}>A</span>
+                {picker}
+            </div>
+        )
+    }
+}
+
 
 export const defaultFormatWidgets = [
-    FormatWidget
+    DecorationWidget,
+    ColorWidget
 ]
 
 
