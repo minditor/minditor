@@ -8,6 +8,7 @@ export {OLItem} from "./components/OLItem.js";
 export {Heading} from "./components/Heading.js";
 export { InlineCode } from "./components/InlineCode.js";
 export { Code } from "./components/CodeMirror.js";
+export { Link } from "./components/Link.js";
 export {Text} from "./DocumentContent.js";
 export {Paragraph} from "./DocumentContent.js";
 export {DocRange} from "./Range.js";

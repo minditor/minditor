@@ -1,6 +1,6 @@
 import EventEmitter from "eventemitter3";
 import {assert, ZWSP} from "./util.js";
-import {createElement, Atom, atom} from "axii";
+import {createElement, Atom, atom, createRoot} from "axii";
 
 export class DocNodeFragment {
     public retrieved = false
@@ -457,6 +457,24 @@ export class InlineComponent extends Inline {
     }
     onUnmount(){
 
+    }
+}
+
+export class AxiiInlineComponent extends InlineComponent {
+    public axiiRoot: any
+    renderInner(): JSX.Element|null {
+        return null
+    }
+    destroy() {
+        super.destroy();
+        this.axiiRoot.destroy()
+    }
+
+    render() {
+        const rootElement = <div style={{display:'inline-block'}}></div>
+        this.axiiRoot = createRoot(rootElement as HTMLElement)
+        this.axiiRoot.render(this.renderInner())
+        return rootElement
     }
 }
 

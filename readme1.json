@@ -102,7 +102,13 @@
   ,{
       "type": "Paragraph",
       "content": [
-        {"type": "Text", "value": ""}
+        {"type": "Text", "value": ""},
+        {
+          "type": "Link",
+          "value": "",
+          "href": "https://interaqt.dev",
+          "alt": "https://interaqt.dev"
+        }
       ]
     },
     {

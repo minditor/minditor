@@ -568,7 +568,8 @@ export class DocumentContentView extends EventDelegator{
                 spellcheck={false}
                 contenteditable
                 onKeydown={[
-                    onNotPreventedDefault(onNotComposing(onCharKey(this.inputOrReplaceWithChar.bind(this)))),
+                    onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
+                    onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
                     onNotPreventedDefault(onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))),
 
                     onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this))))),
@@ -679,10 +680,12 @@ export class DocumentContentView extends EventDelegator{
         return element.getBoundingClientRect()
     }
     onRangeNotCollapsed = eventAlias<KeyboardEvent>(() => {
-        return this.globalState.selectionRange?.collapsed === false
+        // CAUTION 注意这里的写法，一定要先判断 range 是存在的。不然 InlineComponent 里面的行为也会被捕获
+        return !!this.state.selectionRange() && !this.state.selectionRange()!.isCollapsed
     })
     onRangeCollapsed = eventAlias<KeyboardEvent>(() => {
-        return this.globalState.selectionRange?.collapsed === true
+        // CAUTION 注意这里的写法，一定要先判断 range 是存在的。不然 InlineComponent 里面的行为也会被捕获
+        return !!this.state.selectionRange() && this.state.selectionRange()!.isCollapsed
     })
     /**
      * 下面是 Utils
@@ -1052,12 +1055,14 @@ export class DocumentContentView extends EventDelegator{
     }
 }
 
+
+
+
 const onNotComposing = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
 const onComposing = eventAlias((e: KeyboardEvent) => e.isComposing || e.keyCode === 229)
 const onNotPreventedDefault = eventAlias((e: KeyboardEvent) => !e.defaultPrevented)
 
 const onCharKey = eventAlias((e: KeyboardEvent) => e.key.length === 1 && !e.altKey  && !e.metaKey && !e.ctrlKey)
-
 
 
 function insertAfter(newEle: HTMLElement|DocumentFragment|Comment, refEle: HTMLElement) {

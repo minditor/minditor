@@ -1,5 +1,5 @@
 import jsonData from './readme1.json'
-import {Code, Heading, InlineCode, OLItem, Paragraph, Text, ULItem} from "./src/index.js";
+import {Code, Heading, InlineCode, OLItem, Paragraph, Text, ULItem, Link} from "./src/index.js";
 import {plugins as markdownPlugins} from "./src/plugins/markdown.js";
 import {createBlockTool, InsertWidget} from "./src/plugins/BlockTool.js";
 import {scaffold} from "./src/scaffold.js";
@@ -8,7 +8,7 @@ import { createSuggestionTool, defaultSuggestionWidgets } from "./src/plugins/Su
 
 const root= document.getElementById('root')!
 const types = {
-    Paragraph, Text, Heading, OLItem, ULItem, InlineCode, Code
+    Paragraph, Text, Heading, OLItem, ULItem, InlineCode, Code,Link
 }
 
 const plugins = [
