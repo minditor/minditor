@@ -449,6 +449,9 @@ export type InlineData = {
 
 
 export class InlineComponent extends Inline {
+    focus() {
+
+    }
     onMount() {
 
     }
@@ -468,7 +471,7 @@ export class Component extends Block {
     onUnmount(){
 
     }
-    focus(offset: number) {
+    focus() {
 
     }
 }

@@ -6,7 +6,6 @@ import Bold from "../icons/Bold";
 import Italic from "../icons/Italic";
 import Underline from "../icons/Underline";
 import LineThrough from "../icons/Linethrough";
-import Link from "../icons/Link";
 
 
 export class RangeWidget {
@@ -40,10 +39,11 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
 
         render() {
             const style = () => {
-                const {visibleRangeRect, lastMouseUpPositionAfterRangeChange, hasRange} = this.document.view.state
-                if (!lastMouseUpPositionAfterRangeChange() ) {
+                const {visibleRangeRect, lastMouseUpPositionAfterRangeChange, selectionRange, hasRange} = this.document.view.state
+                if (!lastMouseUpPositionAfterRangeChange() || !hasRange()){
                     return {display: 'none'}
                 }
+
 
                 const boundaryRect = this.document.view.getContainerBoundingRect()!
 
@@ -263,68 +263,10 @@ class ColorWidget extends RangeWidget {
     }
 }
 
-class LinkWidget extends RangeWidget {
-    static displayName = `LinkWidget`
-    render() {
-        // TODO 获取原来的 format。展示到  icon 上
-
-        const hover = atom(false)
-
-        const linkEditLayerStyle = () => {
-            console.log('hover', hover())
-            return ({
-                display: hover() ? 'block' : 'none',
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                transform: 'translateX(-50%)',
-                padding: 8,
-                borderRadius: 6,
-                background: '#fff',
-                border: '1px solid #eee',
-                boxShadow: '2px 2px 5px #dedede',
-                transition: 'all',
-                // 一定要设置，不然在 chrome 上好像有 bug
-                height: 'fit-content',
-                // 不换行
-                whiteSpace: 'nowrap'
-            })
-        }
-
-
-        const picker = (
-            <div style={linkEditLayerStyle}>
-                <input />
-            </div>
-        )
-        return (
-            <div style={{
-                display:'flex',
-                position:'relative',
-                width:24,
-                height:24,
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                marginLeft:8,
-                fontSize:18
-            }}
-                 onmouseenter={() => hover(true)}
-                 onmouseleave={() => hover(false)}
-            >
-                <Link size={16}/>
-                {picker}
-            </div>
-        )
-    }
-}
-
-
 
 export const defaultFormatWidgets = [
     DecorationWidget,
     ColorWidget,
-    LinkWidget
 ]
 
 

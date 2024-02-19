@@ -4,6 +4,7 @@ import {plugins as markdownPlugins} from "./src/plugins/markdown.js";
 import {createBlockTool, InsertWidget} from "./src/plugins/BlockTool.js";
 import {scaffold} from "./src/scaffold.js";
 import {createRangeTool, defaultFormatWidgets} from "./src/plugins/RangeTool.js";
+import { createSuggestionTool, defaultSuggestionWidgets } from "./src/plugins/SuggestionTool.js";
 
 const root= document.getElementById('root')!
 const types = {
@@ -13,7 +14,8 @@ const types = {
 const plugins = [
     ...markdownPlugins,
     createBlockTool([InsertWidget]),
-    createRangeTool( defaultFormatWidgets )
+    createRangeTool( defaultFormatWidgets ),
+    createSuggestionTool('/',  defaultSuggestionWidgets)
 ]
 scaffold(root, {data: jsonData, types, plugins}, { debug: true })
 

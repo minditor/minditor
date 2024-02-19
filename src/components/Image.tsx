@@ -23,7 +23,7 @@ export class ImageBlock extends Component {
         super(data);
     }
     onMount = () => {
-        if (this.data.isNew) {
+        if (this.data.isNew || !this.data.src) {
             new Uppy()
                 .use(MockPlugin, { id: 'MyPlugin' })
                 .use(Dashboard, { inline: true, target: this.element })

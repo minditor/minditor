@@ -16,37 +16,40 @@ const documentEvents: DocumentEventsHandle = {
 
 
 export class EventDelegator {
-    public eventCallbacksByEventName: {[key: string] : Set<Function>} = {}
-    public eventToCallbackRef: {[key: string] : EventCallbackWithCapture} = {}
+    // 两层结构，第一层事件名，第二层是 capture
+    public eventToCallbacks  = new Map<string, Map<boolean, Set<Function>>>()
+    // 两层结构，第一层是事件名，第二层是 capture
+    public eventToListener = new Map<string, Map<boolean, EventCallbackWithCapture>>()
     public boundElements = new Set<HTMLElement>()
     public childDelegators: {[k:string]:EventDelegator} ={}
     constructor(public namespace?: string) {
     }
     
-    createCallback(eventName: string, callbacksRef: Set<Function>, capture: boolean) : EventCallbackWithCapture {
-        const callback = (e: Event) => {
+    createListener(eventName: string, callbacks: Set<Function>, capture: boolean) : EventCallbackWithCapture {
+        const listener = (e: Event) => {
             if (documentEvents[eventName]) {
                 if (!Array.from(this.boundElements).some(el => documentEvents[eventName](el))) {
-                    console.log("not my selection")
                     return false
                 }
             }
 
-            for(let callback of callbacksRef) {
+            for(let callback of callbacks) {
                 const returnValue = callback(e)
                 if (returnValue === false) {
                     break
                 }
             }
         }
-        callback.capture = capture
-        return callback as EventCallbackWithCapture
+        listener.capture = capture
+        return listener as EventCallbackWithCapture
     }
 
-    dispatch(event: Event, element?: HTMLElement) {
+    dispatch(event: Event, element?: HTMLElement, capture?: boolean) {
         // CAUTION 手动  this.dispatch 永远在  element 上
         if (element) {
-            element.dispatchEvent(event)
+            if (capture !== undefined) {
+                element.dispatchEvent(event)
+            }
         } else {
             this.boundElements.forEach(el => el.dispatchEvent(event))
         }
@@ -64,35 +67,49 @@ export class EventDelegator {
 
         const event = inputEvent
 
-        if(!this.eventCallbacksByEventName[event]) {
-            this.eventCallbacksByEventName[event] = new Set()
-            const callback = this.createCallback(event, this.eventCallbacksByEventName[event], capture)
-            this.eventToCallbackRef[event] = callback
-            // 已经 attach 过了，但是还没有监听该 event
-            if (this.boundElements.size) {
-                this.boundElements.forEach(attachedEl => attachedEl.addEventListener(event, callback, callback.capture))
+        if(!this.eventToListener.get(event)) {
+            const newCallbacksMap = new Map()
+            newCallbacksMap.set(true, new Set())
+            newCallbacksMap.set(false, new Set())
+            this.eventToCallbacks.set(event, newCallbacksMap)
+
+            const newListenerMap = new Map()
+            this.eventToListener.set(event, newListenerMap)
+
+
+        }
+
+        if (!this.eventToListener.get(event)!.get(capture)) {
+            const listener = this.createListener(event, this.eventToCallbacks.get(event)!.get(capture)!, capture)
+            this.eventToListener.get(event)!.set(capture, listener)
+            // 给所有已绑定的 Element 上添加 listener
+            if (documentEvents[event]) {
+                document.addEventListener(event, listener, listener.capture)
+            } else if (this.boundElements.size) {
+                this.boundElements.forEach(attachedEl => {
+                    attachedEl.addEventListener(event, listener, capture)
+                })
             }
         }
 
-        this.eventCallbacksByEventName[event].add(handle)
+
+        this.eventToCallbacks.get(event)!.get(capture)!.add(handle)
 
         return () => {
-            this.eventCallbacksByEventName[event].delete(handle)
+            this.eventToCallbacks.get(event)!.get(capture)!.delete(handle)
         }
     }
 
     removeAllListeners() {
         this.boundElements.forEach(attachedEl => {
-            Object.entries(this.eventToCallbackRef).forEach(([event, callbackRef]) => {
-                if (documentEvents[event]) {
-                    document.removeEventListener(event, callbackRef)
-                } else {
-                    attachedEl!.removeEventListener(event, callbackRef)
-                }
-                delete this.eventToCallbackRef[event]
-                delete this.eventCallbacksByEventName[event]
-            })
+            for(let event of this.eventToListener.keys()) {
+                const target = documentEvents[event] ? document : attachedEl
+                target.removeEventListener(event, this.eventToListener.get(event)!.get(true)! as EventListener,true)
+                target.removeEventListener(event, this.eventToListener.get(event)!.get(false)! as EventListener)
+            }
         })
+        this.eventToCallbacks.clear()
+        this.eventToListener.clear()
     }
 
     bindElement(element: HTMLElement) {
@@ -100,14 +117,12 @@ export class EventDelegator {
 
         this.boundElements.add(element)
 
-        Object.entries(this.eventToCallbackRef).forEach(([event, callback]) => {
-            if (documentEvents[event]) {
-                // TODO 是不是要改造一下 event？改到 element 上？
-                document.addEventListener(event, callback, callback.capture)
-            } else {
-                element.addEventListener(event, callback, callback.capture)
+        for(let [event, listener] of this.eventToListener) {
+            if (!documentEvents[event]) {
+                element.addEventListener(event, listener.get(true)!, true)
+                element.addEventListener(event, listener.get(false)!, false)
             }
-        })
+        }
 
         this.dispatch(new CustomEvent('bindElement', { detail: { element } }), element)
 
@@ -119,15 +134,12 @@ export class EventDelegator {
     unbindElement(element: HTMLElement) {
         if( !this.boundElements.has(element)) throw new Error('this element is not attached')
 
-        Object.entries(this.eventToCallbackRef).forEach(([event, callbackRef]) => {
-            if (documentEvents[event]) {
-                document.removeEventListener(event, callbackRef)
-            } else {
-                element!.removeEventListener(event, callbackRef)
+        for(let [event, listener] of this.eventToListener) {
+            if (!documentEvents[event]) {
+                element.removeEventListener(event, listener.get(true)!, true)
+                element.removeEventListener(event, listener.get(false)!, false)
             }
-            delete this.eventToCallbackRef[event]
-            delete this.eventCallbacksByEventName[event]
-        })
+        }
 
         this.boundElements.delete(element)
     }

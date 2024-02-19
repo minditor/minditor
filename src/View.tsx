@@ -339,7 +339,6 @@ export class DocumentContentView extends EventDelegator{
         this.updateRange(range, e.key)
 
         this.resetUseDefaultBehavior()
-
         this.dispatch(new CustomEvent(INPUT_CHAR_EVENT, {detail: e.key}))
 
         return {
@@ -368,7 +367,6 @@ export class DocumentContentView extends EventDelegator{
         this.updateRange(cursorBeforeComposition, e.data)
 
         this.resetUseDefaultBehavior()
-
         this.dispatch(new CustomEvent(INPUT_CHAR_EVENT, {detail: e.data}))
 
         return {
@@ -500,6 +498,7 @@ export class DocumentContentView extends EventDelegator{
     @saveHistoryPacket
     @setEndRange
     splitContent(e: KeyboardEvent) {
+        debugger
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock, isEndFull } = range
         e.preventDefault()
@@ -569,21 +568,21 @@ export class DocumentContentView extends EventDelegator{
                 spellcheck={false}
                 contenteditable
                 onKeydown={[
-                    onNotComposing(onCharKey(this.inputOrReplaceWithChar.bind(this))),
-                    onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))),
+                    onNotPreventedDefault(onNotComposing(onCharKey(this.inputOrReplaceWithChar.bind(this)))),
+                    onNotPreventedDefault(onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))),
 
-                    onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this)))),
-                    onNotComposing(this.onRangeCollapsed(onBackspaceKey(this.deleteLast.bind(this)))),
+                    onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this))))),
+                    onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onBackspaceKey(this.deleteLast.bind(this))))),
 
-                    onNotComposing(this.onRangeCollapsed(onEnterKey(this.splitContent.bind(this)))),
-                    onNotComposing(this.onRangeNotCollapsed(onEnterKey(this.deleteRangeWithoutMerge.bind(this)))),
+                    onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onEnterKey(this.splitContent.bind(this))))),
+                    onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onEnterKey(this.deleteRangeWithoutMerge.bind(this))))),
 
-                    onNotComposing(onTabKey(this.changeLevel.bind(this))),
+                    onNotPreventedDefault(onNotComposing(onTabKey(this.changeLevel.bind(this)))),
                     // 有 range 时的输入法开始处理，等同于先删除 range
-                    onNotComposing(onKey('a', {meta:true})(this.selectAll.bind(this))),
+                    onNotPreventedDefault(onNotComposing(onKey('a', {meta:true})(this.selectAll.bind(this)))),
                     // onNotComposing(onKey('x', {meta:true})(this.copy.bind(this))),
                     // onNotComposing(onKey('c', {meta:true})(this.cut.bind(this))),
-                    onNotComposing(onKey('z', {meta:true})(this.undo.bind(this))),
+                    onNotPreventedDefault(onNotComposing(onKey('z', {meta:true})(this.undo.bind(this)))),
                 ]}
                 onPaste={this.paste.bind(this)}
                 onCut={this.cut.bind(this)}
@@ -639,11 +638,11 @@ export class DocumentContentView extends EventDelegator{
         let endInline = endContainerInline
         let docStartOffset = startOffset
         let docEndOffset = endOffset
-
         if (collapsed) {
             if (startOffset === 1 && startText.isEmpty) {
                 //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
                 docStartOffset = 0
+                docEndOffset = 0
             } else if (startOffset === 0 && !startText.isEmpty && startContainerText.prev() instanceof Text) {
                 //  2. cursor 默认 focus 到上一个文字的尾部.
                 startText = startContainerText.prev() as Text
@@ -653,14 +652,21 @@ export class DocumentContentView extends EventDelegator{
             }
         } else {
             // 3. range 默认头部是自己的，尾部也是自己的
+            // 如果 startOffset 定位到了上个节点的尾部，我们要把它修正回来。
             if (startOffset!==0 && startOffset === startContainerText.data.value.length && startContainerText.next instanceof Text) {
                 startText = startContainerText.next
                 docStartOffset = 0
             }
 
+            // 如果 endOffset 定位到了下个节点的尾部，我们要把它修正回来。
             if (endOffset === 0 && endContainerInline?.prev() instanceof Text) {
                 endInline = endContainerInline.prev() as Text
                 docEndOffset = endInline.data.value.length
+            }
+
+            // 因为我们会在空节点里面插入一个 ZWSP，这个时候可能 endOffset 会是 1，所以也要修正回来
+            if (startText === endInline && startText.isEmpty) {
+                docEndOffset = 0
             }
         }
 
@@ -1048,6 +1054,7 @@ export class DocumentContentView extends EventDelegator{
 
 const onNotComposing = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
 const onComposing = eventAlias((e: KeyboardEvent) => e.isComposing || e.keyCode === 229)
+const onNotPreventedDefault = eventAlias((e: KeyboardEvent) => !e.defaultPrevented)
 
 const onCharKey = eventAlias((e: KeyboardEvent) => e.key.length === 1 && !e.altKey  && !e.metaKey && !e.ctrlKey)
 

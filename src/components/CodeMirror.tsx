@@ -73,11 +73,11 @@ export class Code extends Component {
     onMount() {
         console.log('code mirror mount')
         this.editor =new EditorView({
-            doc: this.data.value,
+            doc: this.data.value || '',
             extensions: [
                 basicSetup,
                 keymap.of([indentWithTab]),
-                Code.langToPlugin[this.data.language],
+                Code.langToPlugin[this.data.language|| 'javascript'],
                 EditorView.updateListener.of((e) => {
                     if (e.docChanged) {
                         this.data.value = this.editor!.state.doc.toString()

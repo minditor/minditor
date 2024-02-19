@@ -20,7 +20,6 @@ type DeviceInfo = {
 
 export class ReactiveViewState {
     public lastActiveDeviceType: Atom<'mouse'|'keyboard'|null> = atom(null)
-    public lastMouseSelectionEvent: Atom<Position|null> = atom(null)
     public lastMouseUpPositionAfterRangeChange: Atom<Position|null> = atom(null)
     public mousePosition: Atom<{clientX: number, clientY: number}|null> = atom(null)
     public selectionRange: Atom<DocRange|null> = atom(null)
@@ -28,6 +27,7 @@ export class ReactiveViewState {
     public rangeBeforeComposition: Atom<DocRange|null> = atom(null)
     public lastMouseEnteredBlock: Atom<Block|null> = atom(null)
     public visibleRangeRect!: Atom<{top:number, left: number, height:number, width: number}|null>
+    public visibleCursorRect!: Atom<{top:number, left: number, height:number, width: number}|null>
     public destroyHandles: Set<(() => any)|void>
     constructor(public view: DocumentContentView) {
         this.destroyHandles = new Set()
@@ -79,13 +79,11 @@ export class ReactiveViewState {
     activateLastMouseUpPositionAfterRangeChange() {
         const removeMouseUpListener =  this.view.listen('mouseup', (e: MouseEvent) => {
             if (this.selectionRange() && !this.selectionRange()?.isCollapsed) {
-                console.log(111, e.target, e)
                 this.lastMouseUpPositionAfterRangeChange({left: e.clientX, top: e.clientY})
             }
         })
 
         const removeRangeChangeListener = this.view.globalState.onSelectionChange(() => {
-            console.log("selection changed")
             this.lastMouseUpPositionAfterRangeChange(null)
         })
 

@@ -16,7 +16,7 @@ export class DocRange {
     }
 
     get isCollapsed() {
-        return this.startText === this.endText && this.startOffset === this.endOffset
+        return (this.startText === this.endText && this.startOffset === this.endOffset)
     }
 
     get isInSameBlock() {
