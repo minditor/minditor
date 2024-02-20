@@ -1,4 +1,4 @@
-import {Atom, atom, createElement} from "axii";
+import {Atom, atom, createElement, RenderContext} from "axii";
 import {AxiiInlineComponent, InlineComponent} from "../DocumentContent.js";
 import {Input} from "../lib/Input.js";
 
@@ -13,16 +13,16 @@ type LinkEditorProps = {
 
 }
 
-function LinkEditor({ href, alt }: LinkEditorProps) {
+function LinkEditor({ href, alt }: LinkEditorProps, { createElement }: RenderContext) {
     return (
         <div>
             <div style={{display:'flex', alignItems: 'center', justifyContent: 'center'}}>
                 <span style={{display: 'inline-block', width:30}}>href</span>
-                <Input type="text" value={href}/>
+                <Input $href type="text" value={href}/>
             </div>
             <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 8}}>
                 <span style={{display: 'inline-block', width:30}}>alt </span>
-                <Input type="text" value={alt}/>
+                <Input $alt type="text" value={alt}/>
             </div>
         </div>
     )
@@ -79,7 +79,7 @@ export class Link extends AxiiInlineComponent {
     }
     focus() {
         this.formVisible(true)
-        // TODO 怎么使用 ref?
+        this.form.ref.alt.ref.main.focus()
     }
     toJSON(): any {
         return {

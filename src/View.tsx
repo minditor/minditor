@@ -498,7 +498,6 @@ export class DocumentContentView extends EventDelegator{
     @saveHistoryPacket
     @setEndRange
     splitContent(e: KeyboardEvent) {
-        debugger
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock, isEndFull } = range
         e.preventDefault()
