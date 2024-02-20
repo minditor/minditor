@@ -12,8 +12,9 @@ export type PluginRunArgv = {
 
 export class Plugin {
     public static displayName = 'Plugin'
-    public static activateEventListeners: Map<string, Set<EventCallback>> = new Map()
-    public static deactivateEventListeners: Map<string, Set<EventCallback>> = new Map()
+    public static activateEventListeners: WeakMap<Document, Map<string, Set<EventCallback>>> = new WeakMap()
+    public static deactivateEventListeners: WeakMap<Document, Map<string, Set<EventCallback>>> = new WeakMap()
+    // Plugin 自己需要覆盖的
     public static activateEvents: {[k: string]: (e:any) => boolean}
     public static deactivateEvents: {[k: string]: (e:any) => boolean}
     public activated = atom(false)
@@ -25,18 +26,18 @@ export class Plugin {
     run(args: PluginRunArgv) : any{
 
     }
-    render(): JSX.Element|null {
+    render(outsideDocBoundary = false): JSX.Element|null {
         return null
     }
     onDeactivated() {
 
     }
-    renderPluginView() {
+    renderPluginView(outsideDocBoundary = false) {
         assert(!this.root, 'plugin view should only render once')
         // CAUTION 注意这里的 userSelect: 'none' 非常重要，防止了正文中触发的 selection change，以及对依赖于 selectionRange 的各种功能的破坏。
         const element = <div style={{userSelect: 'none'}}/>  as HTMLElement
         this.root = createRoot(element)
-        this.root.render(this.render()!)
+        this.root.render(this.render(outsideDocBoundary)!)
         return this
     }
     deactivate() {
@@ -51,10 +52,18 @@ export class Plugin {
     addActivateEventListeners() {
         const ThisPluginKlass = this.constructor as typeof Plugin
         Object.entries(ThisPluginKlass.activateEvents || {}).forEach(([eventName, eventMatchHandle]: [string, EventMatchHandle]) => {
-            let callbacks = Plugin.activateEventListeners.get(eventName)
+            let activateEventListeners = Plugin.activateEventListeners.get(this.document)
+            if (!activateEventListeners) Plugin.activateEventListeners.set(this.document, (activateEventListeners = new Map()))
+
+            let callbacks = activateEventListeners.get(eventName)
             if (!callbacks) {
-                Plugin.activateEventListeners.set(eventName, (callbacks = new Set()))
-                const remove = this.document.view.listen(eventName, (e:any) => {
+                activateEventListeners.set(eventName, (callbacks = new Set()))
+                const listener = (e:any) => {
+                    // CAUtION 因为允许文档嵌套，所以我们需要在这里判断是否是当前文档的事件
+                    //  我们没有使用阻止事件冒泡的方式是因为，万一以后有外部监听内部的需求的话，还能用事件。
+                    //  而且应该 内部 document 是否应该当做一个完整的盒子不冒泡任何出来，应该是个严肃的需要讨论的事情。
+                    if (!this.document.view.state.selectionRange()) return
+
                     const args = {
                         content: this.document.content,
                         view: this.document.view,
@@ -62,16 +71,16 @@ export class Plugin {
                         docRange: this.document.view.state.selectionRange
                     }
 
+                    // CAUTION 所有的 plugin 合在一起，只要有一个 plugin 激活了，就不会再激活其他的 plugin
                     // CAUTION 放到 nextTask 里面 run 这样用户可以放心的处理 history 等
-                    // CAUTION 同时只允许激活一个。如果用户有合并需求，自己写个合并类。
                     nextTask(() => {
                         for(let callback of callbacks!) {
                             if(callback.call(this, e, args)) break
                         }
                     })
+                }
 
-                },  true)
-                this.removeListenerHandles.add(remove)
+                this.removeListenerHandles.add(this.document.view.listen(eventName,listener, true))
             }
 
             callbacks.add((e: unknown, args?: PluginRunArgv) => {
@@ -83,9 +92,11 @@ export class Plugin {
         })
 
         Object.entries(ThisPluginKlass.deactivateEvents || {}).forEach(([eventName, eventMatchHandle]: [string, EventMatchHandle]) => {
-            let callbacks = Plugin.deactivateEventListeners.get(eventName)
+            let deactivateEventListeners = Plugin.deactivateEventListeners.get(this.document)
+            if (!deactivateEventListeners) Plugin.deactivateEventListeners.set(this.document, (deactivateEventListeners = new Map()))
+            let callbacks = deactivateEventListeners.get(eventName)
             if (!callbacks) {
-                Plugin.deactivateEventListeners.set(eventName, (callbacks = new Set()))
+                deactivateEventListeners.set(eventName, (callbacks = new Set()))
                 const remove = this.document.view.listen(eventName, (e:any) => {
                     for(let callback of callbacks!) {
                         callback.call(this, e)

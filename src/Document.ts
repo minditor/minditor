@@ -14,7 +14,12 @@ export class Document {
     public content: DocumentContent
     public history: DocumentContentHistory
     element?: HTMLElement
-
+    static createEmptyDocumentData() : DocumentData {
+        return {
+            name: 'Document',
+            children: DocumentContent.createEmptyContentData()
+        }
+    }
     constructor(
         public container: HTMLElement,
         public jsonData: DocumentData,

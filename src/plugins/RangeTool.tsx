@@ -36,37 +36,54 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
                 return new RangeWidgetClass(this.document)
             })
         }
+        calculatePosition(outsideDocBoundary: boolean) {
+            const {visibleRangeRect, lastMouseUpPositionAfterRangeChange, selectionRange, hasRange} = this.document.view.state
 
-        render() {
+            const positionAttrs = {
+                position: 'fixed'
+            } as any
+
+            positionAttrs.position = 'fixed'
+            // 根据最后鼠标停的位置，来决定浮层的位置
+            // 1. 如果鼠标位置在 rect 下面，那么浮层就显示在  range 下面
+            // 2. 如果鼠标位置在 rect 上面，那么浮层就显示在  range 上面
+            if (lastMouseUpPositionAfterRangeChange()!.top > (visibleRangeRect.raw!.top + visibleRangeRect.raw!.height / 2)) {
+                positionAttrs.top = visibleRangeRect.raw!.top + visibleRangeRect.raw!.height
+                positionAttrs.bottom = undefined // CAUTION 不能忽略，不然不会清空上一次的值
+            } else {
+                positionAttrs.top = undefined // CAUTION 不能忽略，不然不会清空上一次的值
+                positionAttrs.bottom = -(visibleRangeRect.raw!.top)
+            }
+            positionAttrs.left = lastMouseUpPositionAfterRangeChange()!.left
+
+            // 如果和  view 在同一个 boundary 之内，使用同样的 scroll，那么使用 absolute 定位
+            if(!outsideDocBoundary) {
+                const boundaryRect = this.document.view.getContainerBoundingRect()!
+                positionAttrs.position = 'absolute'
+                if (lastMouseUpPositionAfterRangeChange()!.top > (visibleRangeRect.raw!.top + visibleRangeRect.raw!.height / 2)) {
+                    positionAttrs.top -= boundaryRect.top
+                } else {
+                    positionAttrs.bottom += boundaryRect.top
+                }
+                positionAttrs.left -= boundaryRect.left
+
+            }
+            return positionAttrs
+        }
+        render(outsideDocBoundary: boolean) {
             const style = () => {
-                const {visibleRangeRect, lastMouseUpPositionAfterRangeChange, selectionRange, hasRange} = this.document.view.state
+                const { lastMouseUpPositionAfterRangeChange, hasRange} = this.document.view.state
                 if (!lastMouseUpPositionAfterRangeChange() || !hasRange()){
                     return {display: 'none'}
                 }
 
-
-                const boundaryRect = this.document.view.getContainerBoundingRect()!
-
-                // 根据最后鼠标停的位置，来决定浮层的位置
-                // 1. 如果鼠标位置在 rect 下面，那么浮层就显示在  range 下面
-                // 2. 如果鼠标位置在 rect 上面，那么浮层就显示在  range 上面
-                const positionAttrs = {} as any
-                if (lastMouseUpPositionAfterRangeChange()!.top > (visibleRangeRect.raw!.top + visibleRangeRect.raw!.height / 2)) {
-                    positionAttrs.top = visibleRangeRect.raw!.top + visibleRangeRect.raw!.height - boundaryRect.top
-                    positionAttrs.bottom = undefined // CAUTION 不能忽略，不然不会清空上一次的值
-                } else {
-                    positionAttrs.top = undefined // CAUTION 不能忽略，不然不会清空上一次的值
-                    positionAttrs.bottom = -(visibleRangeRect.raw!.top - boundaryRect.top)
-                }
-
+                const positionAttrs = this.calculatePosition(outsideDocBoundary)
                 // TODO 没考虑 left 超出左右边界的问题。
 
                 return {
                     display: 'block',
-                    position: 'absolute', // CAUTION 注意 rangePosition 拿到的是相对于 modal boundary 的，所以我们这里也是相对于 modal boundary 的 absolute
                     ...positionAttrs,
                     transform: 'translateX(-50%)',
-                    left: lastMouseUpPositionAfterRangeChange()!.left - boundaryRect.left,
                     padding: 8,
                     borderRadius: 6,
                     background: '#fff',

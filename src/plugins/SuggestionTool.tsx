@@ -111,21 +111,31 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
             destroyComputed(this.availableWidgets)
             destroyComputed(this.selectedWidget)
         }
+        calculatePosition(outsideDocBoundary: boolean) {
+            const { visibleRangeRect } = this.document.view.state
+            const boundaryRect = this.document.view.getContainerBoundingRect()!
 
-        render() {
+            return outsideDocBoundary ? {
+                position: 'fixed',
+                top: visibleRangeRect!.raw!.top + visibleRangeRect!.raw!.height ,
+                left: visibleRangeRect!.raw!.left,
+            } : {
+                position: 'absolute',
+                top: visibleRangeRect!.raw!.top + visibleRangeRect!.raw!.height -boundaryRect.top +1,
+                left: visibleRangeRect!.raw!.left- boundaryRect.left,
+            }
+
+
+        }
+        render(outsideDocBoundary: boolean) {
             const style = () => {
-                // range 看不见了，display 要 none
-                const { visibleRangeRect } = this.document.view.state
 
                 if (!this.activated() ) return { display: 'none'}
-                const boundaryRect = this.document.view.getContainerBoundingRect()!
+                const positionAttrs = this.calculatePosition(outsideDocBoundary)
 
                 return {
                     display: 'block',
-                    position: 'absolute', // CAUTION 注意 rangePosition 拿到的是相对于 modal boundary 的，所以我们这里也是相对于 modal boundary 的 absolute
-                    // top: visibleRangeRect().top - boundaryRect.top + boundaryContainer!.scrollTop -50,
-                    top: visibleRangeRect!.raw!.top + visibleRangeRect!.raw!.height -boundaryRect.top +1,
-                    left: visibleRangeRect!.raw!.left- boundaryRect.left,
+                    ...positionAttrs,
                     padding: 10,
                     borderRadius: 4,
                     background: '#fff',

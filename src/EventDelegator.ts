@@ -57,6 +57,7 @@ export class EventDelegator {
     }
 
     listen(inputEvent: string, handle: Function, capture = false) : () => any{
+        // if (inputEvent === 'inputChar') debugger
         const [namespace, eventName] = inputEvent.split(':')
         if (namespace && eventName) {
             if (!this.childDelegators[namespace]) {

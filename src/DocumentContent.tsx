@@ -263,6 +263,18 @@ export class DocumentContent extends EventEmitter {
         return new DocumentContent(DocumentContent.createBlocksFromData(jsonData, docNodeTypes), docNodeTypes)
     }
 
+    static createEmptyContentData(): BlockData[] {
+        return [{
+            type: 'Paragraph',
+            content: [
+                {
+                    type: 'Text',
+                    value: ''
+                }
+            ]
+        }]
+    }
+
     constructor(public firstChild: Block, public types: {[k:string]: typeof DocNode}) {
         super();
     }
@@ -491,5 +503,23 @@ export class Component extends Block {
     }
     focus() {
 
+    }
+}
+
+export class AxiiComponent extends Component {
+    public axiiRoot: any
+    renderInner(): JSX.Element|null {
+        return null
+    }
+    destroy() {
+        super.destroy();
+        this.axiiRoot.destroy()
+    }
+
+    render() {
+        const rootElement = <div style={{display:'inline-block'}}></div>
+        this.axiiRoot = createRoot(rootElement as HTMLElement)
+        this.axiiRoot.render(this.renderInner())
+        return rootElement
     }
 }

@@ -28,6 +28,11 @@ export class ULItem extends TextBasedBlock {
     }
 
     render({children}: { children: any }) {
-        return <div>{children}</div>
+        const style = () => {
+            return {
+                paddingLeft: `${((this.data.level||0)+1) * 20}px`
+            }
+        }
+        return <div style={style}>{children}</div>
     }
 }

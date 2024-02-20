@@ -1,4 +1,4 @@
-import {Atom, atom, createElement, createRoot, Fragment} from "axii";
+import {Atom, atom, createElement, createRoot, Fragment, Host} from "axii";
 import {Document, DocumentData} from "./Document.js";
 import {DocNode, EmitData, EVENT_ANY} from "./DocumentContent.js";
 import {Plugin} from "./Plugin.js";
@@ -83,7 +83,14 @@ function DebugApp({  doc }: {doc: Document}) {
     )
 }
 
-export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: ScaffoldConfig) {
+export type ScaffoldHandle = {
+    container: HTMLElement,
+    appRoot: Host,
+    doc: Document,
+    destroy: () => void,
+    render: () => void
+}
+export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: ScaffoldConfig): ScaffoldHandle {
 
     let docScrollContainer
     let pluginContainer
@@ -97,7 +104,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     const docApp = (
         <>
             {docScrollContainer =
-                <div className="doc-scroll-container" style={{flexGrow: 1, flexBasis:300, minWidth:300,  overflowY: 'scroll'}}/>}
+                <div className="doc-scroll-container" style={{flexGrow: 1, flexBasis:300,  overflowY: 'scroll'}}/>}
             {pluginContainer =
                 <div className="plugin-container" style={{position: 'absolute', left: 0, top: 0, height:0, width:0, overflow: 'visible'}}/>}
         </>
@@ -119,26 +126,29 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     // 1. axii app 先render，确保节点在 dom 上
     const appRoot = createRoot(container).render(appElement)
 
-    // 2. doc render
-    doc.render()
 
     // 3. plugins render
     const pluginInstances = docConfig.plugins.map(Plugin => {
         return new Plugin(doc)
     })
 
-    pluginInstances.forEach(plugin => {
-        plugin.renderPluginView()
-        pluginContainer!.appendChild(plugin.root?.element!)
-    })
 
     return {
+        container,
         appRoot,
         doc,
         destroy:() => {
             pluginInstances.forEach(plugin => plugin.destroy())
             doc.destroy()
             appRoot.destroy()
+        },
+        render() {
+            doc.render()
+            pluginInstances.forEach(plugin => {
+                plugin.renderPluginView()
+                pluginContainer!.appendChild(plugin.root?.element!)
+            })
+
         }
     }
 
