@@ -567,9 +567,8 @@ export class DocumentContentView extends EventDelegator{
                 spellcheck={false}
                 contenteditable
                 onKeydown={[
-                    // CAUTION 这里用 this.onRangeCollapsed/onRangeNotCollapsed 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
-                    onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
-                    onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
+                    // CAUTION 这里用 this.onSelfView 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
+                    onNotPreventedDefault(onNotComposing(this.onSelfView(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
                     onNotPreventedDefault(onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))),
 
                     onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this))))),
@@ -585,11 +584,11 @@ export class DocumentContentView extends EventDelegator{
                     // onNotComposing(onKey('c', {meta:true})(this.cut.bind(this))),
                     onNotPreventedDefault(onNotComposing(onKey('z', {meta:true})(this.undo.bind(this)))),
                 ]}
-                onPaste={this.paste.bind(this)}
-                onCut={this.cut.bind(this)}
-                onCopy={this.copy.bind(this)}
+                onPaste={this.onSelfView(this.paste.bind(this))}
+                onCut={this.onSelfView(this.cut.bind(this))}
+                onCopy={this.onSelfView(this.copy.bind(this))}
                 // CAUTION 这里用 this.onRangeCollapsed 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
-                onCompositionEndCapture={this.onRangeCollapsed(this.inputComposedData.bind(this))}
+                onCompositionEndCapture={this.onSelfView(this.inputComposedData.bind(this))}
                 // safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
                 onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))}
             >
@@ -687,6 +686,9 @@ export class DocumentContentView extends EventDelegator{
     onRangeCollapsed = eventAlias<any>(() => {
         // CAUTION 注意这里的写法，一定要先判断 range 是存在的。不然 InlineComponent 里面的行为也会被捕获
         return !!this.state.selectionRange() && this.state.selectionRange()!.isCollapsed
+    })
+    onSelfView = eventAlias<any>(() => {
+        return !!this.state.selectionRange()
     })
     /**
      * 下面是 Utils

@@ -7,7 +7,8 @@ import jsonData from "../readme1.json";
 import {Packet} from "./DocumentContentHistory.js";
 
 export type ScaffoldConfig = {
-    debug?: boolean
+    debug?: boolean,
+    pluginContainer?: HTMLElement
 }
 
 export type DocConfig = {
@@ -84,6 +85,7 @@ function DebugApp({  doc }: {doc: Document}) {
 }
 
 export type ScaffoldHandle = {
+    pluginContainer: HTMLElement,
     container: HTMLElement,
     appRoot: Host,
     doc: Document,
@@ -92,8 +94,6 @@ export type ScaffoldHandle = {
 }
 export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: ScaffoldConfig): ScaffoldHandle {
 
-    let docScrollContainer
-    let pluginContainer
 
     // CAUTION 为了实现 doc-scroll-container 在外层控了高度的时候不超出高度，没控制高度的时候能自由增长，必须用 flex 的这个方案。
     container.style.display = 'flex'
@@ -101,31 +101,39 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
 
     // TODO 检查父元素的 overflow 设置会不会到值 plugin 显示不出来。
 
-    const docApp = (
-        <>
-            {docScrollContainer =
-                <div className="doc-scroll-container" style={{flexGrow: 1, flexBasis:300,  overflowY: 'scroll'}}/>}
-            {pluginContainer =
-                <div className="plugin-container" style={{position: 'absolute', left: 0, top: 0, height:0, width:0, overflow: 'visible'}}/>}
-        </>
-    )
+    const docScrollContainer = <div
+        className="doc-scroll-container"
+        style={{flexGrow: 1, flexBasis:300,  overflowY: 'scroll'}}
+    /> as HTMLElement
+    const pluginContainer = config?.pluginContainer || <div className="plugin-container"/> as HTMLElement
+    pluginContainer.style.position = 'absolute'
+    pluginContainer.style.left = '0px'
+    pluginContainer.style.top = '0px'
+    pluginContainer.style.height = '0px'
+    pluginContainer.style.width = '0px'
+    pluginContainer.style.overflow = 'visible'
 
     const doc = new Document(docScrollContainer as HTMLElement, docConfig.data, docConfig.types, docConfig.globalState)
 
     const appElement = config?.debug ? (
         <div style={{flexGrow:1, display:"flex", minHeight: 0 }}>
             <div style={{flexGrow:1, display:"flex", flexDirection: 'column', maxWidth:300}}>
-                {docApp}
+                {docScrollContainer}
+                {pluginContainer}
             </div>
             <div style={{flexGrow:2, overflow:'auto'}}>
                 <DebugApp doc={doc} />
             </div>
         </div>
-    ) : docApp
+    ) : (
+        <>
+            {docScrollContainer}
+            {pluginContainer}
+        </>
+    )
 
     // 1. axii app 先render，确保节点在 dom 上
     const appRoot = createRoot(container).render(appElement)
-
 
     // 3. plugins render
     const pluginInstances = docConfig.plugins.map(Plugin => {
@@ -135,6 +143,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
 
     return {
         container,
+        pluginContainer,
         appRoot,
         doc,
         destroy:() => {
@@ -145,7 +154,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
         render() {
             doc.render()
             pluginInstances.forEach(plugin => {
-                plugin.renderPluginView()
+                plugin.renderPluginView(!!config?.pluginContainer)
                 pluginContainer!.appendChild(plugin.root?.element!)
             })
 

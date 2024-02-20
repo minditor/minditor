@@ -517,7 +517,7 @@ export class AxiiComponent extends Component {
     }
 
     render() {
-        const rootElement = <div style={{display:'inline-block'}}></div>
+        const rootElement = <div style={{display:'block'}}></div>
         this.axiiRoot = createRoot(rootElement as HTMLElement)
         this.axiiRoot.render(this.renderInner())
         return rootElement

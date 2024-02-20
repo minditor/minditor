@@ -33,20 +33,24 @@ export type GridData = {
 export class Grid extends AxiiComponent {
     public columnWidth: RxList<Atom<number>>
     public innerData: RxList<RxList<ScaffoldHandle>>
+    public pluginContainer  : HTMLElement
     constructor(data?: GridData) {
         super(data);
-        this.columnWidth = new RxList<Atom<number>>((data?.columnWidth || [100, ]).map((width) => atom(width)))
+        const defaultColumn = [100, 100, 100, 100, 100]
+        this.columnWidth = new RxList<Atom<number>>((data?.columnWidth || defaultColumn).map((width) => atom(width)))
         // 初始化一排原始数据
-        const originData: DocumentData[][] = data?.data || [[
-            Document.createEmptyDocumentData(),
-            // Document.createEmptyDocumentData(),
-            // Document.createEmptyDocumentData()
-        ]]
+        const originData: DocumentData[][] = data?.data || [
+            defaultColumn.map((c : any) => Document.createEmptyDocumentData())
+        ]
+
+        this.pluginContainer = <div></div> as HTMLElement
+
         this.innerData = new RxList((originData).map((row) => new RxList(
             row.map((cell) => {
                 return this.createInnerDocument(cell)
             })
         )))
+
     }
     createInnerDocument(data = Document.createEmptyDocumentData()) {
         const container = <div></div> as HTMLElement
@@ -55,8 +59,8 @@ export class Grid extends AxiiComponent {
             createRangeTool( defaultFormatWidgets ),
             createSuggestionTool('/',  defaultSuggestionWidgets)
         ]
-
-        return scaffold(container, {data, types, plugins})
+        // plugin 显示在外面
+        return scaffold(container, {data, types, plugins}, {pluginContainer: this.pluginContainer})
     }
     addRow = () => {
         const newRow = this.columnWidth.map(() => this.createInnerDocument())
@@ -97,26 +101,48 @@ export class Grid extends AxiiComponent {
 
         const style = {
             position:'relative',
+            width: '100%',
         }
+
+        const borderStyle = {
+            borderCollapse: 'collapse',
+            border: '1px solid #dee0e3',
+        }
+
+        const tableStyle = () => {
+            let width = 0
+            this.columnWidth.forEach((w) => {
+                width += w()
+            })
+            return ({
+                ...borderStyle,
+                tableLayout: 'fixed',
+                width
+            })
+        }
+
         return <div style={style} contenteditable={false}>
-            <table >
-                <colgroup>
-                    {this.columnWidth.map((width) => {
-                        return <col style={()=>({width: width()})}/>
-                    })}
-                </colgroup>
-                {this.innerData.map((row) => (
-                    <tr>
-                        {row.map((cell) => {
-                            return (
-                                <td style={{border: '1px solid #000'}}>
-                                    {cell.container}
-                                </td>
-                            )
+            {this.pluginContainer}
+            <div style={{overflowX: 'auto', width: '100%'}}>
+                <table style={tableStyle}>
+                    <colgroup>
+                        {this.columnWidth.map((width) => {
+                            return <col style={() => ({width: width(), tableLayout: 'fixed'})}/>
                         })}
-                    </tr>
-                ))}
-            </table>
+                    </colgroup>
+                    {this.innerData.map((row) => (
+                        <tr>
+                            {row.map((cell) => {
+                                return (
+                                    <td style={borderStyle}>
+                                        {cell.container}
+                                    </td>
+                                )
+                            })}
+                        </tr>
+                    ))}
+                </table>
+            </div>
         </div>
     }
 }
