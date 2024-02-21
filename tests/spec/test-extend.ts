@@ -33,6 +33,7 @@ declare module "@playwright/test" {
         expect?: any
         expectAll?: any,
         load?: any,
+        loadWithPlugin?: any,
         doc?: any,
         selection?:any,
         setSelection?: any,

@@ -13,3 +13,8 @@ export { Grid } from "./components/Grid.js";
 export {Text} from "./DocumentContent.js";
 export {Paragraph} from "./DocumentContent.js";
 export {DocRange} from "./Range.js";
+export * from './plugins/markdown.js'
+export * from './plugins/BlockTool.js'
+export * from './plugins/RangeTool.js'
+export * from './plugins/SuggestionTool.js'
+export * from './scaffold.js'

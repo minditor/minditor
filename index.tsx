@@ -1,6 +1,6 @@
 import jsonData from './readme1.json'
 import {Code, Heading, InlineCode, OLItem, Paragraph, Text, ULItem, Link, Grid} from "./src/index.js";
-import {plugins as markdownPlugins} from "./src/plugins/markdown.js";
+import {defaultMarkdownPlugins as markdownPlugins} from "./src/plugins/markdown.js";
 import {createBlockTool, InsertWidget} from "./src/plugins/BlockTool.js";
 import {scaffold} from "./src/scaffold.js";
 import {createRangeTool, defaultFormatWidgets} from "./src/plugins/RangeTool.js";

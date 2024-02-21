@@ -11,7 +11,7 @@
     "dev": "vite",
     "build": "vite build",
     "cypress": "cypress open",
-    "pw": "npm run test:compile && playwright test"
+    "pw": "npm run test:compile && playwright test tests/spec-out/keyboard.markdown.spec.js"
   },
   "files": [
     "plugins"

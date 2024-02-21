@@ -252,7 +252,7 @@ class BlockCodePlugin extends Plugin{
     }
 }
 
-export const plugins: (typeof Plugin)[] = [
+export const defaultMarkdownPlugins: (typeof Plugin)[] = [
     createFormatCommands(['*', '*'], 'bold'),
     createFormatCommands(['**', '**'], 'italic'),
     createFormatCommands(['~', '~'], 'underline'),
@@ -266,8 +266,8 @@ export const plugins: (typeof Plugin)[] = [
 
 const sectionMaxLevel = 3
 for(let i = sectionMaxLevel; i> 0; i-- ) {
-    plugins.push(createBlockCommands('#'.repeat(i), (titleTextFrag: DocNodeFragment) => createHeadingBlock(titleTextFrag, i), true))
+    defaultMarkdownPlugins.push(createBlockCommands('#'.repeat(i), (titleTextFrag: DocNodeFragment) => createHeadingBlock(titleTextFrag, i), true))
 }
 
-plugins.push(createBlockCommands('-', createUnorderedListBlock, true))
+defaultMarkdownPlugins.push(createBlockCommands('-', createUnorderedListBlock, true))
 

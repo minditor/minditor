@@ -7,7 +7,7 @@ import {ULItem} from "./ULItem.js";
 import {InlineCode} from "./InlineCode.js";
 import {Code} from "./CodeMirror.js";
 import {Link} from "./Link.js";
-import {plugins as markdownPlugins} from "../plugins/markdown.js";
+import {defaultMarkdownPlugins as markdownPlugins} from "../plugins/markdown.js";
 import {createBlockTool, InsertWidget} from "../plugins/BlockTool.js";
 import {createRangeTool, defaultFormatWidgets} from "../plugins/RangeTool.js";
 import {createSuggestionTool, defaultSuggestionWidgets} from "../plugins/SuggestionTool.js";

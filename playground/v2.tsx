@@ -8,7 +8,7 @@ import { ImageBlock, ImageSuggestionWidget } from "../src/components/Image.js";
 import { Code, CodeSuggestionWidget} from "../src/components/Code";
 import { createRoot, createElement } from 'axii'
 import { atom } from 'rata'
-import { plugins as markdownPlugins } from "../src/plugins/markdown";
+import { defaultMarkdownPlugins as markdownPlugins } from "../src/plugins/markdown";
 import { createRangeTool, defaultFormatWidgets } from '../src/plugins/RangeTool'
 import { createSuggestionTool, defaultSuggestionWidgets } from '../src/plugins/SuggestionTool'
 import { BlockToolPlugin } from "../src/plugins/BlockToolPlugin.js";

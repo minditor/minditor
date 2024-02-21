@@ -5,8 +5,13 @@ export function extend(page: Page) {
     if (page.load) return
 
     page.load = async (dataName: string = 'singlePara') => {
-        //@ts-ignore
         await page.goto(`./index.html?data=${dataName}`);
+        console.log(page.url())
+        await expect(page.getByTestId('root')).not.toBeEmpty()
+    }
+
+    page.loadWithPlugin = async (dataName: string = 'singlePara') => {
+        await page.goto(`./plugin.html?data=${dataName}`);
         console.log(page.url())
         await expect(page.getByTestId('root')).not.toBeEmpty()
     }

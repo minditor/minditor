@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <style>
+    [contenteditable] {
+      outline: none;
+    }
+
+    [data-type-list] {
+      margin: 10px 0;
+    }
+
+    [data-type-listitem] {
+      padding-left: 20px;
+      position: relative;
+    }
+
+    [data-type-listitem]:before {
+      content: ' ';
+      position: absolute;
+      margin-left: -10px;
+      margin-top: 10px;
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      background: #37a8f8;
+    }
+
+    #root {
+      border: 1px #333 solid;
+      width: 500px;
+      margin: 0 auto;
+      /*height: 100px;*/
+      /*overflow-y: scroll;*/
+    }
+
+    body {
+
+    }
+
+  </style>
+</head>
+<body>
+<div data-testid="root" id="root"></div>
+<script type="module" src="./plugin.tsx"></script>
+</body>
+</html>

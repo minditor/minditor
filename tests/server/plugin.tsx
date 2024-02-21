@@ -1,7 +1,28 @@
 /**@jsx createElement*/
 import {createElement, expect, expectDeepMatch, expectDOMMatch, expectSelectionMatch} from "./util";
 import {screen} from "@testing-library/dom";
-import {actions, Document, Heading, InlineCode, OLItem, Paragraph, state, Text, ULItem, Code, Grid, Link} from 'minditor'
+import {
+    actions,
+    Document,
+    Heading,
+    InlineCode,
+    OLItem,
+    Paragraph,
+    state,
+    Text,
+    ULItem,
+    Code,
+    Grid,
+    Link,
+    scaffold,
+    createBlockTool,
+    createRangeTool,
+    InsertWidget,
+    defaultFormatWidgets,
+    createSuggestionTool,
+    defaultSuggestionWidgets,
+    defaultMarkdownPlugins
+} from 'minditor'
 import '../spec/test-extend.js'
 
 const searchObj = Object.fromEntries(
@@ -24,19 +45,32 @@ const searchObj = Object.fromEntries(
 /* @vite-ignore */
 const {data} = await import(`../spec/data/${searchObj.data || 'singlePara'}`)
 const rootElement = document.getElementById('root')!
-const types = {
-    Paragraph, Text, Heading, OLItem, ULItem, InlineCode, Code, Link, Grid
 
+const types = {
+    Paragraph,
+    Text,
+    Heading,
+    OLItem,
+    ULItem,
+    InlineCode,
+    Code,
+    Link,
+    Grid
 }
 
-rootElement.style.position = 'relative'
-
-const doc = new Document(rootElement, data, types)
+const plugins = [
+    ...defaultMarkdownPlugins,
+    createBlockTool([InsertWidget]),
+    createRangeTool( defaultFormatWidgets ),
+    createSuggestionTool('/',  defaultSuggestionWidgets)
+]
+const result = scaffold(rootElement, {data, types, plugins})
+result.render()
 
 
 Object.assign(window, {
     get doc() {
-        return doc
+        return result.doc
     },
     page: screen,
     state,
@@ -47,10 +81,4 @@ Object.assign(window, {
     expect,
     createElement,
 })
-
-// 一定要放最后，这个时候才触发 test case
-doc.render()
-
-
-
 
