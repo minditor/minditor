@@ -69,7 +69,7 @@ export class OLItem extends TextBasedBlock {
     destroy() {
         destroyComputed(this.index)
         destroyComputed(this.displayIndex)
-        this.indexRoot?.dispose()
+        this.indexRoot?.destroy()
     }
     render({children}: { children: any }) {
         const indexContainer = <span contenteditable={false}></span>  as HTMLElement

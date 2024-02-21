@@ -46,7 +46,7 @@ export class Plugin {
     }
     destroy() {
         this.removeListenerHandles.forEach(h => h())
-        this.root?.dispose()
+        this.root?.destroy()
         delete this.root
     }
     addActivateEventListeners() {

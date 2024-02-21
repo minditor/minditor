@@ -31,7 +31,6 @@ function DebugApp({  doc }: {doc: Document}) {
 
     const contentData = atom(doc.content.toJSON())
     doc.content.on(EVENT_ANY, () => contentData(doc.content.toJSON()))
-    const a = <div style={{flexGrow: 1, flexShrink: 0, overflow: 'auto', maxHeight: '100%', fontSize:12}}></div>
     return (
         <div style={{display: 'flex', maxHeight: '100%', overflow: "auto", flexShrink:0, minWidth:0}}>
             <div style={{flexGrow: 1, overflow: 'auto', maxHeight: '100%', fontSize:11}}>
@@ -87,7 +86,7 @@ function DebugApp({  doc }: {doc: Document}) {
 export type ScaffoldHandle = {
     pluginContainer: HTMLElement,
     container: HTMLElement,
-    appRoot: Host,
+    appRoot: ReturnType<typeof createRoot>,
     doc: Document,
     destroy: () => void,
     render: () => void
@@ -133,7 +132,8 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     )
 
     // 1. axii app 先render，确保节点在 dom 上
-    const appRoot = createRoot(container).render(appElement)
+    const appRoot = createRoot(container)
+    appRoot.render(appElement)
 
     // 3. plugins render
     const pluginInstances = docConfig.plugins.map(Plugin => {

@@ -67,7 +67,7 @@ export class Heading extends TextBasedBlock {
     destroy() {
         destroyComputed(this.index)
         destroyComputed(this.displayIndex)
-        this.indexRoot?.dispose()
+        this.indexRoot?.destroy()
     }
 
     render({children}: { children: any }) {
