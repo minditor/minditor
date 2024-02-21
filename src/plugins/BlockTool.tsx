@@ -4,6 +4,9 @@ import {Plugin} from "../Plugin.js";
 import {Document} from "../Document.js";
 import {Paragraph} from "../DocumentContent.js";
 import {ImageBlock} from "../components/Image.js";
+import Plus from '../icons/Plus.js'
+import Menu from "../icons/Menu.js";
+import Image from "../icons/Image.js";
 
 class BlockToolPlugin extends Plugin{
     public static displayName = `BlockTool`
@@ -30,13 +33,13 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                 top: blockUnitRect.top - boundaryRect.top
             }
         }
+        public hover = atom(false)
         render(outsideDocBoundary: boolean) {
-            const hover = atom(false)
             const { lastMouseEnteredBlock, lastActiveDeviceType } = this.document.view.state
 
             const style = () => {
                 // range 看不见了，display 要 none
-                if (!hover() &&( !lastMouseEnteredBlock() || lastActiveDeviceType() !== 'mouse')) return { display: 'none'}
+                if (!this.hover() &&( !lastMouseEnteredBlock() || lastActiveDeviceType() !== 'mouse')) return { display: 'none'}
                 // if (!hover() &&( !lastMouseEnteredBlock())) return { display: 'none'}
 
                 const positionAttrs = this.calculatePosition(outsideDocBoundary)
@@ -56,8 +59,25 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                 }
             }
 
-            return  <div style={style} onmouseenter={() => hover(true)} onmouseleave={hover(false)}>
-                {this.items.map(item => item.render())}
+            const widgetContainerStyle = () => {
+                console.log(111, this.hover())
+                return ({
+                    display: this.hover() ? 'block' : 'none'
+                })
+            }
+
+            const iconStyle = () => ({
+                display: this.hover() ? 'none' : 'block',
+            })
+
+            return  <div style={style} onmouseenter={() => this.hover(true)} onmouseleave={() => this.hover(false)}>
+                <div style={iconStyle}>
+                    {<Menu size={16}/>}
+                </div>
+                {/*{() => { this.hover() ? this.items.map(item => item.render()) : null }}*/}
+                <div style={widgetContainerStyle}>
+                    {this.items.map(item => item.render())}
+                </div>
             </div>
         }
     }
@@ -83,7 +103,21 @@ export class InsertWidget extends BlockToolWidget {
         this.document.history.closePacket(null)
     }
     renderInsertImage() {
-        return <div onClick={this.insertImage}>Insert Image</div>
+
+        const style = () => {
+            return {
+                cursor: 'pointer',
+                display:'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                borderRadius:4,
+            }
+        }
+
+        return <div style={style} onClick={this.insertImage}>
+            <Image size={16}/>
+            <span style={{marginLeft:8, fontSize:12}}>插入图片</span>
+        </div>
     }
     renderInsertFile() {
 
@@ -105,7 +139,8 @@ export class InsertWidget extends BlockToolWidget {
     }
 }
 
-
+// TODO 复制、剪切、删除
+// TODO Block 自己的 menu
 
 
 
