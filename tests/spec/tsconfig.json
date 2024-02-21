@@ -29,6 +29,7 @@
     "keyboard.enter.spec.tsx",
     "keyboard.input.spec.tsx",
     "keyboard.backspace.spec.tsx",
-    "keyboard.markdown.spec.tsx"
+    "keyboard.markdown.spec.tsx",
+    "keyboard.rangeTool.spec.tsx"
   ]
 }

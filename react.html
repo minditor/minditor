@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Title</title>
+  <style>
+    [contenteditable] {
+        outline: 0px solid transparent;
+        white-space: pre-wrap;
+    }
+    html, body {
+      height: 100%;
+      box-sizing: border-box;
+      margin: 0;
+      padding: 10px;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+    /*非常重要，不然空行显示不出来*/
+    p {
+      min-height: 1em;
+      /*自动换行*/
+        word-wrap: break-word;
+    }
+
+
+    #root {
+      /* 必须提供 position 后面 pluginContainer 要用于定位*/
+      position: relative;
+      border: 1px #333 solid;
+      flex-grow:1;
+      /*用来取代 overflow-y 使得max-height 不要超出去的*/
+      min-height: 0;
+
+      /* 留给旁边 blockTool 的*/
+      margin-left: 200px;
+      overflow-x: visible;
+      /*overflow-y: auto;*/
+
+    }
+
+  </style>
+</head>
+<body>
+<h1 style="text-align: center">Minditor Debug Page</h1>
+<div id="root">
+</div>
+<script type="module" src="/react.tsx"></script>
+</body>
+</html>

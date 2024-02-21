@@ -11,7 +11,7 @@
     "dev": "vite",
     "build": "vite build",
     "cypress": "cypress open",
-    "pw": "npm run test:compile && playwright test tests/spec-out/keyboard.markdown.spec.js"
+    "pw": "npm run test:compile && playwright test tests/spec-out/keyboard.rangeTool.spec.js"
   },
   "files": [
     "plugins"
@@ -57,7 +57,12 @@
     "@playwright/test": "^1.41.2",
     "@testing-library/dom": "^9.3.4",
     "@types/node": "^18.11.17",
+    "@types/react": "^18.2.57",
+    "@types/react-dom": "^18.2.19",
     "happy-dom": "^13.3.8",
+    "react": "^18.2.0",
+    "react-day-picker": "^8.10.0",
+    "react-dom": "^18.2.0",
     "rimraf": "^5.0.5",
     "typescript": "^5.3.3",
     "vite": "^5.0.12",
