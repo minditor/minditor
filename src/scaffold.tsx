@@ -42,42 +42,48 @@ function DebugApp({  doc }: {doc: Document}) {
             </div>
             <div style={{flexGrow: 1, overflow: 'auto', maxHeight: '100%', fontSize:12, flexShrink:0, minWidth:0}}>
                 <div>
-                    <button onClick={() => doc.history.undo()}>undo</button>
-                    <button onClick={() => doc.history.redo()}>redo</button>
-                </div>
-                <div>undoIndex: {undoIndex}</div>
-                <div>
-                    <div>current packet stack</div>
-                    <div>
-                        {() => {
-                            return currentPacket()?.stack.map((event: EmitData<any, any>) => {
-                                return <div>
-                                    <span>event: {event.method}</span>
-                                    <span>  args: {JSON.stringify(event.args)}</span>
-                                </div>
-                            })
-                        }}
-                    </div>
+                    {() => JSON.stringify(doc.view.state.selectionRange()) }
                 </div>
                 <div>
-                    <div>packets</div>
                     <div>
-                        {() => {
-                            return historyPackets().map((packet: Packet) => {
-                                return <div>
-                                    {packet.stack.map((event: EmitData<any, any>) => {
-                                        return <div>
-                                            <span>event: {event.method}</span>
-                                            <span>  args: {JSON.stringify(event.args)}</span>
-                                            <span>  result: {JSON.stringify(event.result)}</span>
-                                        </div>
-                                    })}
-                                    <div>-----------------</div>
-                                </div>
-                            })
-                        }}
+                        <button onClick={() => doc.history.undo()}>undo</button>
+                        <button onClick={() => doc.history.redo()}>redo</button>
+                    </div>
+                    <div>undoIndex: {undoIndex}</div>
+                    <div>
+                        <div>current packet stack</div>
+                        <div>
+                            {() => {
+                                return currentPacket()?.stack.map((event: EmitData<any, any>) => {
+                                    return <div>
+                                        <span>event: {event.method}</span>
+                                        <span>  args: {JSON.stringify(event.args)}</span>
+                                    </div>
+                                })
+                            }}
+                        </div>
+                    </div>
+                    <div>
+                        <div>packets</div>
+                        <div>
+                            {() => {
+                                return historyPackets().map((packet: Packet) => {
+                                    return <div>
+                                        {packet.stack.map((event: EmitData<any, any>) => {
+                                            return <div>
+                                                <span>event: {event.method}</span>
+                                                <span>  args: {JSON.stringify(event.args)}</span>
+                                                <span>  result: {JSON.stringify(event.result)}</span>
+                                            </div>
+                                        })}
+                                        <div>-----------------</div>
+                                    </div>
+                                })
+                            }}
+                        </div>
                     </div>
                 </div>
+
             </div>
         </div>
     )
@@ -91,6 +97,7 @@ export type ScaffoldHandle = {
     destroy: () => void,
     render: () => void
 }
+
 export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: ScaffoldConfig): ScaffoldHandle {
 
 
@@ -102,7 +109,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
 
     const docScrollContainer = <div
         className="doc-scroll-container"
-        style={{flexGrow: 1, flexBasis:300,  overflowY: 'scroll'}}
+        style={{flexGrow: 1, flexBasis: 300, overflowY: 'scroll'}}
     /> as HTMLElement
     const pluginContainer = config?.pluginContainer || <div className="plugin-container"/> as HTMLElement
     pluginContainer.style.position = 'absolute'
@@ -115,13 +122,13 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     const doc = new Document(docScrollContainer as HTMLElement, docConfig.data, docConfig.types, docConfig.globalState)
 
     const appElement = config?.debug ? (
-        <div style={{flexGrow:1, display:"flex", minHeight: 0 }}>
-            <div style={{flexGrow:1, display:"flex", flexDirection: 'column', maxWidth:300}}>
+        <div style={{flexGrow: 1, display: "flex", minHeight: 0}}>
+            <div style={{flexGrow: 1, display: "flex", flexDirection: 'column', maxWidth: 300}}>
                 {docScrollContainer}
                 {pluginContainer}
             </div>
-            <div style={{flexGrow:2, overflow:'auto'}}>
-                <DebugApp doc={doc} />
+            <div style={{flexGrow: 2, overflow: 'auto'}}>
+                <DebugApp doc={doc}/>
             </div>
         </div>
     ) : (

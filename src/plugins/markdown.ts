@@ -266,7 +266,7 @@ export const defaultMarkdownPlugins: (typeof Plugin)[] = [
 
 const sectionMaxLevel = 3
 for(let i = sectionMaxLevel; i> 0; i-- ) {
-    defaultMarkdownPlugins.push(createBlockCommands('#'.repeat(i), (titleTextFrag: DocNodeFragment) => createHeadingBlock(titleTextFrag, i), true))
+    defaultMarkdownPlugins.push(createBlockCommands('#'.repeat(i), (titleTextFrag: DocNodeFragment) => createHeadingBlock(titleTextFrag, i-1), true))
 }
 
 defaultMarkdownPlugins.push(createBlockCommands('-', createUnorderedListBlock, true))

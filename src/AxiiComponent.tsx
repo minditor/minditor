@@ -4,7 +4,7 @@ import {Component, InlineComponent} from "./DocumentContent.js";
 export class AxiiInlineComponent extends InlineComponent {
     public axiiRoot: any
 
-    renderInner(): JSX.Element | null {
+    renderInner(...argv: any[]): JSX.Element | null {
         return null
     }
 
@@ -13,10 +13,10 @@ export class AxiiInlineComponent extends InlineComponent {
         this.axiiRoot.destroy()
     }
 
-    render() {
+    render(...argv: any[]) {
         const rootElement = <div style={{display: 'inline-block'}}></div>
         this.axiiRoot = createRoot(rootElement as HTMLElement)
-        this.axiiRoot.render(this.renderInner())
+        this.axiiRoot.render(this.renderInner(...argv))
         return rootElement
     }
 }
@@ -24,7 +24,7 @@ export class AxiiInlineComponent extends InlineComponent {
 export class AxiiComponent extends Component {
     public axiiRoot: any
 
-    renderInner(): JSX.Element | null {
+    renderInner(...argv: any[]): JSX.Element | null {
         return null
     }
 
@@ -33,10 +33,10 @@ export class AxiiComponent extends Component {
         this.axiiRoot.destroy()
     }
 
-    render() {
+    render(...argv: any[]) {
         const rootElement = <div style={{display: 'block'}} contenteditable={false}></div>
         this.axiiRoot = createRoot(rootElement as HTMLElement)
-        this.axiiRoot.render(this.renderInner())
+        this.axiiRoot.render(this.renderInner(...argv))
         return rootElement
     }
 }

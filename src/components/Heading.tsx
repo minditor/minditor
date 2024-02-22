@@ -1,5 +1,6 @@
 import {Atom, atom, computed, createElement, createRoot, destroyComputed, reactive} from "axii";
-import {Block, DocumentContent, TextBasedBlock} from "../DocumentContent.js";
+import {Block, DocumentContent, Text, TextBasedBlock} from "../DocumentContent.js";
+import {AxiiComponent} from "../AxiiComponent.js";
 
 
 type HeadingData = {
@@ -8,7 +9,7 @@ type HeadingData = {
     manualIndex?: number[],
 }
 
-export class Heading extends TextBasedBlock {
+export class Heading extends AxiiComponent {
     static displayName = 'Heading'
 
     static unwrap(doc: DocumentContent, block: Block) {
@@ -67,16 +68,18 @@ export class Heading extends TextBasedBlock {
     destroy() {
         destroyComputed(this.index)
         destroyComputed(this.displayIndex)
-        this.indexRoot?.destroy()
     }
 
-    render({children}: { children: any }) {
-        const indexContainer = <span contenteditable={false}></span> as HTMLElement
-        this.indexRoot = createRoot(indexContainer)
-        this.indexRoot.render(() => this.displayIndex())
+    renderInner({children}: { children: any }) {
         const Tag = `h${this.level()+1}`
 
-        return <Tag>{indexContainer}{children}</Tag>
+        const result =  <Tag>
+            {() => this.displayIndex() ? <span style={{marginRight:8}}>{this.displayIndex()}</span> : null}
+            <span contenteditable={true}>{children}</span>
+        </Tag> as HTMLElement
+
+        result.contentEditable = 'false'
+        return result
     }
 
     toJSON(): any {
@@ -87,5 +90,20 @@ export class Heading extends TextBasedBlock {
             useIndex: this.useIndex(),
             manualIndex: this.manualIndex
         }
+    }
+    toText() {
+        let content = ''
+        let current = this.firstChild
+        while (current) {
+            if (current instanceof Text) {
+                content += current.data.value
+            } else if( (current as Text).toText ){
+                content += (current as Text).toText()
+            } else {
+                // 忽略不能 toText 的
+            }
+            current = current.next
+        }
+        return content
     }
 }
