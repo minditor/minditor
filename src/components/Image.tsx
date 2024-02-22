@@ -19,14 +19,15 @@ type ImageData = {
 export class ImageBlock extends Component {
     static displayName = 'Image'
     public element?: HTMLElement
+    public uppy? : Uppy
     constructor(public data: ImageData) {
         super(data);
     }
     onMount = () => {
         if (this.data.isNew || !this.data.src) {
-            new Uppy()
-                .use(MockPlugin, { id: 'MyPlugin' })
-                .use(Dashboard, { inline: true, target: this.element })
+            this.uppy = new Uppy()
+                .use(InlineImagePlugin, { id: 'MyPlugin' })
+                .use(Dashboard, { inline: true, target: this.element, proudlyDisplayPoweredByUppy:false, height:300 })
                 .use(ImageEditor, { target: Dashboard })
                 .on('upload-success', (file, response) => {
                     console.log(file?.name, response.uploadURL);
@@ -40,12 +41,17 @@ export class ImageBlock extends Component {
                 });
         }
     }
+    destroy() {
+        super.destroy();
+        delete this.uppy
+    }
+
     renderResult() {
         // FIXME 如何让图片不成大容器？最大 100%？
         const element = (this.data.isNew  ?
-                <div className="image-uppy-root"></div> :
-                <div className="image-preview-root">
-                    <img style={{maxWidth: 400}} src={this.data.src} alt={this.data.alt} />
+                <div className="image-uppy-root" contenteditable={false}></div> :
+                <div className="image-preview-root"  contenteditable={false}>
+                    <img style={{maxWidth: '100%', width:'auto'}} src={this.data.src} alt={this.data.alt} />
                 </div>
         ) as unknown as HTMLElement
 
@@ -57,7 +63,7 @@ export class ImageBlock extends Component {
     }
 }
 
-class MockPlugin extends BasePlugin {
+class InlineImagePlugin extends BasePlugin {
     constructor(uppy: Uppy, opts?: PluginOptions) {
         super(uppy, opts);
         this.id = opts?.id || 'MyPlugin';

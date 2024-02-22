@@ -6,10 +6,11 @@ export * from './globals.js'
 export {ULItem} from "./components/ULItem.js";
 export {OLItem} from "./components/OLItem.js";
 export {Heading} from "./components/Heading.js";
-export { InlineCode } from "./components/InlineCode.js";
-export { Code } from "./components/CodeMirror.js";
-export { Link } from "./components/Link.js";
-export { Grid } from "./components/Grid.js";
+export {InlineCode} from "./components/InlineCode.js";
+export {ImageBlock} from "./components/Image.js";
+export {Code} from "./components/CodeMirror.js";
+export {Link} from "./components/Link.js";
+export {Grid} from "./components/Grid.js";
 export {Text} from "./DocumentContent.js";
 export {Paragraph} from "./DocumentContent.js";
 export {DocRange} from "./Range.js";
@@ -18,3 +19,5 @@ export * from './plugins/BlockTool.js'
 export * from './plugins/RangeTool.js'
 export * from './plugins/SuggestionTool.js'
 export * from './scaffold.js'
+export {AxiiComponent} from "./AxiiComponent.js";
+export {AxiiInlineComponent} from "./AxiiComponent.js";

@@ -36,6 +36,8 @@
     "tests/**/*",
     "index.tsx",
     "index2.tsx",
+    "react.tsx",
+    "react-calendar.tsx",
     "readme.tsx",
     "__test__/**/*",
   ],

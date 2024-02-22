@@ -1,7 +1,7 @@
 import jsonData from './readme1.json'
 import {Code, Heading, InlineCode, OLItem, Paragraph, Text, ULItem, Link, Grid} from "./src/index.js";
 import {defaultMarkdownPlugins as markdownPlugins} from "./src/plugins/markdown.js";
-import {createBlockTool, InsertWidget} from "./src/plugins/BlockTool.js";
+import {createBlockTool, defaultBlockWidgets} from "./src/plugins/BlockTool.js";
 import {scaffold} from "./src/scaffold.js";
 import {createRangeTool, defaultFormatWidgets} from "./src/plugins/RangeTool.js";
 import { createSuggestionTool, defaultSuggestionWidgets } from "./src/plugins/SuggestionTool.js";
@@ -24,7 +24,7 @@ const types = {
 
 const plugins = [
     ...markdownPlugins,
-    createBlockTool([InsertWidget]),
+    createBlockTool(defaultBlockWidgets),
     createRangeTool( defaultFormatWidgets ),
     createSuggestionTool('/',  defaultSuggestionWidgets)
 ]

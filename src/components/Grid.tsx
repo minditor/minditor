@@ -1,6 +1,6 @@
-import {createElement, RxList, atom, Atom, computed,} from "axii";
-import {AxiiComponent, DocumentContent, Paragraph, Text} from "../DocumentContent.js";
-import {DocumentData, Document} from "../Document.js";
+import {atom, Atom, computed, createElement, RxList,} from "axii";
+import {Paragraph, Text} from "../DocumentContent.js";
+import {Document, DocumentData} from "../Document.js";
 import {Heading} from "./Heading.js";
 import {OLItem} from "./OLItem.js";
 import {ULItem} from "./ULItem.js";
@@ -8,13 +8,13 @@ import {InlineCode} from "./InlineCode.js";
 import {Code} from "./CodeMirror.js";
 import {Link} from "./Link.js";
 import {defaultMarkdownPlugins as markdownPlugins} from "../plugins/markdown.js";
-import {createBlockTool, InsertWidget} from "../plugins/BlockTool.js";
 import {createRangeTool, defaultFormatWidgets} from "../plugins/RangeTool.js";
 import {createSuggestionTool, defaultSuggestionWidgets} from "../plugins/SuggestionTool.js";
 import {scaffold, ScaffoldHandle} from "../scaffold.js";
 import AddRoundIcon from "../icons/AddRound.js";
 import DeleteRound from "../icons/DeleteRound.js";
 import {Drag} from "../lib/Drag.js";
+import {AxiiComponent} from "../AxiiComponent.js";
 
 // FIXME 这里应该从 context 里面读取。
 const types = {
@@ -29,7 +29,7 @@ const types = {
 }
 
 export type GridData = {
-    columnWidth: number[],
+    columns: number[],
     data: DocumentData[][]
 }
 
@@ -37,7 +37,7 @@ const HANDLE_SIZE = 10
 const TABLE_BORDER_COLOR = '#dee0e3'
 
 export class Grid extends AxiiComponent {
-    public columnWidth: RxList<Atom<number>>
+    public columns: RxList<Atom<number>>
     public innerData: RxList<RxList<ScaffoldHandle>>
     public pluginContainer: HTMLElement
     public hover = atom(false)
@@ -45,7 +45,7 @@ export class Grid extends AxiiComponent {
     constructor(data?: GridData) {
         super(data);
         const defaultColumn = [100, 100]
-        this.columnWidth = new RxList<Atom<number>>((data?.columnWidth || defaultColumn).map((width) => atom(width)))
+        this.columns = new RxList<Atom<number>>((data?.columns || defaultColumn).map((width) => atom(width)))
         // 初始化一排原始数据
         const originData: DocumentData[][] = data?.data || [
             defaultColumn.map((c: any) => Document.createEmptyDocumentData())
@@ -73,7 +73,7 @@ export class Grid extends AxiiComponent {
     }
 
     addRow = (beforeIndex: number) => {
-        const newRow = this.columnWidth.map(() => this.createInnerDocument())
+        const newRow = this.columns.map(() => this.createInnerDocument())
         this.innerData.splice(beforeIndex, 0, newRow)
         newRow.forEach((doc) => {
             doc.render()
@@ -88,7 +88,7 @@ export class Grid extends AxiiComponent {
     }
 
     addColumn = (beforeIndex: number) => {
-        this.columnWidth.splice(beforeIndex, 0, atom(100))
+        this.columns.splice(beforeIndex, 0, atom(100))
         this.innerData.forEach((row) => {
             const newDoc = this.createInnerDocument()
             row.splice(beforeIndex, 0, newDoc)
@@ -97,7 +97,7 @@ export class Grid extends AxiiComponent {
     }
 
     deleteColumn(index: number) {
-        this.columnWidth.splice(index, 1)
+        this.columns.splice(index, 1)
 
         this.innerData.forEach((row) => {
             row.at(index)!.destroy()
@@ -122,8 +122,7 @@ export class Grid extends AxiiComponent {
             })
         })
     }
-
-    renderInner() {
+    renderTopHandle() {
         const topHandleStyle = () => ({
             position: 'absolute',
             display: this.hover() ? 'flex' : 'none',
@@ -133,10 +132,10 @@ export class Grid extends AxiiComponent {
             height: HANDLE_SIZE
         })
 
-        const topHandle = (
+        return (
             <div style={topHandleStyle}>
                 {
-                    this.columnWidth.map((width, index) => {
+                    this.columns.map((width, index) => {
                         const addIcon = (
                             <div
                                 style={{
@@ -209,7 +208,78 @@ export class Grid extends AxiiComponent {
             </div>
         )
 
+    }
+    renderLeftHandle(rowIndex: Atom<number>, index: Atom<number>) {
+        const style = () => ({
+            display: this.hover() ? 'block' : 'none',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            height: '100%',
+            width: HANDLE_SIZE
+        })
+        return () => index!() !== 0 ? null :
+            (
+                <div style={style}>
+                    {() => rowIndex!() !==0 ? null : (
+                        <span
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: 0,
+                                width: HANDLE_SIZE,
+                                height: HANDLE_SIZE,
+                                display: 'flex',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => this.addRow(index!())}>
+                                                    <AddRoundIcon size={10}/>
+                                                </span>
+                    )}
+                    <span
+                        style={{
+                            position: 'absolute',
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            left: 0,
+                            width: HANDLE_SIZE,
+                            height: HANDLE_SIZE,
+                            display: 'flex',
+                            cursor: 'pointer',
+                        }}
+                        onClick={() => this.deleteRow(index!())}
+                    >
+                                                    <DeleteRound size={10}/>
+                                                </span>
+                    <span
+                        style={{
+                            position: 'absolute',
+                            bottom: 0,
+                            left: 0,
+                            width: HANDLE_SIZE,
+                            height: HANDLE_SIZE,
+                            display: 'flex',
+                            cursor: 'pointer'
+                        }}
+                        onClick={() => this.addRow(index!() + 1)}>
+                                                    <AddRoundIcon size={10}/>
+                                                </span>
+                </div>
+            )
+    }
+    renderRightHandle(index: Atom<number>) {
+        const delta = atom({x: this.columns.at(index!)!.raw, y: 0})
+        // 绑定宽度和 computed
+        computed(() => {
+            this.columns.at(index!)!(delta().x)
+        })
 
+        return <Drag
+            style={{height: '100%', width: HANDLE_SIZE, position: 'absolute', right: 0, top: 0, cursor: 'col-resize'}}
+            delta={delta}
+        />
+    }
+    renderInner() {
         const style = {
             position: 'relative',
             width: '100%',
@@ -222,7 +292,7 @@ export class Grid extends AxiiComponent {
 
         const tableStyle = () => {
             let width = 0
-            this.columnWidth.forEach((w) => {
+            this.columns.forEach((w) => {
                 width += w()
             })
             return ({
@@ -243,99 +313,72 @@ export class Grid extends AxiiComponent {
                 <div style={{position: 'relative', overflowX: 'auto', width: '100%', paddingTop: HANDLE_SIZE,}}>
                     <table style={tableStyle}>
                         <colgroup>
-                            {this.columnWidth.map((width) => {
+                            {this.columns.map((width) => {
                                 return <col style={() => ({width: width(), tableLayout: 'fixed'})}/>
                             })}
                         </colgroup>
                         {this.innerData.map((row, rowIndex) => (
                             <tr>
                                 {row.map((cell, index) => {
-                                    const style = () => ({
-                                        display: this.hover() ? 'block' : 'none',
-                                        position: 'absolute',
-                                        left: 0,
-                                        top: 0,
-                                        height: '100%',
-                                        width: HANDLE_SIZE
-                                    })
-                                    const leftHandle = () => index!() !== 0 ? null :
-                                        (
-                                            <div style={style}>
-                                                {() => rowIndex!() !==0 ? null : (
-                                                    <span
-                                                        style={{
-                                                            position: 'absolute',
-                                                            top: 0,
-                                                            left: 0,
-                                                            width: HANDLE_SIZE,
-                                                            height: HANDLE_SIZE,
-                                                            display: 'flex',
-                                                            cursor: 'pointer'
-                                                        }}
-                                                        onClick={() => this.addRow(index!())}>
-                                                    <AddRoundIcon size={10}/>
-                                                </span>
-                                                )}
-                                                <span
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: '50%',
-                                                        transform: 'translateY(-50%)',
-                                                        left: 0,
-                                                        width: HANDLE_SIZE,
-                                                        height: HANDLE_SIZE,
-                                                        display: 'flex',
-                                                        cursor: 'pointer',
-                                                    }}
-                                                    onClick={() => this.deleteRow(index!())}
-                                                >
-                                                    <DeleteRound size={10}/>
-                                                </span>
-                                                <span
-                                                    style={{
-                                                        position: 'absolute',
-                                                        bottom: 0,
-                                                        left: 0,
-                                                        width: HANDLE_SIZE,
-                                                        height: HANDLE_SIZE,
-                                                        display: 'flex',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                    onClick={() => this.addRow(index!() + 1)}>
-                                                    <AddRoundIcon size={10}/>
-                                                </span>
-                                            </div>
-                                        )
-
-                                    const delta = atom({x: this.columnWidth.at(index!)!.raw, y: 0})
-
-                                    // 绑定宽度和 computed
-                                    computed(() => {
-                                        this.columnWidth.at(index!)!(delta().x)
-                                    })
-
-
-                                    const rightHandle = <Drag
-                                        style={{height: '100%', width: HANDLE_SIZE, position: 'absolute', right: 0, top: 0, cursor: 'col-resize'}}
-                                        delta={delta}
-                                    />
-
                                     return (
                                         <td style={{...borderStyle, position: 'relative'}}>
                                             <div style={{padding: 10}}>
                                                 {cell.container}
                                             </div>
-                                            {leftHandle}
-                                            {rightHandle}
+                                            {this.renderLeftHandle(rowIndex!, index!)}
+                                            {this.renderRightHandle(index!)}
                                         </td>
                                     )
                                 })}
                             </tr>
                         ))}
                     </table>
-                    {topHandle}
+                    {this.renderTopHandle()}
                 </div>
             </div>
         )
     }
+}
+
+
+// 提供给 Plugin 用的
+export type GridPluginProps = {
+    onChange: (data: [number, number]) => void,
+    size: [number, number],
+    unitSize: number
+}
+
+export function GridPicker({onChange, size, unitSize}: GridPluginProps) {
+    // 用 table 渲染出  size 指定的 x * y 的格子
+    const hoverPosition = atom({x: -1, y: -1})
+    return (
+        <table
+            style={{borderCollapse: 'collapse', width: '100%', height: '100%'}}
+            onMouseLeave={() => hoverPosition({x: -1, y: -1})}
+        >
+            <tbody>
+            {Array.from({length: size[1]}).map((_, y) => (
+                <tr>
+                    {Array.from({length: size[0]}).map((_, x) => {
+                        const style = () => ({
+                            width: unitSize,
+                            height: unitSize,
+                            background: x < (hoverPosition().x+1)  && y < (hoverPosition().y+1)  ? '#e5e5e5' : 'white'
+                        })
+
+                        return (
+                            <td
+                                style={{border: '1px solid #eee'}}
+                                onMouseEnter={() => hoverPosition({x, y})}
+                                onClick={() => onChange([x+1, y+1])}
+                            >
+                                <div style={style}></div>
+                            </td>
+                        )
+                    })}
+                </tr>
+            ))}
+            </tbody>
+        </table>
+    )
 }

@@ -1,10 +1,25 @@
 import jsonData from './readme1.json'
-import {Code, Heading, InlineCode, OLItem, Paragraph, Text, ULItem, Link, Grid} from "./src/index.js";
-import {defaultMarkdownPlugins as markdownPlugins} from "./src/plugins/markdown.js";
-import {createBlockTool, InsertWidget} from "./src/plugins/BlockTool.js";
-import {scaffold} from "./src/scaffold.js";
-import {createRangeTool, defaultFormatWidgets} from "./src/plugins/RangeTool.js";
-import { createSuggestionTool, defaultSuggestionWidgets } from "./src/plugins/SuggestionTool.js";
+import {
+    Code,
+    Heading,
+    InlineCode,
+    OLItem,
+    Paragraph,
+    Text,
+    ULItem,
+    Link,
+    Grid,
+    ImageBlock,
+    ImageInsertWidget,
+    createBlockTool,
+    scaffold,
+    createRangeTool,
+    defaultFormatWidgets,
+    createSuggestionTool,
+    defaultSuggestionWidgets,
+    defaultMarkdownPlugins,
+    GridInsertWidget
+} from "./src/index.js";
 
 const root= document.getElementById('root')!
 const types = {
@@ -16,12 +31,13 @@ const types = {
     InlineCode,
     Code,
     Link,
-    Grid
+    Grid,
+    Image: ImageBlock
 }
 
 const plugins = [
-    ...markdownPlugins,
-    createBlockTool([InsertWidget]),
+    ...defaultMarkdownPlugins,
+    createBlockTool([ImageInsertWidget, GridInsertWidget]),
     createRangeTool( defaultFormatWidgets ),
     createSuggestionTool('/',  defaultSuggestionWidgets)
 ]

@@ -1,6 +1,6 @@
 import EventEmitter from "eventemitter3";
 import {assert, ZWSP} from "./util.js";
-import {createElement, Atom, atom, createRoot} from "axii";
+import {Atom, atom, createElement} from "axii";
 
 export class DocNodeFragment {
     public retrieved = false
@@ -209,7 +209,7 @@ export class Paragraph extends TextBasedBlock {
     static displayName = 'Paragraph'
 
     get isEmpty() {
-        return this.firstChild instanceof Text && this.firstChild.isEmpty
+        return this.firstChild instanceof Text && this.firstChild.isEmpty && !this.firstChild.next
     }
     render({children}: { children: any }) {
         return <p>{children}</p>
@@ -286,6 +286,10 @@ export class DocumentContent extends EventEmitter {
     }
     createText(value: string = '', formats?: FormatData) {
         return new Text({value, formats})
+    }
+    createFromData(data: InlineData|BlockData) {
+        const Type = this.types[data.type]!
+        return new Type(data)
     }
 
     @AutoEmit
@@ -472,24 +476,6 @@ export class InlineComponent extends Inline {
     }
 }
 
-export class AxiiInlineComponent extends InlineComponent {
-    public axiiRoot: any
-    renderInner(): JSX.Element|null {
-        return null
-    }
-    destroy() {
-        super.destroy();
-        this.axiiRoot.destroy()
-    }
-
-    render() {
-        const rootElement = <div style={{display:'inline-block'}}></div>
-        this.axiiRoot = createRoot(rootElement as HTMLElement)
-        this.axiiRoot.render(this.renderInner())
-        return rootElement
-    }
-}
-
 export type InlineComponentContext = {
     block: Block
 }
@@ -506,20 +492,3 @@ export class Component extends Block {
     }
 }
 
-export class AxiiComponent extends Component {
-    public axiiRoot: any
-    renderInner(): JSX.Element|null {
-        return null
-    }
-    destroy() {
-        super.destroy();
-        this.axiiRoot.destroy()
-    }
-
-    render() {
-        const rootElement = <div style={{display:'block'}}></div>
-        this.axiiRoot = createRoot(rootElement as HTMLElement)
-        this.axiiRoot.render(this.renderInner())
-        return rootElement
-    }
-}

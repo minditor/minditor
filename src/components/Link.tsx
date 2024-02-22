@@ -1,6 +1,7 @@
 import {Atom, atom, createElement, RenderContext} from "axii";
-import {AxiiInlineComponent, InlineComponent} from "../DocumentContent.js";
+import {InlineComponent} from "../DocumentContent.js";
 import {Input} from "../lib/Input.js";
+import {AxiiInlineComponent} from "../AxiiComponent.js";
 
 type LinkData = {
     href?: string,

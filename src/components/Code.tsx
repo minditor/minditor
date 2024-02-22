@@ -11,7 +11,7 @@ export type CodeData = {
 }
 
 export class Code extends Component {
-    static displayName = 'Code'
+    public static displayName = 'Code'
     public element?: HTMLElement
     static langAlias = {
         'js' : 'javascript',

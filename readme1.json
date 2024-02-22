@@ -65,6 +65,15 @@
       ]
     },
     {
+      "type": "Paragraph",
+      "content": [
+        {
+          "type": "Text",
+          "value": ""
+        }
+      ]
+    },
+    {
       "type": "Heading",
       "useIndex": true,
       "level": 0,

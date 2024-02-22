@@ -1,16 +1,13 @@
 /**@jsx createElement*/
-import {onESCKey, createElement, atom, Atom, atomComputed, destroyComputed} from 'axii'
-import {Plugin, PluginRunArgv} from "../Plugin";
+import {atom, Atom, atomComputed, createElement, destroyComputed, onESCKey} from 'axii'
+import {Plugin} from "../Plugin";
 import {Document} from "../Document";
 import Image from "../icons/Image";
 import Code from "../icons/Code";
-import Table from "../icons/Table";
-import List from "../icons/List";
 import Link from "../icons/Link";
-import {InlineComponent, Component} from "../DocumentContent.js";
-import { Code as CodeBlock } from "../components/CodeMirror.js";
-import { ImageBlock  } from "../components/Image.js";
-import { Link as LinkInline  } from "../components/Link.js";
+import Grid from "../icons/Grid";
+import {BlockData, Component, InlineComponent, InlineData} from "../DocumentContent.js";
+import {GridPicker} from '../components/Grid.js'
 
 
 function onInputKey(key: string) {
@@ -33,7 +30,7 @@ export class SuggestionWidget {
     render(): JSX.Element {
         return <span>icon</span>
     }
-    insertItem() {}
+    insertItem(initialData?: InlineData|BlockData) {}
 }
 
 
@@ -151,7 +148,10 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
                 }
             }
 
-            return  <div style={style}>
+            return  <div
+                style={style}
+                onMouseLeave={() => this.selectedWidget(null)}
+            >
                 <div style={blockGroupStyle}>
                     {this.blockWidgets.filter(w => (w.constructor as typeof SuggestionWidget).isBlock).map((widget: SuggestionWidget) => {
                         return widget.render()
@@ -168,19 +168,36 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
 }
 
 
+function isSubclassOf(subClass: Function, superClass:Function) {
+    // 从当前类的原型开始
+    let prototype = Object.getPrototypeOf(subClass.prototype);
+
+    // 沿着原型链向上查找
+    while (prototype != null) {
+        // 检查当前原型是否是超类的原型
+        if (prototype === superClass.prototype) {
+            return true;
+        }
+        // 向上移动到下一个原型
+        prototype = Object.getPrototypeOf(prototype);
+    }
+
+    // 如果没有找到超类的原型，返回 false
+    return false;
+}
+
 // TODO 好像还需要增加初始化的参数，有的组件需要。
-export function createSuggestionWidget(icon: JSX.Element, Comp: typeof InlineComponent| typeof Component, isBlock = true) : typeof SuggestionWidget{
+export function createSuggestionWidget(Handle: JSX.ElementClass, type: string, isBlock: boolean = false) : typeof SuggestionWidget{
     return class OneSuggestionWidget extends SuggestionWidget {
-        static displayName =`${Comp.displayName}RangeWidget`
+        static displayName =`${type}SuggestionWidget`
         static isBlock = isBlock
-        insertItem = () =>{
+        insertItem = (initialData: InlineData|BlockData = {type, content: []}) =>{
             this.parent.deactivate()
-            console.log('insert', Comp.displayName)
             const range = this.document.view.state.selectionRange()!
             const { startText, startBlock } = range
 
             this.document.history.openPacket(range)
-            const newComp = new Comp({})
+            const newComp = this.document.content.createFromData(initialData) as Component|InlineComponent
 
             if (newComp instanceof InlineComponent) {
                 const lastSlashIndex = startText.data.value.lastIndexOf('/')
@@ -199,33 +216,104 @@ export function createSuggestionWidget(icon: JSX.Element, Comp: typeof InlineCom
             const style = () => {
                 return {
                     cursor: 'pointer',
-                    display:'flex',
-                    alignItems: 'center',
-                    width:24,
-                    height:24,
-                    justifyContent: 'center',
+                    padding: 4,
                     borderRadius:4,
                     background: this.parent.selectedWidget() === this ? '#f0f0f0' : 'transparent'
                 }
             }
 
-
             return (
                 <div
                     style={style}
-                    onClick={this.insertItem}
+                    onMouseEnter={() => this.parent.selectedWidget(this)}
                 >
-                    {icon}
+                    <Handle insert={this.insertItem} />
                 </div>
             )
         }
     }
 }
 
+
+
+
+type CommonInsertHandleProps = {
+    insert: (initialData: InlineData|BlockData) => void
+}
+
+function createCommonInsertHandle(icon: JSX.Element, type: string) {
+    return function InsertHandle({insert}: CommonInsertHandleProps) {
+        return (
+            <div
+                style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', cursor: 'pointer'}}
+                onClick={() => insert({type, content: []})}
+            >
+                {icon}
+                <span style={{marginLeft: 8, fontSize: 14, whiteSpace:'nowrap'}}>+ {type}</span>
+            </div>
+        )
+    }
+}
+
+export const ImageInsertHandle = createCommonInsertHandle(<Image size={18}/>, 'Image')
+export const LinkInsertHandle = createCommonInsertHandle(<Link size={18}/>, 'Link')
+export const CodeInsertHandle = createCommonInsertHandle(<Code size={18}/>, 'Code')
+
+
+export function GridInsertHandle({insert}: CommonInsertHandleProps) {
+    const onGridChange = (size: [number, number]) => {
+        const columns = Array.from({length: size[0]}, () => 100)
+        const data = Array.from({length: size[1]}, () =>
+            columns.map(() => (Document.createEmptyDocumentData()))
+        )
+        insert({type: 'Grid', columns, data, content: []})
+        activated(false)
+    }
+    const activated = atom(false)
+    return (
+        <div
+            style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                cursor: 'pointer',
+                width: '100%'
+            }}
+            onmouseenter={() => activated(true)}
+            onmouseleave={() => activated(false)}
+        >
+            <Grid size={18}/>
+            <span style={{marginLeft: 8, fontSize: 14,  whiteSpace:'nowrap'}}>+ Grid</span>
+            <div style={() => ({
+                display: activated() ? 'block' : 'none',
+                position: 'absolute',
+                left: 'calc(100% - 8px)',
+                top: 0,
+                transform: 'translateY(-50%)',
+                paddingLeft: 18,
+                background: 'transparent',
+            })}
+            >
+                <div style={{
+                    padding: 10,
+                    border: '1px solid #eee',
+                    background: '#fff',
+                    boxShadow: '2px 2px 5px #dedede'
+                }}
+                >
+                    <GridPicker onChange={onGridChange} size={[10, 10]} unitSize={20}/>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+
+
 export const defaultSuggestionWidgets = [
-    createSuggestionWidget(<Code size={16}/>, CodeBlock),
-    createSuggestionWidget(<Image size={16}/>, ImageBlock),
-    createSuggestionWidget(<Link size={16}/>, LinkInline, false),
-
+    createSuggestionWidget(ImageInsertHandle, 'Image', true),
+    createSuggestionWidget(LinkInsertHandle, 'Link', false),
+    createSuggestionWidget(GridInsertHandle, 'Grid', true),
+    createSuggestionWidget(CodeInsertHandle, 'Code', true),
 ]
-
