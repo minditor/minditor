@@ -17,11 +17,12 @@ import {
     scaffold,
     createBlockTool,
     createRangeTool,
-    InsertWidget,
+    defaultBlockWidgets,
     defaultFormatWidgets,
     createSuggestionTool,
     defaultSuggestionWidgets,
-    defaultMarkdownPlugins
+    defaultMarkdownPlugins,
+    InlineImageBlock
 } from 'minditor'
 import '../spec/test-extend.js'
 
@@ -55,16 +56,17 @@ const types = {
     InlineCode,
     Code,
     Link,
-    Grid
+    Grid,
+    Image: InlineImageBlock
 }
 
 const plugins = [
     ...defaultMarkdownPlugins,
-    createBlockTool([InsertWidget]),
+    createBlockTool(defaultBlockWidgets),
     createRangeTool( defaultFormatWidgets ),
     createSuggestionTool('/',  defaultSuggestionWidgets)
 ]
-const result = scaffold(rootElement, {data, types, plugins})
+const result = scaffold(rootElement, {data, types, plugins}, )
 result.render()
 
 

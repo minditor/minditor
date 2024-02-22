@@ -465,6 +465,7 @@ export type InlineData = {
 
 
 export class InlineComponent extends Inline {
+    static asTextNode = false
     focus() {
 
     }
@@ -481,6 +482,7 @@ export type InlineComponentContext = {
 }
 
 export class Component extends Block {
+    static asTextNode = false
     onMount() {
 
     }

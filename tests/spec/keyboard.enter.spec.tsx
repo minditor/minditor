@@ -72,7 +72,7 @@ test.describe('keyboard Enter actions', () => {
     })
 
 
-    test('Section content. Should create new Para before this.', async ({page}) => {
+    test('Section content head. Should create new Para before this.', async ({page}) => {
       await page.load('singleSection')
       const data = singleSectionData
       const firstText = data.children[0].content[0].value
@@ -92,8 +92,9 @@ test.describe('keyboard Enter actions', () => {
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const focusPElement = (firstTextEl as Node)!.parentElement!
+        const focusPElement = (firstTextEl as Node)!.parentElement!.parentElement!.parentElement!
         const newPElement = focusPElement!.previousSibling!
+        // const newPElement = focusPElement
 
           window.expectDOMMatch(newPElement, <p><span>{ZWSP}</span></p>)
           // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
@@ -232,7 +233,7 @@ test.describe('keyboard Enter actions', () => {
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const titleElement = (firstTextEl as Node)!.parentElement!
+        const titleElement = (firstTextEl as Node)!.parentElement!.parentElement!.parentElement!
         const sectionElement = titleElement.parentElement!
         window.expectDOMMatch(sectionElement,
             <any>
@@ -392,17 +393,19 @@ test.describe('keyboard Enter actions', () => {
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const sectionsElement = (firstTextEl as Node)!.parentElement!.parentElement!
+        const sectionsElement = (firstTextEl as Node)!.parentElement!.parentElement!.parentElement!.parentElement!
         window.expectDOMMatch(sectionsElement,
             <any>
-              <h1>
-                <any data-testignorechildren></any>
-                <span>1</span>
-              </h1>
+              <div>
+                <h1>
+                  <span>
+                    <span>1</span>
+                  </span>
+                </h1>
+              </div>
               <p>
                 <span>23</span>
               </p>
-              <any data-testignorechildren/>
             </any>
         )
         // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)

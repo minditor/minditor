@@ -65,21 +65,46 @@ export function expectDOMMatch(inputTarget: any, toMatch: HTMLElement, path: str
 
 
         if (!toMatch.dataset['testignorechildren']) {
-            expect(target.childNodes.length).toEqual(toMatch.childNodes.length, 'children length not equal');
+            // expect(Array.from(target.childNodes).filter(child => !(child instanceof Comment)).length).toEqual(toMatch.childNodes.length, 'children length not equal');
 
-            // @ts-ignore
-            [...toMatch.childNodes].forEach((child: Node, index) => {
-                const targetChild = target.childNodes[index]
+            let targetIndex = 0
+            for(let index = 0; index < toMatch.childNodes.length; index++) {
+                const child = toMatch.childNodes[index]
+                if (child instanceof Comment) {
+                    continue
+                }
+
+                let targetChild = target.childNodes[targetIndex]
+                while(targetChild instanceof Comment) {
+                    targetIndex++
+                    targetChild = target.childNodes[targetIndex]
+                }
+
                 if(child instanceof HTMLElement) {
                     expectDOMMatch(targetChild, child as HTMLElement, currentPath, index)
                 } else if (targetChild instanceof Text && child instanceof Text){
                     expect(child.wholeText).toEqual(targetChild.wholeText)
-                } else if (targetChild instanceof Comment && child instanceof Comment){
-                    // 不对比
                 } else {
                     expect(child.valueOf()).toEqual(targetChild.valueOf())
                 }
-            })
+                targetIndex++
+            }
+
+
+
+            //@ts-ignore
+            // ;[...toMatch.childNodes].forEach((child: Node, index) => {
+            //     const targetChild = target.childNodes[index]
+            //     if(child instanceof HTMLElement) {
+            //         expectDOMMatch(targetChild, child as HTMLElement, currentPath, index)
+            //     } else if (targetChild instanceof Text && child instanceof Text){
+            //         expect(child.wholeText).toEqual(targetChild.wholeText)
+            //     } else if (targetChild instanceof Comment && child instanceof Comment){
+            //         // 不对比
+            //     } else {
+            //         expect(child.valueOf()).toEqual(targetChild.valueOf())
+            //     }
+            // })
         }
 
     } catch( e: unknown|Error ) {
@@ -133,39 +158,45 @@ type RangeLike = {
     endOffset?: number,
     collapsed?: boolean,
 }
-export function expectSelectionMatch(toMatch: RangeLike) {
-    let range: Range
+export function expectSelectionMatch(toMatch: RangeLike|null) {
+    let range: Range|null = null
     try {
         const selection = window.getSelection()
-        expect(selection!.rangeCount).toEqual(1)
-        range = selection!.getRangeAt(0)!
-        expect(range.startContainer).toEqual(toMatch.startContainer, 'startContainer not match')
-        expect(range.startOffset).toEqual(toMatch.startOffset, "startOffset not match")
-        if (toMatch.endContainer) {
-            expect(range.endContainer).toEqual(toMatch.endContainer, 'endContainer not match')
+        if (!toMatch) {
+            expect(selection!.rangeCount).toEqual(0)
+        } else {
+            expect(selection!.rangeCount).toEqual(1)
+            range = selection!.getRangeAt(0)!
+            expect(range.startContainer).toEqual(toMatch.startContainer, 'startContainer not match')
+            expect(range.startOffset).toEqual(toMatch.startOffset, "startOffset not match")
+            if (toMatch.endContainer) {
+                expect(range.endContainer).toEqual(toMatch.endContainer, 'endContainer not match')
+            }
+            if (toMatch.endOffset !== undefined) {
+                expect(range.endOffset).toEqual(toMatch.endOffset, "endOffset not match")
+            }
+            if (toMatch.collapsed !== undefined) {
+                expect(range.collapsed).toEqual(toMatch.collapsed)
+            }
         }
-        if (toMatch.endOffset !== undefined) {
-            expect(range.endOffset).toEqual(toMatch.endOffset, "endOffset not match")
-        }
-        if (toMatch.collapsed !== undefined) {
-            expect(range.collapsed).toEqual(toMatch.collapsed)
-        }
+
+
     } catch(e) {
         if (e instanceof ThrowInfo) {
             throw new Error(`
 ============================
 message: ${e.message}
 expected: {
-    startContainer: ${(toMatch.startContainer as Text)?.wholeText},
-    startOffset: ${toMatch.startOffset},
-    endContainer: ${(toMatch.endContainer as Text)?.wholeText},
-    endOffset: ${toMatch.endOffset},
+    startContainer: ${(toMatch?.startContainer as Text)?.wholeText},
+    startOffset: ${toMatch?.startOffset},
+    endContainer: ${(toMatch?.endContainer as Text)?.wholeText},
+    endOffset: ${toMatch?.endOffset},
 }
 received: {
-    startContainer: ${(range!.startContainer as Text)?.wholeText},
-    startOffset: ${range!.startOffset},
-    endContainer: ${(range!.endContainer as Text)?.wholeText},
-    endOffset: ${range!.endOffset},
+    startContainer: ${(range?.startContainer as Text)?.wholeText},
+    startOffset: ${range?.startOffset},
+    endContainer: ${(range?.endContainer as Text)?.wholeText},
+    endOffset: ${range?.endOffset},
 }
 
 ============================

@@ -408,6 +408,7 @@ export class DocumentContentView extends EventDelegator{
     @saveHistoryPacket
     @setEndRange
     deleteLast(e: KeyboardEvent) {
+        console.log(11111, this.globalState.selectionRange?.startContainer, this.globalState.selectionRange?.startOffset)
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock } = range
         // 文章开头，不做任何操作
@@ -1005,7 +1006,7 @@ export class DocumentContentView extends EventDelegator{
     // 相比 content 的 api，下面 View 的同名 api 会自动检查是否需要在头部尾部增加 ZWSP 或者空 Para。
     append(...args: Parameters<DocumentContent["append"]>) {
         const result = this.content.append(...args)
-        if (!result.next) {
+        if (!result.next && !(result.constructor as typeof Component).asTextNode) {
             if (result instanceof Component) {
                 this.content.append(this.content.createParagraph(), result, this.content)
             } else if (result instanceof InlineComponent) {
@@ -1018,28 +1019,33 @@ export class DocumentContentView extends EventDelegator{
     }
     prepend(...args: Parameters<DocumentContent["prepend"]>) {
         const result = this.content.prepend(...args)
-        if (result instanceof InlineComponent && !result.prev()) {
-            this.content.prepend(this.content.createText(), result, args[2])
+        if (!(result.constructor as typeof Component).asTextNode) {
+            if (result instanceof InlineComponent && !result.prev()) {
+                this.content.prepend(this.content.createText(), result, args[2])
+            }
         }
         return result
     }
     replace(...args: Parameters<DocumentContent["replace"]>) {
         const result = this.content.replace(...args)
         const newItem = args[0]
-        if (newItem instanceof InlineComponent ) {
-            if (!newItem.prev()) {
-                this.content.prepend(this.content.createText(), newItem, args[2])
-            }
+        if (!(newItem.constructor as typeof Component).asTextNode) {
+            if (newItem instanceof InlineComponent ) {
+                if (!newItem.prev()) {
+                    this.content.prepend(this.content.createText(), newItem, args[2])
+                }
 
-            if (!newItem.next) {
-                this.content.append(this.content.createText(), newItem, args[2]!)
-            }
-        } else if (newItem instanceof Component) {
+                if (!newItem.next) {
+                    this.content.append(this.content.createText(), newItem, args[2]!)
+                }
+            } else if (newItem instanceof Component) {
 
-            if (!newItem.next) {
-                this.content.append(this.content.createParagraph(), newItem, args[2]!)
+                if (!newItem.next) {
+                    this.content.append(this.content.createParagraph(), newItem, args[2]!)
+                }
             }
         }
+
         return result
     }
     // 下面三个只是为了保持接口一致，实际上只是转发调用。

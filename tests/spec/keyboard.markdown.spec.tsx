@@ -44,7 +44,7 @@ test.describe('markdown insert commands', () => {
     await nextTick()
 
     // 2.1 测试数据结构
-    const dataToCompare = structuredClone(data)
+    const dataToCompare = structuredClone(data) as any
     dataToCompare.children[0].type = 'Heading'
     dataToCompare.children[0].content[0].value = ''
     expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
@@ -55,12 +55,11 @@ test.describe('markdown insert commands', () => {
       const originPara = window.page.getByTestId(focusTestId as string).parentElement!
       const contentContainer = originPara.parentElement
       window.expectDOMMatch(contentContainer,
-          <any>
-            <h1>
-              <any data-testignorechildren></any>
+          <h1>
+            <span>
               <span>{ZWSP}</span>
-            </h1>
-          </any>
+            </span>
+          </h1>
       )
     }, [focusTestId, ZWSP])
 

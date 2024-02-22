@@ -11,7 +11,7 @@ type HeadingData = {
 
 export class Heading extends AxiiComponent {
     static displayName = 'Heading'
-
+    static asTextNode = true
     static unwrap(doc: DocumentContent, block: Block) {
         const heading = block as Heading
         const fragment = doc.deleteBetween(heading.firstChild!, null, heading)

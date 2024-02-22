@@ -83,6 +83,7 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
 
             this.shouldShowBelow = atomComputed(() => {
                 const { visibleRangeRect, bodyViewPortSize } = this.document.view.state
+                console.log(visibleRangeRect()?.top , bodyViewPortSize().height / 2)
                 return visibleRangeRect() ? visibleRangeRect()!.top < bodyViewPortSize().height / 2 : false
             })
 
@@ -162,6 +163,7 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
             }
 
             return  <div
+                data-testid='suggestionTool-container'
                 style={style}
                 onMouseLeave={() => this.selectedWidget(null)}
             >
@@ -258,6 +260,7 @@ function createCommonInsertHandle(icon: JSX.Element, type: string) {
     return function InsertHandle({insert}: CommonInsertHandleProps) {
         return (
             <div
+                data-testid={`suggestionItem-${type}`}
                 style={{display: 'flex', alignItems: 'center', justifyContent: 'flex-start', cursor: 'pointer'}}
                 onClick={() => insert({type, content: []})}
             >

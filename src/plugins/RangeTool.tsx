@@ -98,13 +98,12 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
             }
 
             // CAUTION 特别注意这里的 stopPropagation，不然会影响到 document 的 mouseup 等事件
-            return <div style={style}>
+            return <div style={style} data-testid="rangeTool-container">
                 <div style={{display:'flex', whiteSpace: 'nowrap'}}>
                     {() => this.rangeWidgets.map((widget: RangeWidget) => {
                         return widget.render()
                     })}
                 </div>
-                {/*<div>{() => this.document.view.state.mousePosition() && JSON.stringify(this.document.view.state.mousePosition())}</div>*/}
             </div>
         }
     }
@@ -127,8 +126,10 @@ class DecorationWidget extends RangeWidget {
         return <div style={{display:'flex', flexWrap: 'nowrap'}}>
             {
                 DecorationWidget.formatAndIcons.map(([icon, formatName]) => (
-                    <span style={{cursor: 'pointer',marginLeft:8, display:'flex', alignItems: 'center', width:24, height:24, justifyContent: 'center'}}
-                          onClick={(e:MouseEvent) => this.toggleFormat(formatName)}
+                    <span
+                        style={{cursor: 'pointer',marginLeft:8, display:'flex', alignItems: 'center', width:24, height:24, justifyContent: 'center'}}
+                        onClick={(e:MouseEvent) => this.toggleFormat(formatName)}
+                        data-testid={`format-${formatName}`}
                     >{icon}</span>
                 ))
             }

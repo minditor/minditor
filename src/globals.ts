@@ -39,6 +39,7 @@ export const state:GlobalState = (function() {
         hasCursor = Boolean(currentSelection?.rangeCount)
         selectionRange = hasCursor ? currentSelection?.getRangeAt(0)! : null
         callbacks.forEach(callback => callback(e))
+        console.log(selectionRange?.startContainer, selectionRange?.startOffset, selectionRange?.endContainer, selectionRange?.endOffset)
     })
 
     document.addEventListener('selectionchange', (e) => {
@@ -80,6 +81,7 @@ export const state:GlobalState = (function() {
             return rangeBeforeComposition
         },
         get bodyViewPortSize() {
+
             return {
                 width: document.body.offsetWidth,
                 height: document.body.offsetHeight,
