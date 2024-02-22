@@ -1,9 +1,20 @@
-import {Code, Heading, InlineCode, OLItem, Paragraph, Text, ULItem, Link, Grid, Component} from "./src/index.js";
-import {defaultMarkdownPlugins as markdownPlugins} from "./src/plugins/markdown.js";
-import {createBlockTool, defaultBlockWidgets} from "./src/plugins/BlockTool.js";
-import {scaffold} from "./src/scaffold.js";
-import {createRangeTool, defaultFormatWidgets} from "./src/plugins/RangeTool.js";
-import { createSuggestionTool, defaultSuggestionWidgets } from "./src/plugins/SuggestionTool.js";
+import {
+    Code,
+    Heading,
+    InlineCode,
+    OLItem,
+    Paragraph,
+    Text,
+    ULItem,
+    Link,
+    Grid,
+    defaultMarkdownPlugins as markdownPlugins,
+    createBlockTool, defaultBlockWidgets,
+    scaffold,
+    createRangeTool, defaultFormatWidgets,
+    createSuggestionTool, defaultSuggestionWidgets,
+    Component
+} from "./src/index.js";
 
 import { DayPicker } from 'react-day-picker';
 import 'react-day-picker/dist/style.css';

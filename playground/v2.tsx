@@ -4,7 +4,7 @@ import {ANY, DocumentContent} from "../src/DocumentContent.js";
 import { DocumentContentView } from "../src/View";
 import {Document} from "../src/Document";
 import {Paragraph, Section, Text, ListItem} from "../src/DocNode";
-import { ImageBlock, ImageSuggestionWidget } from "../src/components/Image.js";
+import { InlineImageBlock, ImageSuggestionWidget } from "../src/components/Image.js";
 import { Code, CodeSuggestionWidget} from "../src/components/Code";
 import { createRoot, createElement } from 'axii'
 import { atom } from 'rata'
@@ -41,7 +41,7 @@ const doc = new Document(document.getElementById('root')!, data.misc, {
     Section,
     Text,
     ListItem,
-    Image: ImageBlock,
+    Image: InlineImageBlock,
     Code
 })
 

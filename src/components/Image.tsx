@@ -104,4 +104,4 @@ export function createImageBlock(uploadType: keyof typeof uploaderTypes, config:
     }
 }
 
-export const ImageBlock = createImageBlock('inline', { id: 'MyPlugin' })
+export const InlineImageBlock = createImageBlock('inline', { id: 'MyPlugin' })

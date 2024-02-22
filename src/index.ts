@@ -7,7 +7,7 @@ export {ULItem} from "./components/ULItem.js";
 export {OLItem} from "./components/OLItem.js";
 export {Heading} from "./components/Heading.js";
 export {InlineCode} from "./components/InlineCode.js";
-export {ImageBlock} from "./components/Image.js";
+export {InlineImageBlock} from "./components/Image.js";
 export {Code} from "./components/CodeMirror.js";
 export {Link} from "./components/Link.js";
 export {Grid} from "./components/Grid.js";

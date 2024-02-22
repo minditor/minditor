@@ -10,7 +10,7 @@ import {
     defaultSuggestionWidgets,
     Grid,
     Heading,
-    ImageBlock,
+    InlineImageBlock,
     InlineCode,
     Link,
     OLItem,
@@ -31,7 +31,7 @@ const types = {
     Code,
     Link,
     Grid,
-    Image: ImageBlock
+    Image: InlineImageBlock
 }
 
 const plugins = [
