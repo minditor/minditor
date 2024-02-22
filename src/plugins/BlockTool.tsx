@@ -4,7 +4,7 @@ import {Plugin} from "../Plugin.js";
 import {Document} from "../Document.js";
 import {BlockData, Paragraph} from "../DocumentContent.js";
 import Menu from "../icons/Menu.js";
-import {GridInsertHandle, ImageInsertHandle} from "./SuggestionTool.js";
+import {CodeInsertHandle, GridInsertHandle, ImageInsertHandle} from "./SuggestionTool.js";
 
 class BlockToolPlugin extends Plugin {
     public static displayName = `BlockTool`
@@ -122,7 +122,9 @@ export function createInsertWidget(InsertHandle: any) {
 
 export const ImageInsertWidget = createInsertWidget(ImageInsertHandle)
 export const GridInsertWidget = createInsertWidget(GridInsertHandle)
-export const defaultBlockWidgets = [ImageInsertWidget, GridInsertWidget]
+export const CodeInsertWidget = createInsertWidget(CodeInsertHandle)
+
+export const defaultBlockWidgets = [ImageInsertWidget, GridInsertWidget, CodeInsertWidget]
 
 // TODO 复制、剪切、删除
 // TODO Block 自己的配置 menu

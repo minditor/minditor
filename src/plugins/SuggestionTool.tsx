@@ -6,8 +6,10 @@ import Image from "../icons/Image";
 import Code from "../icons/Code";
 import Link from "../icons/Link";
 import Grid from "../icons/Grid";
+import Right from "../icons/Right.js";
 import {BlockData, Component, InlineComponent, InlineData} from "../DocumentContent.js";
 import {GridPicker} from '../components/Grid.js'
+import {CodeLanguagePicker, Code as CodeBlock} from "../components/CodeMirror.js";
 
 
 function onInputKey(key: string) {
@@ -47,6 +49,7 @@ class SuggestionTool extends Plugin {
     public isAtParaHead: Atom<boolean> = atom(false)
     public availableWidgets: Atom<SuggestionWidget[]> = atom([])
     public selectedWidget: Atom<SuggestionWidget|undefined> = atom(undefined)
+    public shouldShowBelow!: Atom<boolean>
 }
 
 export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (typeof SuggestionWidget)[]) {
@@ -78,6 +81,11 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
               return this.availableWidgets()[this.selectedIndex()]
             })
 
+            this.shouldShowBelow = atomComputed(() => {
+                const { visibleRangeRect, bodyViewPortSize } = this.document.view.state
+                return visibleRangeRect() ? visibleRangeRect()!.top < bodyViewPortSize().height / 2 : false
+            })
+
             this.removeListenerHandle = this.document.view.listen('keydown', (e: KeyboardEvent) => {
                 if (this.activated()) {
                     if (e.key === 'ArrowUp') {
@@ -85,7 +93,7 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
                         this.selectedIndex(Math.max(this.selectedIndex() - 1, -1))
                     } else if (e.key === 'ArrowDown') {
                         e.preventDefault()
-                        this.selectedIndex(Math.min(this.selectedIndex() + 1, this.availableWidgets().length -1))
+                        this.selectedIndex(Math.min(this.selectedIndex() + 1, this.availableWidgets().length ))
                     } else  if (e.key === 'Enter') {
                         e.preventDefault()
                         e.stopPropagation()
@@ -100,6 +108,9 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
         onDeactivated() {
             this.selectedIndex(-1)
         }
+        onActivated() {
+            this.selectedIndex(this.shouldShowBelow() ? -1 : this.availableWidgets().length )
+        }
 
         destroy() {
             super.destroy();
@@ -109,20 +120,22 @@ export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (t
             destroyComputed(this.selectedWidget)
         }
         calculatePosition(outsideDocBoundary: boolean) {
-            const { visibleRangeRect } = this.document.view.state
+            const { visibleRangeRect, bodyViewPortSize } = this.document.view.state
             const boundaryRect = this.document.view.getContainerBoundingRect()!
+
+            const shouldShowBelow = this.shouldShowBelow()
 
             return outsideDocBoundary ? {
                 position: 'fixed',
-                top: visibleRangeRect!.raw!.top + visibleRangeRect!.raw!.height ,
+                top: visibleRangeRect!.raw!.top + (shouldShowBelow ? visibleRangeRect!.raw!.height : 0),
+                transform: shouldShowBelow ? 'none' :'translateY(-100%)',
                 left: visibleRangeRect!.raw!.left,
             } : {
                 position: 'absolute',
-                top: visibleRangeRect!.raw!.top + visibleRangeRect!.raw!.height -boundaryRect.top +1,
+                top: visibleRangeRect!.raw!.top + (shouldShowBelow ? visibleRangeRect!.raw!.height : 0) -boundaryRect.top +1,
+                transform: shouldShowBelow ? 'none' :'translateY(-100%)',
                 left: visibleRangeRect!.raw!.left- boundaryRect.left,
             }
-
-
         }
         render(outsideDocBoundary: boolean) {
             const style = () => {
@@ -257,7 +270,6 @@ function createCommonInsertHandle(icon: JSX.Element, type: string) {
 
 export const ImageInsertHandle = createCommonInsertHandle(<Image size={18}/>, 'Image')
 export const LinkInsertHandle = createCommonInsertHandle(<Link size={18}/>, 'Link')
-export const CodeInsertHandle = createCommonInsertHandle(<Code size={18}/>, 'Code')
 
 
 export function GridInsertHandle({insert}: CommonInsertHandleProps) {
@@ -270,6 +282,7 @@ export function GridInsertHandle({insert}: CommonInsertHandleProps) {
         activated(false)
     }
     const activated = atom(false)
+
     return (
         <div
             style={{
@@ -285,6 +298,8 @@ export function GridInsertHandle({insert}: CommonInsertHandleProps) {
         >
             <Grid size={18}/>
             <span style={{marginLeft: 8, fontSize: 14,  whiteSpace:'nowrap'}}>+ Grid</span>
+            <Right size={18}/>
+
             <div style={() => ({
                 display: activated() ? 'block' : 'none',
                 position: 'absolute',
@@ -309,7 +324,56 @@ export function GridInsertHandle({insert}: CommonInsertHandleProps) {
     )
 }
 
+export function CodeInsertHandle({insert}: CommonInsertHandleProps) {
+    const onGridChange = (lang: string) => {
+        insert({type: 'Code', language:lang, value: '', content: []})
+        activated(false)
+    }
+    const activated = atom(false)
 
+    const languages = Object.keys(CodeBlock.langToPlugin)
+
+    return (
+        <div
+            style={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-start',
+                cursor: 'pointer',
+                width: '100%'
+            }}
+            onmouseenter={() => activated(true)}
+            onmouseleave={() => activated(false)}
+        >
+            <Code size={18}/>
+            <span style={{marginLeft: 8, fontSize: 14,  whiteSpace:'nowrap'}}>+ Code</span>
+            <Right size={18}/>
+
+            <div style={() => ({
+                display: activated() ? 'block' : 'none',
+                position: 'absolute',
+                left: 'calc(100% - 8px)',
+                top: 0,
+                transform: 'translateY(-50%)',
+                paddingLeft: 18,
+                background: 'transparent',
+            })}
+            >
+                <div style={{
+                    border: '1px solid #eee',
+                    background: '#fff',
+                    boxShadow: '2px 2px 5px #dedede',
+                    maxHeight: 400,
+                    overflowY: 'auto'
+                }}
+                >
+                    <CodeLanguagePicker onChange={onGridChange} languages={languages}/>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export const defaultSuggestionWidgets = [
     createSuggestionWidget(ImageInsertHandle, 'Image', true),

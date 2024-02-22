@@ -29,6 +29,7 @@ export class ReactiveViewState {
     public visibleRangeRect!: Atom<{top:number, left: number, height:number, width: number}|null>
     public visibleCursorRect!: Atom<{top:number, left: number, height:number, width: number}|null>
     public destroyHandles: Set<(() => any)|void>
+    public bodyViewPortSize: Atom<{width: number, height: number}> = atom({width: 0, height: 0})
     constructor(public view: DocumentContentView) {
         this.destroyHandles = new Set()
         this.destroyHandles.add(this.activateUserMousePosition())
@@ -39,6 +40,13 @@ export class ReactiveViewState {
         this.destroyHandles.add(this.activateRangeBeforeComposition())
         this.destroyHandles.add(this.activateHasRange())
         this.destroyHandles.add(this.activateLastMouseUpPositionAfterRangeChange())
+        this.destroyHandles.add(this.activateBodyViewPortSize())
+    }
+    activateBodyViewPortSize() {
+        this.bodyViewPortSize(this.view.globalState.bodyViewPortSize)
+        return this.view.globalState.document.addEventListener('resize',(size) => {
+            this.bodyViewPortSize(this.view.globalState.bodyViewPortSize)
+        })
     }
     activateVisibleRangeRect() {
         const lastScrollEvent = atom<Event>(null)

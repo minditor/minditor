@@ -9,6 +9,7 @@ export type GlobalState = {
     readonly selectionRange: Range| null,
     readonly rangeBeforeComposition:Range|null
     readonly document: ExtendedDocument
+    readonly bodyViewPortSize: {width: number, height: number}
     onSelectionChange: (callback: SelectionChangeCallback) => () => void
 }
 
@@ -77,6 +78,12 @@ export const state:GlobalState = (function() {
         },
         get rangeBeforeComposition() {
             return rangeBeforeComposition
+        },
+        get bodyViewPortSize() {
+            return {
+                width: document.body.offsetWidth,
+                height: document.body.offsetHeight,
+            }
         },
         onSelectionChange(callback: SelectionChangeCallback) {
             callbacks.add(callback)

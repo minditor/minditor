@@ -1,4 +1,4 @@
-import {createElement} from 'axii'
+import {createElement, atom} from 'axii'
 import 'highlight.js/styles/xcode.css'
 import {Component} from "../DocumentContent.js";
 
@@ -93,3 +93,32 @@ export class Code extends Component {
     }
 }
 
+export type CodeLanguagePickerProps = {
+    languages: string[],
+    onChange: (value: string) => void
+}
+
+export function CodeLanguagePicker({languages, onChange}: CodeLanguagePickerProps) {
+    const selected = atom<string>(null)
+
+    return (
+        <div
+            style={{padding:10}}
+            onMouseLeave={() => selected(null)}
+        >
+            {languages.map(lang =>
+                <div
+                    onMouseEnter={() => selected(lang)}
+                    style={() => ({
+                        borderRadius:4,
+                        background: selected() === lang ? '#f0f0f0' : 'transparent',
+                        padding:10,
+                        cursor:'pointer'}
+                    )}
+                    onClick={() => onChange(lang)}>
+                    {lang}
+                </div>
+            )}
+        </div>
+    )
+}

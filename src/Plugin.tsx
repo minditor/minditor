@@ -32,6 +32,9 @@ export class Plugin {
     onDeactivated() {
 
     }
+    onActivated() {
+
+    }
     renderPluginView(outsideDocBoundary = false) {
         assert(!this.root, 'plugin view should only render once')
         // CAUTION 注意这里的 userSelect: 'none' 非常重要，防止了正文中触发的 selection change，以及对依赖于 selectionRange 的各种功能的破坏。
@@ -39,6 +42,10 @@ export class Plugin {
         this.root = createRoot(element)
         this.root.render(this.render(outsideDocBoundary)!)
         return this
+    }
+    activate() {
+        this.activated(true)
+        this.onActivated()
     }
     deactivate() {
         this.activated(false)
@@ -86,7 +93,7 @@ export class Plugin {
             callbacks.add((e: unknown, args?: PluginRunArgv) => {
                 if (!eventMatchHandle.call(this, e)) return
                 console.log("activating", this)
-                this.activated(true)
+                this.activate()
                 return this.run(args!)
             })
         })
@@ -113,7 +120,7 @@ export class Plugin {
         })
 
         if (!ThisPluginKlass.deactivateEvents && !ThisPluginKlass.activateEvents) {
-            this.activated(true)
+            this.activate()
         }
     }
 
