@@ -14,14 +14,14 @@ export class ULItem extends AxiiTextBasedComponent {
 
     static unwrap(doc: DocumentContent, block:Block) {
         const olItem = block as ULItem
-        if (olItem.data?.level === 0) {
+        if (olItem.level() === 0) {
             const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
             const newPara = doc.createParagraph(fragment)
             doc.replace(newPara, olItem)
             return newPara
         } else {
             const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
-            const newOlItem = new ULItem({level: olItem.data?.level||0 - 1})
+            const newOlItem = new ULItem({level: olItem.level() - 1})
             newOlItem.firstChild = fragment.retrieve()
             doc.replace(newOlItem, olItem)
             return newOlItem
@@ -54,9 +54,19 @@ export class ULItem extends AxiiTextBasedComponent {
                 marginLeft: this.level() * 18,
             }
         }
+        const contentStyle =  {
+            flexGrow:1,
+            flexShrink:1,
+            flexBasis:'auto',
+            wordWrap:'bread-word',
+            overflowWrap:'break-word',
+            whiteSpace:'normal',
+            // CAUTION 这个是触发换行的关键
+            minWidth:0
+        }
         return <>
             <div style={dotStyle}>{() => LIST_DOTS[this.level()] ?? LIST_DOTS[0]}</div>
-            <div contenteditable={true} data-testid='ULItem-editable-container'>
+            <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle}>
                 {children}
             </div>
         </>

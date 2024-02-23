@@ -1,6 +1,6 @@
 import {Atom, atom, computed, createElement, createRoot, destroyComputed, reactive} from "axii";
 import {Block, DocumentContent, Text, TextBasedBlock} from "../DocumentContent.js";
-import {AxiiComponent} from "../AxiiComponent.js";
+import {AxiiComponent, AxiiTextBasedComponent} from "../AxiiComponent.js";
 
 
 type HeadingData = {
@@ -9,7 +9,7 @@ type HeadingData = {
     manualIndex?: number[],
 }
 
-export class Heading extends AxiiComponent {
+export class Heading extends AxiiTextBasedComponent {
     static displayName = 'Heading'
     static asTextNode = true
     static unwrap(doc: DocumentContent, block: Block) {
@@ -90,20 +90,5 @@ export class Heading extends AxiiComponent {
             useIndex: this.useIndex(),
             manualIndex: this.manualIndex
         }
-    }
-    toText() {
-        let content = ''
-        let current = this.firstChild
-        while (current) {
-            if (current instanceof Text) {
-                content += current.data.value
-            } else if( (current as Text).toText ){
-                content += (current as Text).toText()
-            } else {
-                // 忽略不能 toText 的
-            }
-            current = current.next
-        }
-        return content
     }
 }

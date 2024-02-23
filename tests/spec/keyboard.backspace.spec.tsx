@@ -195,7 +195,62 @@ test.describe('keyboard Backspace actions', () => {
 
     })
 
-    test('ListItem content second level. should split into two list', async ({page}) => {
+    test.only('ListItem content second level head. Should unwrap into level 1.', async ({page}) => {
+      await page.load('nestedList')
+      const data = nestedListData
+      const focusText = data.children![1].content[0].value
+      const allText = stringifyNodeData(data)
+
+      const focusTextEl = await page.getByText(focusText, {exact:true}).elementHandle()
+
+      // 1.1 设置焦点
+      await page.setSelection(focusTextEl, 0)
+      await page.expect(() => window.getSelection()!.rangeCount === 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Backspace')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data) as any
+      dataToCompare.children![1].level -= 1
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
+      //
+      //
+      // 2.2 测试 dom
+      await page.evaluate(([focusText, dataToCompare, allText]) => {
+
+        const contentContainer = window.page.getByText(focusText as string).parentElement!.parentElement!.parentElement!
+
+        const listItems = (dataToCompare as any).children.map((itemData: any) => {
+          return window.page.getByText(itemData.content[0].value, {exact:true}).parentElement!.parentElement
+        })
+
+        window.expectDOMMatch(contentContainer,
+            <any>
+              {listItems[0].cloneNode(true)}
+              <any>
+                <any>•</any>
+                <any data-testignorechildren></any>
+              </any>
+              {listItems.slice(2).map((item:any) => item.cloneNode(true))}
+            </any>),
+            window.expect(window.doc.element!.textContent).toEqual('•focusText2222222•3333333333333▪4444444444444▪555555555555•666666666666◦777777777777•focusSecondText888888◦808088080888080888•999999999999')
+      }, [focusText, dataToCompare, allText])
+      //
+      // 新的 selection 会变成 para 的头部。
+      // 2.3 range 测试
+      await page.evaluate(([focusText]) => {
+        const focusEl = window.page.getByText(focusText)
+        window.expectSelectionMatch({
+          startContainer: focusEl!.firstChild,
+          startOffset: 0,
+          collapsed: true
+        })
+      }, [focusText])
+
+    })
+
+    test('ListItem content second part. should split into two list', async ({page}) => {
       await page.load('nestedList')
       const data = nestedListData
       const focusText = data.children![4].content[0].value
