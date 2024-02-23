@@ -1,9 +1,7 @@
 import {reverseFindMatchRange, reverseMatchStrPair, reversMatchStr} from "../helper";
-import {Component, DocNodeFragment, Paragraph, Text} from "../DocumentContent.js";
+import {Block, Component, DocNodeFragment, Paragraph, Text} from "../DocumentContent.js";
 import {Plugin, PluginRunArgv} from "../Plugin";
 import {Heading} from "../components/Heading.js";
-import {ULItem} from "../components/ULItem.js";
-import {OLItem} from "../components/OLItem.js";
 import {DocRange} from "../Range.js";
 
 function onInputKey(key: string) {
@@ -115,13 +113,13 @@ function createFormatCommands([startChars, closeChars]: [string, string], key: s
 
 
 function createHeadingBlock(this: Plugin, titleTextFrag: DocNodeFragment, level: number) {
-    const newHeading = this.document.content.createFromData({type: 'Heading', level, useIndex: false, content:[]}) as Heading
+    const newHeading = this.document.content.createFromData({type: 'Heading', level, useIndex: false, content:[]}) as Block
     newHeading.firstChild = titleTextFrag.retrieve()
     return newHeading
 }
 
 function createUnorderedListBlock(this: Plugin, titleTextFrag: DocNodeFragment,) {
-    const newListItem = this.document.content.createFromData({type: 'ULItem', level:0,content:[]}) as ULItem
+    const newListItem = this.document.content.createFromData({type: 'ULItem', level:0,content:[]}) as Block
     newListItem.firstChild = titleTextFrag.retrieve()
     return newListItem
 }
@@ -174,8 +172,7 @@ class OrderedListPlugin extends Plugin{
         if (!/^(\d\.)+\s$/.test(startText.data.value.slice(0, endOffset))) return false
 
         history.openPacket(startRange)
-        // TODO 应该允许只修改该 data，保持 reactive
-        const newHeading = new OLItem({level:0})
+        const newHeading = this.document.content.createFromData({type: 'OLItem', level:0, content:[]}) as Block
         const headingContent = view.deleteBetween(startText, null, startBlock)
         newHeading.firstChild = headingContent.retrieve() as Text
         view.updateText(newHeading.firstChild!.data.value.slice(endOffset), newHeading.firstChild as Text)

@@ -195,7 +195,7 @@ test.describe('keyboard Backspace actions', () => {
 
     })
 
-    test.only('ListItem content second level head. Should unwrap into level 1.', async ({page}) => {
+    test('ListItem content second level head. Should unwrap into level 1.', async ({page}) => {
       await page.load('nestedList')
       const data = nestedListData
       const focusText = data.children![1].content[0].value
