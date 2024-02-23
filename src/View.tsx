@@ -408,7 +408,6 @@ export class DocumentContentView extends EventDelegator{
     @saveHistoryPacket
     @setEndRange
     deleteLast(e: KeyboardEvent) {
-        console.log(11111, this.globalState.selectionRange?.startContainer, this.globalState.selectionRange?.startOffset)
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock } = range
         // 文章开头，不做任何操作

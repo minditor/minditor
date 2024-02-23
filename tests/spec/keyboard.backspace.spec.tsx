@@ -77,7 +77,7 @@ test.describe('keyboard Backspace actions', () => {
 
     })
 
-    test.skip('Section content head. Should become paragraph.', async ({page}) => {
+    test('Section content head. Should become paragraph.', async ({page}) => {
       await page.load('multiSection')
       const data = multiSectionData
       const focusText = data.children[1].content[0].value
@@ -93,9 +93,10 @@ test.describe('keyboard Backspace actions', () => {
       }, [focusText])
 
 
-      // FIXME 只有在 webkit 下不能通过，但是手动测试又是正确的。主要表现在 Backspace 之后，selection 会变成整个文档的头部。
+      // CAUTION 一定要定位到 heading 的 contenteditable 的位置输入，不然在 chromium/webkit 里面会自动跳到最外面的 contenteditable。
       // 1.2 执行动作
-      await focusTextEl!.press('Backspace')
+      const headingEditable = await page.getByTestId('heading-editable-container').first().elementHandle()
+      await headingEditable!.press('Backspace')
 
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)
@@ -170,7 +171,7 @@ test.describe('keyboard Backspace actions', () => {
         const contentContainer = window.page.getByText(focusText as string).parentElement!.parentElement!
 
         const restListItems = (dataToCompare as any).children.slice(1).map((itemData: any) => {
-            return window.page.getByText(itemData.content[0].value, {exact:true}).parentElement!
+            return window.page.getByText(itemData.content[0].value, {exact:true}).parentElement!.parentElement
         })
 
         window.expectDOMMatch(contentContainer,
@@ -178,7 +179,7 @@ test.describe('keyboard Backspace actions', () => {
               <p>{(dataToCompare as any).children[0].content.map(({value}: {value: string}) => <span>{value}</span>)}</p>
               {restListItems.map((item:any) => item.cloneNode(true))}
             </any>),
-            window.expect(window.doc.element!.textContent).toEqual(allText)
+            window.expect(window.doc.element!.textContent).toEqual('focusText2222222◦3333333333333▪4444444444444▪555555555555•666666666666◦777777777777•focusSecondText888888◦808088080888080888•999999999999')
       }, [focusText, dataToCompare, allText])
       //
       // 新的 selection 会变成 para 的头部。
@@ -235,7 +236,7 @@ test.describe('keyboard Backspace actions', () => {
               <any data-testignorechildren></any>
               <any data-testignorechildren></any>
             </any>),
-            window.expect(window.doc.element!.textContent).toEqual(allText)
+            window.expect(window.doc.element!.textContent).toEqual('•focusText2222222◦3333333333333▪4444444444444▪555555555555666666666666◦777777777777•focusSecondText888888◦808088080888080888•999999999999')
       }, [focusText, dataToCompare, allText])
       // //
       // 新的 selection 会变成 para 的头部。

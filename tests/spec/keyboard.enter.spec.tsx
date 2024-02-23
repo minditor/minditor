@@ -19,6 +19,8 @@ test.beforeEach(async ({ page }) => {
   extend(page)
 });
 
+export const LIST_DOTS = ['•', '◦', '▪', '▫', '⦿', '⦾']
+
 
 test.describe('keyboard Enter actions', () => {
 
@@ -137,15 +139,14 @@ test.describe('keyboard Enter actions', () => {
         window.expectDOMMatch(listElement,
             <any>
               <any>
-                <span>{ZWSP}</span>
               </any>
-              <any data-testignorechildren></any>
-              <any data-testignorechildren></any>
-              <any data-testignorechildren></any>
+              <any>
+                <span>123</span>
+              </any>
             </any>
         ),
         // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-        window.expect(window.doc.element!.textContent).toEqual(`${ZWSP}123456789`)
+        window.expect(window.doc.element!.textContent).toEqual(`•${ZWSP}•123•456•789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
@@ -268,6 +269,8 @@ test.describe('keyboard Enter actions', () => {
       await page.setSelection(firstTextEl, firstText.length)
 
       // 1.2 执行动作
+      // const pressTarget = await page.getByTestId('ULItem-editable-container').first().elementHandle()
+      // await pressTarget!.press('Enter')
       await page.doc.element.press('Enter')
 
       // 2.1 测试数据结构
@@ -279,25 +282,28 @@ test.describe('keyboard Enter actions', () => {
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const listElement = (firstTextEl as Node).parentElement!.parentElement!
+        const listElement = (firstTextEl as Node).parentElement!.parentElement!.parentElement
         window.expectDOMMatch(listElement,
             <any>
               <any data-testignorechildren></any>
               <any>
-                <span>{ZWSP}</span>
+                <any data-testignorechildren></any>
+                <div>
+                  <span>{ZWSP}</span>
+                </div>
               </any>
               <any data-testignorechildren></any>
               <any data-testignorechildren></any>
             </any>
         ),
             // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-            window.expect(window.doc.element!.textContent).toEqual(`123${ZWSP}456789`)
+            window.expect(window.doc.element!.textContent).toEqual(`•123•${ZWSP}•456•789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试
       await page.evaluate(([firstTextEl]) => {
         window.expectSelectionMatch({
-          startContainer: (firstTextEl as Node)!.parentElement!.nextSibling!.firstChild!.firstChild!,
+          startContainer: (firstTextEl as Node)!.parentElement!.parentElement!.nextSibling!.firstChild!.nextSibling?.firstChild!.firstChild,
           // 空字符的会定位到 Offset 1
           startOffset: 1,
           collapsed: true
@@ -444,21 +450,27 @@ test.describe('keyboard Enter actions', () => {
 
       // 2.2 测试 dom
       await page.evaluate(([firstTextEl, ZWSP]) => {
-        const listElement = (firstTextEl as Node).parentElement!.parentElement!
+        const listElement = (firstTextEl as Node).parentElement!.parentElement!.parentElement!
         window.expectDOMMatch(listElement,
             <any>
               <any data-testignorechildren></any>
               <any>
-                <span>4</span>
+                <any data-testignorechildren></any>
+                <div>
+                  <span>4</span>
+                </div>
               </any>
               <any>
-                <span>56</span>
+                  <any data-testignorechildren></any>
+                  <div>
+                    <span>56</span>
+                  </div>
               </any>
               <any data-testignorechildren></any>
             </any>
         ),
             // window.expect(window.doc.element!.textContent).toEqual(`${data.content[0].join('')}${ZWSP}${allText}`)
-            window.expect(window.doc.element!.textContent).toEqual(`123456789`)
+            window.expect(window.doc.element!.textContent).toEqual(`•123•4•56•789`)
       }, [firstTextEl, ZWSP])
 
       // 2.3 range 测试

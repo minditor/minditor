@@ -72,12 +72,12 @@ export class OLItem extends TextBasedBlock {
         this.indexRoot?.destroy()
     }
     render({children}: { children: any }) {
-        const indexContainer = <span contenteditable={false}></span>  as HTMLElement
+        const indexContainer = <span></span>  as HTMLElement
         this.indexRoot = createRoot(indexContainer)
         this.indexRoot.render(() => this.displayIndex())
-        return <div style={{display:'flex'}}>
+        return <div style={{display:'flex'}} contenteditable={false}>
             <div>{indexContainer}</div>
-            <div>
+            <div contenteditable={true}>
                 {children}
             </div>
         </div>

@@ -64,7 +64,7 @@ const plugins = [
     ...defaultMarkdownPlugins,
     createBlockTool(defaultBlockWidgets),
     createRangeTool( defaultFormatWidgets ),
-    createSuggestionTool('/',  defaultSuggestionWidgets)
+    createSuggestionTool(defaultSuggestionWidgets)
 ]
 const result = scaffold(rootElement, {data, types, plugins}, )
 result.render()

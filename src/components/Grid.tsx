@@ -66,7 +66,7 @@ export class Grid extends AxiiComponent {
         const plugins = [
             ...markdownPlugins,
             createRangeTool(defaultFormatWidgets),
-            createSuggestionTool('/', defaultSuggestionWidgets)
+            createSuggestionTool(defaultSuggestionWidgets )
         ]
         // plugin 显示在外面
         return scaffold(container, {data, types, plugins}, {pluginContainer: this.pluginContainer})

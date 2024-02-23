@@ -52,8 +52,13 @@ class SuggestionTool extends Plugin {
     public shouldShowBelow!: Atom<boolean>
 }
 
-export function createSuggestionTool(triggerChar: string,  SuggestionClasses: (typeof SuggestionWidget)[]) {
-
+export type CreateSuggestionToolConfig  = {
+    triggerChar: string
+}
+export function createSuggestionTool(SuggestionClasses: typeof SuggestionWidget[], config?: CreateSuggestionToolConfig) {
+    const { triggerChar} = config || {
+        triggerChar: '/'
+    }
     return class OneSuggestionTool extends SuggestionTool{
         public static displayName = `SuggestionTool(${triggerChar})`
         public static activateEvents = {

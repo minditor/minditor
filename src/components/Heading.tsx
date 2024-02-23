@@ -75,7 +75,7 @@ export class Heading extends AxiiComponent {
 
         const result =  <Tag>
             {() => this.displayIndex() ? <span style={{marginRight:8}}>{this.displayIndex()}</span> : null}
-            <span contenteditable={true}>{children}</span>
+            <span data-testid='heading-editable-container' contenteditable={true}>{children}</span>
         </Tag> as HTMLElement
 
         result.contentEditable = 'false'
