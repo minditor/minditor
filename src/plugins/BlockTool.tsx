@@ -2,9 +2,12 @@
 import {atom, createElement} from 'axii'
 import {Plugin} from "../Plugin.js";
 import {Document} from "../Document.js";
-import {BlockData, Paragraph} from "../DocumentContent.js";
+import {BlockData, Paragraph, TextBasedBlock} from "../DocumentContent.js";
 import Menu from "../icons/Menu.js";
 import {CodeInsertHandle, GridInsertHandle, ImageInsertHandle} from "./SuggestionTool.js";
+import Delete from "../icons/Delete.js";
+import Copy from "../icons/Copy.js";
+import Cut from "../icons/Cut.js";
 
 class BlockToolPlugin extends Plugin {
     public static displayName = `BlockTool`
@@ -95,9 +98,9 @@ export class BlockToolWidget {
 }
 
 
-export function createInsertWidget(InsertHandle: any) {
+export function createInsertWidget(InsertHandle: any, widgetName: string = 'BlockTool') {
     return class InsertWidget extends BlockToolWidget {
-        public static displayName = `InsertBlockToolItem`
+        public static displayName = `Insert${widgetName}Widget`
         insert = (initialData:BlockData) => {
             this.document.history.openPacket(this.document.view.state.selectionRange())
             const {lastMouseEnteredBlock} = this.document.view.state
@@ -120,14 +123,122 @@ export function createInsertWidget(InsertHandle: any) {
     }
 }
 
-export const ImageInsertWidget = createInsertWidget(ImageInsertHandle)
-export const GridInsertWidget = createInsertWidget(GridInsertHandle)
-export const CodeInsertWidget = createInsertWidget(CodeInsertHandle)
-
-export const defaultBlockWidgets = [ImageInsertWidget, GridInsertWidget, CodeInsertWidget]
+export const ImageInsertWidget = createInsertWidget(ImageInsertHandle, 'Image')
+export const GridInsertWidget = createInsertWidget(GridInsertHandle, 'Grid')
+export const CodeInsertWidget = createInsertWidget(CodeInsertHandle, 'Code')
 
 // TODO 复制、剪切、删除
+export class DeleteWidget extends BlockToolWidget {
+    public static displayName = `DeleteBlockWidget`
+    deleteBlock = () => {
+        const range = this.document.view.state.selectionRange()
+        this.document.history.openPacket(range)
+        const {lastMouseEnteredBlock} = this.document.view.state
+        this.document.view.deleteBetween(lastMouseEnteredBlock()!, lastMouseEnteredBlock()!.next, this.document.content)
+        this.document.history.closePacket(range?.startBlock === lastMouseEnteredBlock()  ? null : range)
+    }
+    render() {
+        const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+        return () => {
+            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredBlock() instanceof Paragraph && (lastMouseEnteredBlock() as Paragraph)!.isEmpty)) {
+                return <div style={{padding:'6px 0'}}>
+                    <div
+                        style={{
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            cursor: 'pointer',
+                            width: '100%'
+                        }}
+                        onClick={this.deleteBlock}
+                    >
+                        <Delete size={18}/>
+                        <span style={{marginLeft: 8, fontSize: 14, whiteSpace: 'nowrap'}}>Delete</span>
+                    </div>
+                </div>
+            }
+            return null
+        }
+    }
+}
+
+export class CopyWidget extends BlockToolWidget {
+    public static displayName = `CopyBlockWidget`
+    copyBlock = () => {
+        const {lastMouseEnteredBlock} = this.document.view.state
+        // TODO 需要扩展 globalState 里面的 clipboard。因为 navigator.clipboard 只有 https 能用
+    }
+    render() {
+        const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+        return () => {
+            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredBlock() instanceof Paragraph && (lastMouseEnteredBlock() as Paragraph)!.isEmpty)) {
+                return <div style={{padding:'6px 0'}}>
+                    <div
+                        style={{
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            cursor: 'pointer',
+                            width: '100%'
+                        }}
+                        onClick={this.copyBlock}
+                    >
+                        <Copy size={18}/>
+                        <span style={{marginLeft: 8, fontSize: 14, whiteSpace: 'nowrap'}}>Copy</span>
+                    </div>
+                </div>
+            }
+            return null
+        }
+    }
+}
+
+export class CutWidget extends BlockToolWidget {
+    public static displayName = `CutBlockWidget`
+    cutBlock = () => {
+        const range = this.document.view.state.selectionRange()
+        this.document.history.openPacket(range)
+        const {lastMouseEnteredBlock} = this.document.view.state
+        const deletedFrag = this.document.view.deleteBetween(lastMouseEnteredBlock()!, lastMouseEnteredBlock()!.next, this.document.content)
+        // TODO 存 clipboard 里面
+        this.document.history.closePacket(range?.startBlock === lastMouseEnteredBlock()  ? null : range)
+    }
+    render() {
+        const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+        return () => {
+            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredBlock() instanceof Paragraph && (lastMouseEnteredBlock() as Paragraph)!.isEmpty)) {
+                return <div style={{padding:'6px 0'}}>
+                    <div
+                        style={{
+                            position: 'relative',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            cursor: 'pointer',
+                            width: '100%'
+                        }}
+                        onClick={this.cutBlock}
+                    >
+                        <Cut size={18}/>
+                        <span style={{marginLeft: 8, fontSize: 14, whiteSpace: 'nowrap'}}>Cut</span>
+                    </div>
+                </div>
+            }
+            return null
+        }
+    }
+}
+
+
 // TODO Block 自己的配置 menu
+
+
+
+export const defaultBlockWidgets = [DeleteWidget, CopyWidget, CutWidget, ImageInsertWidget, GridInsertWidget, CodeInsertWidget]
+
+
 
 
 

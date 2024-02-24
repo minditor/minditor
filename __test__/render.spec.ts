@@ -1,13 +1,15 @@
 /**
  * @vitest-environment jsdom
  */
-import {DocumentContent, Paragraph, Text, DocumentContentView, Heading, OLItem} from "../src/index.js";
+import {DocumentContent, Paragraph, Text, DocumentContentView, Heading, OLItem, Document} from "../src/index.js";
 import { state as globalState} from '../src/globals.js'
 import {expect, describe, test} from "vitest";
 
 describe('basic render', () => {
     test('render Paragraph', () => {
-        const doc =  DocumentContent.fromData(
+        const doc =  new Document(document.body,{
+            name: 'doc',
+            children:
             [{
                 type: 'Paragraph',
                 content: [
@@ -15,16 +17,18 @@ describe('basic render', () => {
                     {type: 'Text', value: '22'},
                     {type: 'Text', value: '33'}
                 ]
-            }],
+            }]},
             {Paragraph, Text}
         )
+        doc.render()
 
-        const docElement = (new DocumentContentView(doc, globalState)).render()
-        expect(docElement.textContent).toBe('112233')
+        expect(doc.element!.textContent).toBe('112233')
     })
 
     test('render Section', async () => {
-        const doc = DocumentContent.fromData(
+        const doc = new Document(document.body,{
+            name: 'doc',
+            children:
             [{
                 type: 'Heading',
                 content: [{type: 'Text', value: 'title'}],
@@ -42,16 +46,17 @@ describe('basic render', () => {
                     {type: 'Text', value: '55'},
                     {type: 'Text', value: '66'}
                 ]
-            }], { Heading, Paragraph, Text}
+            }]}, { Heading, Paragraph, Text}
         )
+        doc.render()
 
-        const docElement = (new DocumentContentView(doc, globalState)).render()
-
-        expect(docElement.textContent).toBe('title112233445566')
+        expect(doc.element!.textContent).toBe('title112233445566')
     })
 
     test('render Section in Section', async () => {
-        const doc =  DocumentContent.fromData(
+        const doc =  new Document(document.body,{
+            name: 'doc',
+            children:
             [{
                 type: 'Heading',
                 content: [{type: 'Text', value: 'title'}],
@@ -79,14 +84,16 @@ describe('basic render', () => {
                     {type: 'Text', value: '55'},
                     {type: 'Text', value: '66'}
                 ]
-            }], { Heading, Paragraph, Text})
+            }]}, { Heading, Paragraph, Text})
 
-        const docElement = (new DocumentContentView(doc, globalState)).render()
-        expect(docElement.textContent).toBe('title123title2112233445566')
+        doc.render()
+        expect(doc.element!.textContent!).toBe('title123title2112233445566')
     })
 
     test('render Section with index', async () => {
-        const doc = DocumentContent.fromData(
+        const doc = new Document(document.body,{
+            name: 'doc',
+            children:
             [{
                 type: 'Heading',
                 useIndex: true,
@@ -111,16 +118,17 @@ describe('basic render', () => {
                     {type: 'Text', value: '55'},
                     {type: 'Text', value: '66'}
                 ]
-            }], { Heading, Paragraph, Text}
+            }]}, { Heading, Paragraph, Text}
         )
+        doc.render()
 
-        const docElement = (new DocumentContentView(doc, globalState)).render()
-
-        expect(docElement.textContent).toBe('1title1122331.1title2445566')
+        expect(doc.element!.textContent).toBe('1title1122331.1title2445566')
     })
 
     test('render OLItem', async () => {
-        const doc = DocumentContent.fromData(
+        const doc = new Document(document.body,{
+            name: 'doc',
+            children:
             [{
                 type: 'OLItem',
                 content: [
@@ -153,12 +161,11 @@ describe('basic render', () => {
                     {type: 'Text', value: 'c'}
                 ],
                 level: 0
-            }], { OLItem, Paragraph, Text}
+            }]}, { OLItem, Paragraph, Text}
         )
+        doc.render()
 
-        const docElement = (new DocumentContentView(doc, globalState)).render()
-
-        expect(docElement.textContent).toBe('1.1231.1.4561.1.1.7892.abc')
+        expect(doc.element!.textContent).toBe('1.1231.1.4561.1.1.7892.abc')
     })
 })
 

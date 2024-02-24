@@ -3,6 +3,7 @@ import {DocumentContentView} from "./View";
 import {assert} from "./util";
 import {GlobalState, state as defaultGlobalState} from './globals'
 import {DocumentContentHistory} from "./DocumentContentHistory.js";
+import {Clipboard} from "./Clipboard.js";
 
 export type DocumentData = {
     name: string,
@@ -13,6 +14,7 @@ export class Document {
     public view: DocumentContentView
     public content: DocumentContent
     public history: DocumentContentHistory
+    public clipboard: Clipboard
     element?: HTMLElement
     static createEmptyDocumentData() : DocumentData {
         return {
@@ -28,7 +30,8 @@ export class Document {
     ) {
         this.content = new DocumentContent(DocumentContent.createBlocksFromData(jsonData.children, docNodeTypes), docNodeTypes)
         this.history = new DocumentContentHistory(this)
-        this.view = new DocumentContentView(this.content, globalState, this.history)
+        this.clipboard = new Clipboard()
+        this.view = new DocumentContentView(this, globalState)
     }
     render() {
         const element = this.renderDoc()

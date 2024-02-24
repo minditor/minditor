@@ -26,6 +26,7 @@ import {EventDelegator} from "./EventDelegator";
 import {GlobalState} from "./globals.js";
 import {DocumentContentHistory} from "./DocumentContentHistory.js";
 import {DocRange} from "./Range.js";
+import {Document} from "./Document.js";
 
 
 type CallbackType = (...arg: any[]) => any
@@ -90,16 +91,18 @@ export class DocumentContentView extends EventDelegator{
     public usingDefaultBehavior = false
     public globalState: GlobalState
     public history?: DocumentContentHistory
+    public content: DocumentContent
     public attached = false
     public componentsToCallOnMount =  new Set<Component|InlineComponent>()
     public componentsToCallOnUnmount =  new Set<Component|InlineComponent>()
 
-    constructor(public content: DocumentContent, globalState: GlobalState, history?: DocumentContentHistory ) {
+    constructor(public document: Document, globalState: GlobalState ) {
+
         super()
         this.globalState = globalState
-        this.history = history
+        this.history = document.history
         this.state = new ReactiveViewState(this)
-
+        this.content = document.content
         this.content.on('append', this.patchAppend.bind(this))
         this.content.on('prepend', this.patchPrepend.bind(this))
         this.content.on('replace', this.patchReplace.bind(this))

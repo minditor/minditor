@@ -6,6 +6,7 @@ import Bold from "../icons/Bold";
 import Italic from "../icons/Italic";
 import Underline from "../icons/Underline";
 import LineThrough from "../icons/Linethrough";
+import Link from "../icons/Link.js";
 
 
 export class RangeWidget {
@@ -281,6 +282,18 @@ class ColorWidget extends RangeWidget {
     }
 }
 
+class LinkWidget extends RangeWidget {
+    static displayName = `LinkWidget`
+    render() {
+        // FIXME 检验条件非常苛刻，必须是同 startBlock 并且是文字的！
+
+        return (
+            <div style={{display:'flex', position:'relative', width:24, height:24, alignItems: 'center',justifyContent: 'center'}}>
+                <Link size={16}/>
+            </div>
+        )
+    }
+}
 
 export const defaultFormatWidgets = [
     DecorationWidget,
