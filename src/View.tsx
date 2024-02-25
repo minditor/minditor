@@ -571,7 +571,7 @@ export class DocumentContentView extends EventDelegator{
                 contenteditable
                 onKeydown={[
                     // CAUTION 这里用 this.onSelfView 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
-                    onNotPreventedDefault(onNotComposing(this.onSelfView(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
+                    onNotPreventedDefault(onNotComposing(this.onFocused(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
                     onNotPreventedDefault(onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))),
 
                     onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this))))),
@@ -587,11 +587,11 @@ export class DocumentContentView extends EventDelegator{
                     // onNotComposing(onKey('c', {meta:true})(this.cut.bind(this))),
                     onNotPreventedDefault(onNotComposing(onKey('z', {meta:true})(this.undo.bind(this)))),
                 ]}
-                onPaste={this.onSelfView(this.paste.bind(this))}
-                onCut={this.onSelfView(this.cut.bind(this))}
-                onCopy={this.onSelfView(this.copy.bind(this))}
+                onPaste={this.onFocused(this.paste.bind(this))}
+                onCut={this.onFocused(this.cut.bind(this))}
+                onCopy={this.onFocused(this.copy.bind(this))}
                 // CAUTION 这里用 this.onRangeCollapsed 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
-                onCompositionEndCapture={this.onSelfView(this.inputComposedData.bind(this))}
+                onCompositionEndCapture={this.onFocused(this.inputComposedData.bind(this))}
                 // safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
                 onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))}
             >
@@ -690,7 +690,7 @@ export class DocumentContentView extends EventDelegator{
         // CAUTION 注意这里的写法，一定要先判断 range 是存在的。不然 InlineComponent 里面的行为也会被捕获
         return !!this.state.selectionRange() && this.state.selectionRange()!.isCollapsed
     })
-    onSelfView = eventAlias<any>(() => {
+    onFocused = eventAlias<any>(() => {
         return !!this.state.selectionRange()
     })
     /**
@@ -829,18 +829,31 @@ export class DocumentContentView extends EventDelegator{
         }
 
         // CAUTION 特别注意，由于上面对 range 进行了操作，所以下面始终只能使用 startText/startBlock，因为 endText/endBlock 很可能已经变了
+        if(this.document.clipboard.types.includes('application/json')){
 
-        if(e.clipboardData?.types.includes('text/miditor')){
+            // const data = JSON.parse(e.clipboardData.getData('application/json')) as BlockData[]
+            const data = this.document.clipboard.getData('application/json', e) as BlockData[]
 
-            const data = JSON.parse(e.clipboardData.getData('text/miditor')) as BlockData[]
             if (data.length === 0) return
             if (data.length === 1) {
-                // inline
-                const head = DocumentContent.createInlinesFromData(data[0].content, this.content.types)
-                const frag = new DocNodeFragment(head)
-                const lastInFrag = frag.tail as Text
-                this.append(frag, startText, startBlock)
-                return { shouldSetRange: true, range: DocRange.cursor(startBlock, lastInFrag, Infinity)}
+                const blockData = data[0]
+                if (blockData.type === 'Paragraph') {
+                    // inline
+                    const head = DocumentContent.createInlinesFromData(data[0].content, this.content.types)
+                    const frag = new DocNodeFragment(head)
+                    const lastInFrag = frag.tail as Text
+                    this.append(frag, startText, startBlock)
+                    return { shouldSetRange: true, range: DocRange.cursor(startBlock, lastInFrag, Infinity)}
+                } else {
+                    const block = DocumentContent.createBlocksFromData([blockData], this.content.types)
+                    if ( startBlock instanceof Paragraph && startBlock.isEmpty) {
+                        this.replace(block, startBlock, this.content)
+                    } else {
+                        this.prepend(block, startBlock, this.content)
+                    }
+                    return { shouldSetRange: true, range: DocRange.cursor(block.next!, block.next?.firstChild as Text, Infinity)}
+                }
+
 
             } else {
                 const headParaFrag = new DocNodeFragment(DocumentContent.createInlinesFromData(data[0].content, this.content.types))
@@ -875,11 +888,10 @@ export class DocumentContentView extends EventDelegator{
                 return { shouldSetRange: true, range: DocRange.cursor(newPara, lastInNewPara, Infinity)}
             }
 
-
-
         } else {
             const range = this.state.selectionRange()!
-            const dataToPaste = e.clipboardData!.getData('text/plain')
+            // const dataToPaste = e.clipboardData!.getData('text/plain')
+            const dataToPaste = this.document.clipboard.getData('text/plain', e)
             this.updateRange(this.state.selectionRange()!, dataToPaste)
             return {
                 shouldSetRange: true,
@@ -894,13 +906,14 @@ export class DocumentContentView extends EventDelegator{
     }
     @saveHistoryPacket
     @setEndRange
-    cut(e: ClipboardEvent) {
+    cut (e: ClipboardEvent) {
         e.preventDefault()
         const range = this.state.selectionRange()!
-        const rangeData = JSON.stringify(range.toJSON())
-        e.clipboardData!.setData('text/miditor', rangeData)
+        // e.clipboardData!.setData('application/json', rangeData)
+        this.document.clipboard!.setData('application/json', range.toJSON(), e)
         // 存一下纯文字版本？
-        e.clipboardData!.setData('text/plain', range.toText())
+        // e.clipboardData!.setData('text/plain', range.toText())
+        this.document.clipboard!.setData('text/plain', range.toText(), e)
 
         this.updateRange(this.state.selectionRange()!, '')
         return {
@@ -912,10 +925,13 @@ export class DocumentContentView extends EventDelegator{
         e.preventDefault()
         console.log('copy', e)
         const range = this.state.selectionRange()!
-        const rangeData = JSON.stringify(range.toJSON())
-        e.clipboardData!.setData('text/miditor', rangeData)
+        // e.clipboardData!.setData('application/json', rangeData)
+        this.document.clipboard!.setData('application/json', range.toJSON(), e)
+
         // 存一下纯文字版本？
-        e.clipboardData!.setData('text/plain', range.toText())
+        // e.clipboardData!.setData('text/plain', range.toText())
+        this.document.clipboard!.setData('text/plain', range.toText(), e)
+
     }
     undo(e: KeyboardEvent) {
         e.preventDefault()

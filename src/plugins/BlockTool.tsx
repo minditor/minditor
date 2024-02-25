@@ -167,7 +167,10 @@ export class CopyWidget extends BlockToolWidget {
     public static displayName = `CopyBlockWidget`
     copyBlock = () => {
         const {lastMouseEnteredBlock} = this.document.view.state
-        // TODO 需要扩展 globalState 里面的 clipboard。因为 navigator.clipboard 只有 https 能用
+        this.document.clipboard.setData('application/json', [lastMouseEnteredBlock()!.toJSON()])
+        if ((lastMouseEnteredBlock() as TextBasedBlock).toText) {
+            this.document.clipboard.setData('text/plain', (lastMouseEnteredBlock() as TextBasedBlock).toText())
+        }
     }
     render() {
         const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
@@ -201,9 +204,14 @@ export class CutWidget extends BlockToolWidget {
         const range = this.document.view.state.selectionRange()
         this.document.history.openPacket(range)
         const {lastMouseEnteredBlock} = this.document.view.state
-        const deletedFrag = this.document.view.deleteBetween(lastMouseEnteredBlock()!, lastMouseEnteredBlock()!.next, this.document.content)
-        // TODO 存 clipboard 里面
-        this.document.history.closePacket(range?.startBlock === lastMouseEnteredBlock()  ? null : range)
+        const cutBlock = lastMouseEnteredBlock()!
+        this.document.view.deleteBetween(lastMouseEnteredBlock()!, lastMouseEnteredBlock()!.next, this.document.content)
+
+        this.document.clipboard.setData('application/json', [cutBlock.toJSON()])
+        if ((cutBlock as TextBasedBlock).toText) {
+            this.document.clipboard.setData('text/plain', (cutBlock as TextBasedBlock).toText())
+        }
+        this.document.history.closePacket(range?.startBlock === cutBlock ? null : range)
     }
     render() {
         const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
@@ -231,9 +239,7 @@ export class CutWidget extends BlockToolWidget {
     }
 }
 
-
 // TODO Block 自己的配置 menu
-
 
 
 export const defaultBlockWidgets = [DeleteWidget, CopyWidget, CutWidget, ImageInsertWidget, GridInsertWidget, CodeInsertWidget]
