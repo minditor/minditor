@@ -246,7 +246,6 @@ class ColorWidget extends RangeWidget {
         const hover = atom(false)
 
         const pickerStyle = () => {
-            console.log('hover', hover())
             return ({
                 display: hover() ? 'block' : 'none',
                 position: 'absolute',

@@ -71,7 +71,6 @@ export class Code extends Component {
         return this.editor?.state.doc.toString() ?? this.data.value
     }
     onMount() {
-        console.log('code mirror mount')
         this.editor =new EditorView({
             doc: this.data.value || '',
             extensions: [

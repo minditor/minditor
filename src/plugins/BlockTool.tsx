@@ -64,7 +64,6 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
             }
 
             const widgetContainerStyle = () => {
-                console.log(111, this.hover())
                 return ({
                     display: this.hover() ? 'block' : 'none'
                 })

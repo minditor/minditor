@@ -88,7 +88,6 @@ export function createSuggestionTool(SuggestionClasses: typeof SuggestionWidget[
 
             this.shouldShowBelow = atomComputed(() => {
                 const { visibleRangeRect, bodyViewPortSize } = this.document.view.state
-                console.log(visibleRangeRect()?.top , bodyViewPortSize().height / 2)
                 return visibleRangeRect() ? visibleRangeRect()!.top < bodyViewPortSize().height / 2 : false
             })
 

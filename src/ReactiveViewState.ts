@@ -1,5 +1,5 @@
 import {atom, Atom, atomComputed, destroyComputed} from 'axii'
-import {idleThrottle, nextJob} from "./util";
+import {idleThrottle, nextJob, nextTask} from "./util";
 import {Block, DocNode} from "./DocumentContent.js";
 import {CONTENT_RANGE_CHANGE, DocumentContentView} from "./View";
 import {DocRange} from "./Range.js";
@@ -86,9 +86,12 @@ export class ReactiveViewState {
     }
     activateLastMouseUpPositionAfterRangeChange() {
         const removeMouseUpListener =  this.view.listen('mouseup', (e: MouseEvent) => {
-            if (this.selectionRange() && !this.selectionRange()?.isCollapsed) {
-                this.lastMouseUpPositionAfterRangeChange({left: e.clientX, top: e.clientY})
-            }
+            // 这里需要用 nextTask 是因为但按住 shift key 的时候 mouseup 事件发生在 selectionchange 之后
+            nextTask(() => {
+                if (this.selectionRange() && !this.selectionRange()?.isCollapsed) {
+                    this.lastMouseUpPositionAfterRangeChange({left: e.clientX, top: e.clientY})
+                }
+            })
         })
 
         const removeRangeChangeListener = this.view.globalState.onSelectionChange(() => {

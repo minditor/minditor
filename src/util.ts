@@ -89,7 +89,6 @@ export function setNativeCursor(element: HTMLElement | ChildNode, offset: number
   range.setEnd(element, offset)
 
   globalState.selection!.removeAllRanges()
-  console.log(range.startContainer.parentElement)
   globalState.selection!.addRange(range)
 }
 

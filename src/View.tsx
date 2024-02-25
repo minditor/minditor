@@ -720,7 +720,6 @@ export class DocumentContentView extends EventDelegator{
             1 :
             (offset === Infinity ? focusText.data.value.length : offset)
         setNativeCursor(startContainer as HTMLElement, startOffset)
-        console.log("api setting cursor", focusText, startContainer, startOffset)
     }
     setRange(docRange: DocRange) {
         const startContainer = this.docNodeToElement.get(docRange.startText)!.firstChild!
@@ -923,7 +922,6 @@ export class DocumentContentView extends EventDelegator{
     }
     copy(e: ClipboardEvent) {
         e.preventDefault()
-        console.log('copy', e)
         const range = this.state.selectionRange()!
         // e.clipboardData!.setData('application/json', rangeData)
         this.document.clipboard!.setData('application/json', range.toJSON(), e)

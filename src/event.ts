@@ -44,7 +44,6 @@ export function createDelegator(namespace = 'global'): EventDelegator {
     function trigger(event: Event, element?: HTMLElement) {
         // CAUTION 手动  trigger 永远在  element 上
         if (element) {
-            console.log("dispatch", event, element)
             element.dispatchEvent(event)
         } else {
             attachedElements.forEach(el => el.dispatchEvent(event))

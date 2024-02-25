@@ -92,7 +92,6 @@ export class Plugin {
 
             callbacks.add((e: unknown, args?: PluginRunArgv) => {
                 if (!eventMatchHandle.call(this, e)) return
-                console.log("activating", this)
                 this.activate()
                 return this.run(args!)
             })

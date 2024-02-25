@@ -25,7 +25,6 @@ class InlineImagePlugin extends BasePlugin {
         this.type = 'example';
     }
     uploader = (fileIDs: string[]) => {
-        console.log("handling upload", fileIDs)
         const files = this.uppy.getFiles()
         this.uppy.emit('upload-start', fileIDs)
         files.forEach((file) => {
@@ -71,7 +70,6 @@ export function createImageBlock(uploadType: keyof typeof uploaderTypes, config:
                     .use(Dashboard, { inline: true, target: this.element, proudlyDisplayPoweredByUppy:false, height:300 })
                     .use(ImageEditor, { target: Dashboard })
                     .on('upload-success', (file, response) => {
-                        console.log(file?.name, response.uploadURL);
 
                         // 更新自己
                         // TODO 改成 AXIIComponent 来更新
