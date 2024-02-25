@@ -3,7 +3,6 @@ import {Component, InlineComponent, Text} from "./DocumentContent.js";
 
 export class AxiiInlineComponent extends InlineComponent {
     public axiiRoot: any
-    static asTextNode = true
 
     destroy() {
         super.destroy();

@@ -1031,8 +1031,6 @@ export class DocumentContentView extends EventDelegator{
                 this.content.append(this.content.createText(), result, args[2])
             }
         }
-
-
         return result
     }
     prepend(...args: Parameters<DocumentContent["prepend"]>) {

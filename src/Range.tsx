@@ -92,11 +92,11 @@ export class DocRange {
                 // CAUTION 这里处理了 startBlock 和 endBlock 相同的情况
                 while(currentText && currentText!== this.endText.next) {
                     if (currentText instanceof Text) {
-                        content += currentText.data.value
-                    } else  if ((currentText  as Text).toText)  {
+                        content += currentText === this.startText  ? currentText.data.value.slice(this.startOffset) : currentText.data.value
+                    } else if ((currentText  as Text).toText)  {
                         content += (currentText as Text).toText()
                     } else {
-                        // 不能变成 text 的 Inline 节点
+                        // 不能变成 text 的 Inline 节点忽略
                     }
                     currentText = currentText.next
                 }
@@ -106,7 +106,7 @@ export class DocRange {
                 let currentText:Inline|null = this.endBlock.firstChild
                 while(currentText && currentText !== this.endText.next) {
                     if (currentText instanceof Text) {
-                        content += currentText.data.value
+                        content += currentText === this.endText ? currentText.data.value.slice(0, this.endOffset) :currentText.data.value
                     } else  if ((currentText  as Text).toText)  {
                         content += (currentText as Text).toText()
                     } else {

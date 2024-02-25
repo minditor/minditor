@@ -7,6 +7,8 @@ import Italic from "../icons/Italic";
 import Underline from "../icons/Underline";
 import LineThrough from "../icons/Linethrough";
 import Link from "../icons/Link.js";
+import {DocRange} from "../Range.js";
+import {Inline, InlineComponent, Text} from "../DocumentContent.js";
 
 
 export class RangeWidget {
@@ -284,20 +286,91 @@ class ColorWidget extends RangeWidget {
 
 class LinkWidget extends RangeWidget {
     static displayName = `LinkWidget`
+    replaceRangeWithLink = () => {
+        const { selectionRange } = this.document.view.state
+        const range = selectionRange()!
+
+        const { isInSameInline, startText, startOffset,startBlock, endOffset, isEndFull, endText } = range
+        const initialText = range.toText()
+
+        this.document.history.openPacket(range)
+        let deleteStart = startText
+        let beforeStart = startText.prev() as Text
+        let afterEndText = endText.next as Text
+
+        if (startOffset !== 0 || !startText.prev()) {
+            beforeStart = startText
+            deleteStart = this.document.view.splitText(startText, startOffset, startBlock)
+        }
+
+        if (!isEndFull) {
+            if (isInSameInline) {
+                afterEndText = this.document.view.splitText(deleteStart, endOffset - startOffset, startBlock)
+            } else {
+                afterEndText = this.document.view.splitText(endText, endOffset, startBlock)
+            }
+        }
+
+        this.document.view.deleteBetween(deleteStart, afterEndText, startBlock)
+        const link = this.document.content.createFromData({
+            type:'Link',
+            href: initialText,
+            alt: initialText,
+            content: []
+        }) as InlineComponent
+
+        this.document.view.append(link, beforeStart, startBlock)
+        this.document.history.closePacket(null)
+        
+        link.focus()
+    }
     render() {
-        // FIXME 检验条件非常苛刻，必须是同 startBlock 并且是文字的！
+        const style= () => {
+            const { selectionRange } = this.document.view.state
+            if (!selectionRange() ) return {display: 'none'}
+
+            const { isInSameBlock, startText, startOffset, endOffset, isEndFull, endText } = selectionRange()!
+            if (!isInSameBlock) return {display: 'none'}
+
+            let isAllText = true
+            let current:Inline|null = startText
+            while(current && current !== endText.next) {
+                if (!(current instanceof Text)) {
+                    isAllText = false
+                    break
+                }
+                current = current.next
+            }
+
+            if (!isAllText) return {display: 'none'}
+            return {
+                display: 'flex',
+                position: 'relative',
+                width: 24,
+                height: 24,
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                marginLeft: 8
+            }
+        }
 
         return (
-            <div style={{display:'flex', position:'relative', width:24, height:24, alignItems: 'center',justifyContent: 'center'}}>
+            <div
+                style={style}
+                onClick={this.replaceRangeWithLink}
+            >
                 <Link size={16}/>
             </div>
         )
     }
+
 }
 
 export const defaultFormatWidgets = [
     DecorationWidget,
     ColorWidget,
+    LinkWidget
 ]
 
 

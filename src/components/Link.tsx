@@ -1,4 +1,4 @@
-import {Atom, atom, createElement, RenderContext} from "axii";
+import {Atom, atom, createElement, onESCKey, RenderContext} from "axii";
 import {InlineComponent} from "../DocumentContent.js";
 import {Input} from "../lib/Input.js";
 import {AxiiInlineComponent} from "../AxiiComponent.js";
@@ -71,9 +71,10 @@ export class Link extends AxiiInlineComponent {
                 onmouseenter={() => this.formVisible(true)}
                 onmouseleave={() => this.formVisible(false)}
                 contenteditable={false}
-
+                onKeyDown={onESCKey(() => this.formVisible(false))}
+                onfocusout={() => this.formVisible(false)}
             >
-                <span onClick={() => window.open(this.href(), '_blank')}>{this.alt}</span>
+                <a href={this.href} targe='_blank'>{this.alt}</a>
                 {form}
             </div>
         )
