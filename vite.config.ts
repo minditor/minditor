@@ -1,5 +1,3 @@
-import {fileURLToPath, URL } from 'url'
-
 export default {
   esbuild: {
     jsxFactory: 'createElement',
@@ -7,15 +5,5 @@ export default {
   },
   define: {
     __DEV__: true,
-  },
-  resolve: {
-    alias: {
-    }
-  },
-  server: {
-    fs: {
-      // Allow serving files from one level up to the project root
-      allow: ['..'],
-    },
   },
 }

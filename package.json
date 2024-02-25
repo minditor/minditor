@@ -10,6 +10,7 @@
     "test:server": "npm run dev --prefix tests/server -- --port $npm_config_port",
     "dev": "vite",
     "build": "vite build",
+    "build-site": "vite build -c vite.site.config.ts",
     "cypress": "cypress open",
     "pw": "npm run test:compile && playwright test"
   },

@@ -39,6 +39,7 @@
     "react.tsx",
     "react-calendar.tsx",
     "readme.tsx",
+    "site/**/*",
     "__test__/**/*",
   ],
 

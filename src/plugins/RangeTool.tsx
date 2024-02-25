@@ -321,7 +321,7 @@ class LinkWidget extends RangeWidget {
 
         this.document.view.append(link, beforeStart, startBlock)
         this.document.history.closePacket(null)
-        
+
         link.focus()
     }
     render() {
