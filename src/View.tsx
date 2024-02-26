@@ -477,9 +477,16 @@ export class DocumentContentView extends EventDelegator{
                     // 如果自己是 empty para，那么自己的 空 Text 不要插入到上面去
                     this.append(inlineFrag, previousBlock.lastChild!, previousBlock)
                 }
-                endCursorBlock = previousBlock
-                endCursorText = previousBlockLastChild
-                endCursorOffset = previousBlockLastChild.data.value.length
+
+                if (previousBlockLastChild instanceof Text) {
+                    endCursorBlock = previousBlock
+                    endCursorText = previousBlockLastChild
+                    endCursorOffset = previousBlockLastChild.data.value.length
+                } else {
+                    endCursorBlock = previousBlock
+                    endCursorText = previousBlockLastChild.next
+                    endCursorOffset = 0
+                }
             }
 
             return { shouldSetRange: true, range: DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)}
@@ -889,9 +896,10 @@ export class DocumentContentView extends EventDelegator{
 
         } else {
             const range = this.state.selectionRange()!
+            const currentRange = DocRange.cursor(range.startBlock, range.startText, range.startOffset)
             // const dataToPaste = e.clipboardData!.getData('text/plain')
             const dataToPaste = this.document.clipboard.getData('text/plain', e)
-            this.updateRange(this.state.selectionRange()!, dataToPaste)
+            this.updateRange(currentRange, dataToPaste)
             return {
                 shouldSetRange: true,
                 range: DocRange.cursor(range.startBlock, range.startText, range.startOffset + dataToPaste.length)
@@ -969,7 +977,6 @@ export class DocumentContentView extends EventDelegator{
         let endCursorOffset = startOffset - 1
 
         if (startText.data.value.length === 1 && startText.prev() instanceof Text) {
-            // 不管前面是什么，都设置到末尾
             endCursorBlock = startBlock
             endCursorText = startText.prev()! as Text
             endCursorOffset = Infinity

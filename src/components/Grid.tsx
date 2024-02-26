@@ -37,6 +37,7 @@ const HANDLE_SIZE = 10
 const TABLE_BORDER_COLOR = '#dee0e3'
 
 export class Grid extends AxiiComponent {
+    static displayName = 'Grid'
     public columns: RxList<Atom<number>>
     public innerData: RxList<RxList<ScaffoldHandle>>
     public pluginContainer: HTMLElement

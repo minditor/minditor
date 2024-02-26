@@ -35,7 +35,7 @@
     "editor.tsx",
     "tests/**/*",
     "index.tsx",
-    "index2.tsx",
+    "dev.tsx",
     "react.tsx",
     "react-calendar.tsx",
     "readme.tsx",

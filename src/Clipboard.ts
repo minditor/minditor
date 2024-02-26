@@ -28,8 +28,8 @@ export class Clipboard {
     }
 
     if (!data){
-      data = localStorage.getItem(this.getItemName(type))
+      data = JSON.parse(localStorage.getItem(this.getItemName(type))!)
     }
-    return JSON.parse(data)
+    return data
   }
 }
