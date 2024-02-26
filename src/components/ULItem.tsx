@@ -13,25 +13,30 @@ export class ULItem extends AxiiTextBasedComponent {
     static displayName = 'ULItem'
 
     static unwrap(doc: DocumentContent, block:Block) {
-        const olItem = block as ULItem
-        if (olItem.level() === 0) {
-            const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
+        const ulItem = block as ULItem
+        if (ulItem.level() === 0) {
+            const fragment = doc.deleteBetween(ulItem.firstChild!, null, ulItem)
             const newPara = doc.createParagraph(fragment)
-            doc.replace(newPara, olItem)
+            doc.replace(newPara, ulItem)
             return newPara
         } else {
-            const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
-            const newOlItem = new ULItem({level: olItem.level() - 1})
-            newOlItem.firstChild = fragment.retrieve()
-            doc.replace(newOlItem, olItem)
-            return newOlItem
+            ulItem.level(ulItem.level() - 1)
+        }
+    }
+    static wrap(doc: DocumentContent, block:Block) {
+        // 要判断上一节点的  level 是否允许自己继续加深
+        const prevBlock = block.prev()
+        const maxLevel = prevBlock instanceof ULItem ? prevBlock.level() + 1 : 1
+        const ulItem = block as ULItem
+        if (ulItem.level() < maxLevel) {
+            ulItem.level(ulItem.level() + 1)
         }
     }
 
     static splitAsSameType = true
 
-    static createEmpty(level = 0) {
-        const newItem = new ULItem({level})
+    static createEmpty(referenceBlock?:ULItem) {
+        const newItem = new ULItem({level: referenceBlock?.level() ||0})
         newItem.firstChild = new Text({value: ''})
         return newItem
     }

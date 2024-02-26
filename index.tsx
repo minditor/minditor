@@ -52,7 +52,7 @@ async function callApi(apiName: string, data: any) {
 
 const jsonData: DocumentData = await callApi('readFile', ['/Users/camus/Work/minditor/readme1.json'])
 
-const result = scaffold(root, {data: jsonData, types, plugins}, { debug: true })
+const result = scaffold(root, {data: jsonData, types, plugins}, )
 result.render()
 
 document.addEventListener('keydown', async (e) => {

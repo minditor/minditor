@@ -62,6 +62,9 @@ function setEndRange(target: DocumentContentView, propertyKey: string, descripto
         if (result?.shouldSetRange) {
             this.setRange(result.range)
         }
+        // 如果 range 不在可见范围内，要 scrollIntoView
+        this.scrollIntoViewIfNeeded()
+
         return result
     };
 
@@ -304,9 +307,8 @@ export class DocumentContentView extends EventDelegator{
     }
     tryUseDefaultBehaviorForRange(range: DocRange, e: Event) {
         const {startText, startOffset, endText, endOffset, isCollapsed, isInSameInline} = range
-        const canUseDefaultBehaviorInBackspace = !SHOULD_RESET_CURSOR_AFTER_BACKSPACE &&
-            !(e instanceof KeyboardEvent && e.key === 'Backspace' && isCollapsed && startOffset < 2 && startText.data.value.length < 2)
-
+        const canUseDefaultBehaviorInBackspace = !(e instanceof KeyboardEvent && e.key === 'Backspace') ||
+            !SHOULD_RESET_CURSOR_AFTER_BACKSPACE && !(isCollapsed && startOffset < 2 && startText.data.value.length < 2)
 
         // CAUTION 特别注意，这里能这么判断是因为 docRange 在创建的时候已经把 focus 在上个节点尾部和下个节点头部之类的特殊情况抹平了。
         const canUseDefaultBehaviorInInputOrDeletion = isCollapsed ?
@@ -339,6 +341,7 @@ export class DocumentContentView extends EventDelegator{
 
         const succeed = this.tryUseDefaultBehaviorForRange(range, e)
 
+        // FIXME 这里不能用 e.key，因为可能是中文标点。我们是无法从 e.key 中获取到的。
         this.updateRange(range, e.key)
 
         this.resetUseDefaultBehavior()
@@ -436,11 +439,18 @@ export class DocumentContentView extends EventDelegator{
                 // 1.2.1 这个 block 有 unwrap 方法，那么调用 unwrap 方法
                 // heading/listItem 之类的在头部删除会变成 paragraph
                 const newPara = (startBlock.constructor as typeof Block).unwrap!(this.content, startBlock)
-                endCursorBlock = newPara
-                endCursorText = newPara.firstChild as Text
-                endCursorOffset = 0
-                return { shouldSetRange: true, range: DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)}
+                if (newPara) {
+                    endCursorBlock = newPara
+                    endCursorText = newPara.firstChild as Text
+                    endCursorOffset = 0
+                } else {
+                    // 1.2.2 如果返回了 undefined，说明组件内部能做响应式的处理，range 不变。
+                    endCursorBlock = startBlock
+                    endCursorText = startText
+                    endCursorOffset = 0
+                }
 
+                return { shouldSetRange: true, range: DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)}
             }
 
             // 2.2. 前面没有了，什么也不发生
@@ -557,9 +567,25 @@ export class DocumentContentView extends EventDelegator{
     }
     @saveHistoryPacket
     @setEndRange
-    changeLevel () {
-        // TODO
-        return null
+    changeLevel (e: KeyboardEvent) {
+        const isUpLevel = e.shiftKey
+        const method = isUpLevel ? 'unwrap' : 'wrap'
+        const range = this.state.selectionRange()!
+        const { startBlock, startText, startOffset, endBlock, endText, endOffset, isCollapsed, isInSameBlock, isInSameInline } = range
+        e.preventDefault()
+        // 如果不在段首
+        if (startOffset !== 0 || startText.prev() || !(startBlock.constructor as typeof Block)[method]) {
+            // 不支持制表符
+            return null
+        }
+
+        // 在段首，并且有 unwrap/wrap 方法
+        const newBlock = (startBlock.constructor as typeof Block)[method]!(this.content, startBlock)
+        if (newBlock) {
+            return { shouldSetRange: true, range: DocRange.cursor(newBlock, newBlock.firstChild as Text, 0)}
+        } else {
+            return { shouldSetRange: true, range }
+        }
     }
 
     @saveHistoryPacket
@@ -586,13 +612,14 @@ export class DocumentContentView extends EventDelegator{
 
                     onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onEnterKey(this.splitContent.bind(this))))),
                     onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onEnterKey(this.deleteRangeWithoutMerge.bind(this))))),
+                    onNotPreventedDefault(onNotComposing(onKey('z', {meta:true})(this.undo.bind(this)))),
 
-                    onNotPreventedDefault(onNotComposing(onTabKey(this.changeLevel.bind(this)))),
                     // 有 range 时的输入法开始处理，等同于先删除 range
                     onNotPreventedDefault(onNotComposing(onKey('a', {meta:true})(this.selectAll.bind(this)))),
-                    // onNotComposing(onKey('x', {meta:true})(this.copy.bind(this))),
-                    // onNotComposing(onKey('c', {meta:true})(this.cut.bind(this))),
-                    onNotPreventedDefault(onNotComposing(onKey('z', {meta:true})(this.undo.bind(this)))),
+                ]}
+                onInput={this.onInput.bind(this)}
+                onKeyDownCapture={[
+                    onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onTabKey(this.changeLevel.bind(this)))))
                 ]}
                 onPaste={this.onFocused(this.paste.bind(this))}
                 onCut={this.onFocused(this.cut.bind(this))}
@@ -607,6 +634,10 @@ export class DocumentContentView extends EventDelegator{
         ) as HTMLElement
 
         return this.element
+    }
+    onInput(e: any) {
+        e.preventDefault()
+        console.log(e)
     }
     // 这个函数被外部手动调用。用户可以自己决定什么时候把 element append 到 document 上。
     onMount() {
@@ -941,7 +972,11 @@ export class DocumentContentView extends EventDelegator{
     }
     undo(e: KeyboardEvent) {
         e.preventDefault()
-        this.history?.undo()
+        if (e.shiftKey) {
+            this.history?.redo()
+        } else {
+            this.history?.undo()
+        }
     }
     findFirstTextFromElement(startContainer: Node): Text|undefined {
         let current = startContainer
@@ -967,6 +1002,18 @@ export class DocumentContentView extends EventDelegator{
 
         }
         return result
+    }
+    scrollIntoViewIfNeeded() {
+        const range = this.state.selectionRange()!
+        const startRect = this.getBoundingRectOfBlock(range.startBlock)
+        const endRect = this.getBoundingRectOfBlock(range.endBlock)
+        const containerRect = this.getContainerBoundingRect()
+        if (!containerRect) return
+        if (startRect.top < containerRect.top + 20) {
+            this.boundaryContainer?.scrollBy?.(0, Math.min(startRect.top - containerRect.top, 0) -50)
+        } else if (endRect.bottom > containerRect.bottom - 20) {
+            this.boundaryContainer?.scrollBy?.(0, Math.max((endRect.bottom - containerRect.bottom), 0) + 50)
+        }
     }
     deleteLastChar() {
         const range = this.state.selectionRange()!
@@ -994,7 +1041,7 @@ export class DocumentContentView extends EventDelegator{
         const currentType = block.constructor as typeof Block
         if (currentType.splitAsSameType) {
             const Type = block.constructor as typeof Block
-            newBlock = Type.createEmpty()
+            newBlock = Type.createEmpty(block)
         } else {
             newBlock = this.content.createParagraph()
         }

@@ -55,11 +55,12 @@ export class DocNode {
 export class Block extends DocNode {
     static displayName = 'Block'
     // 在头部按 backspace 是否变成一个普通的 Paragraph
-    static unwrap?: (doc: DocumentContent, block: any) => Block
+    static unwrap?: (doc: DocumentContent, block: any) => void|undefined|Block
+    static wrap?: (doc: DocumentContent, block: any) => void|undefined|Block
     // 在 content 中间按回车的时候，是否应该分割成同样类型的新 Block，如果不是就默认创建 Paragraph。
     static splitAsSameType = false
     // 如果 splitAsSameType 为 true，就必须重写这个函数
-    static createEmpty() {
+    static createEmpty(referenceBlock?: any) {
         return new this()
     }
 

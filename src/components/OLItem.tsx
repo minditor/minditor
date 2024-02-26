@@ -19,18 +19,23 @@ export class OLItem extends AxiiTextBasedComponent {
             doc.replace(newPara, olItem)
             return newPara
         } else {
-            const fragment = doc.deleteBetween(olItem.firstChild!, null, olItem)
-            const newOlItem = new OLItem({level: olItem.level() - 1})
-            newOlItem.firstChild = fragment.retrieve()
-            doc.replace(newOlItem, olItem)
-            return newOlItem
+            olItem.level(olItem.level() - 1)
+        }
+    }
+    static wrap(doc: DocumentContent, block:Block) {
+        // 要判断上一节点的  level 是否允许自己继续加深
+        const prevBlock = block.prev()
+        const maxLevel = prevBlock instanceof OLItem ? prevBlock.level() + 1 : 1
+        const olItem = block as OLItem
+        if (olItem.level() < maxLevel) {
+            olItem.level(olItem.level() + 1)
         }
     }
 
     static splitAsSameType = true
 
-    static createEmpty(level = 0) {
-        const newItem = new OLItem({level})
+    static createEmpty(referenceBlock?:OLItem) {
+        const newItem = new OLItem({level: referenceBlock?.level() ||0})
         newItem.firstChild = new Text({value: ''})
         return newItem
     }
