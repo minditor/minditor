@@ -19,6 +19,7 @@ import {
     Text,
     ULItem
 } from "./src/index.js";
+import {createTOCTool} from "./src/plugins/TOCTool.js";
 
 const root= document.getElementById('root')!
 const types = {
@@ -38,7 +39,8 @@ const plugins = [
     ...defaultMarkdownPlugins,
     createBlockTool(defaultBlockWidgets),
     createRangeTool( defaultFormatWidgets ),
-    createSuggestionTool(defaultSuggestionWidgets)
+    createSuggestionTool(defaultSuggestionWidgets),
+    createTOCTool()
 ]
 const result = scaffold(root, {data: jsonData, types, plugins}, { debug: true })
 result.render()

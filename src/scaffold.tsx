@@ -164,7 +164,6 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
                 plugin.renderPluginView(!!config?.pluginContainer)
                 pluginContainer!.appendChild(plugin.root?.element!)
             })
-
         }
     }
 

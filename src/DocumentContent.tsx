@@ -1,6 +1,7 @@
 import EventEmitter from "eventemitter3";
 import {assert, ZWSP} from "./util.js";
 import {Atom, atom, createElement} from "axii";
+import {v4} from 'uuid'
 
 export class DocNodeFragment {
     public retrieved = false
@@ -23,8 +24,12 @@ export class DocNodeFragment {
 
 export class DocNode {
     static displayName = 'DocNode'
-
+    id: string;
     constructor(public data?: any) {
+        this.id = v4()
+    }
+    get type() {
+        return (this.constructor as typeof DocNode).displayName
     }
 
     next: DocNode | null = null

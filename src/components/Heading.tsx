@@ -1,6 +1,6 @@
 import {Atom, atom, computed, createElement, createRoot, destroyComputed, reactive} from "axii";
-import {Block, DocumentContent, Text, TextBasedBlock} from "../DocumentContent.js";
-import {AxiiComponent, AxiiTextBasedComponent} from "../AxiiComponent.js";
+import {Block, DocumentContent, Text} from "../DocumentContent.js";
+import {AxiiTextBasedComponent} from "../AxiiComponent.js";
 
 
 type HeadingData = {
@@ -73,7 +73,8 @@ export class Heading extends AxiiTextBasedComponent {
     renderInner({children}: { children: any }) {
         const Tag = `h${this.level()+1}`
 
-        const result =  <Tag>
+        // @ts-ignore
+        const result =  <Tag id={this.id}>
             {() => this.displayIndex() ? <span style={{marginRight:8}}>{this.displayIndex()}</span> : null}
             <span data-testid='heading-editable-container' contenteditable={true}>{children}</span>
         </Tag> as HTMLElement
@@ -90,5 +91,20 @@ export class Heading extends AxiiTextBasedComponent {
             useIndex: this.useIndex(),
             manualIndex: this.manualIndex
         }
+    }
+    toText() {
+        let content = this.useIndex() ? this.displayIndex() + ' ' : ''
+        let current = this.firstChild
+        while (current) {
+            if (current instanceof Text) {
+                content += current.data.value
+            } else if( (current as Text).toText ){
+                content += (current as Text).toText()
+            } else {
+                // 忽略不能 toText 的
+            }
+            current = current.next
+        }
+        return content
     }
 }
