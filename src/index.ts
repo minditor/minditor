@@ -18,6 +18,7 @@ export * from './plugins/markdown.js'
 export * from './plugins/BlockTool.js'
 export * from './plugins/RangeTool.js'
 export * from './plugins/SuggestionTool.js'
+export * from './plugins/TOCTool.js'
 export * from './scaffold.js'
 export {AxiiComponent} from "./AxiiComponent.js";
 export {AxiiInlineComponent} from "./AxiiComponent.js";

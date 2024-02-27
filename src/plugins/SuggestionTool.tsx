@@ -156,7 +156,9 @@ export function createSuggestionTool(SuggestionClasses: typeof SuggestionWidget[
                     background: '#fff',
                     border:'1px solid #eee',
                     boxShadow: '2px 2px 5px #dedede',
-                    transition: 'all'
+                    transition: 'all',
+                    zIndex: 100000
+
                 }
             }
 

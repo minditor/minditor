@@ -20,7 +20,7 @@ import {less} from "@codemirror/lang-less"
 import {xml} from "@codemirror/lang-xml"
 import {yaml} from "@codemirror/lang-yaml"
 import {indentWithTab} from "@codemirror/commands"
-
+import {tomorrow as theme} from "thememirror"
 
 export type CodeData = {
     value: string,
@@ -76,7 +76,8 @@ export class Code extends Component {
             extensions: [
                 basicSetup,
                 keymap.of([indentWithTab]),
-                Code.langToPlugin[this.data.language|| 'javascript'],
+                theme,
+                Code.langToPlugin[this.data.language|| 'javascript'] ?? javascript(),
                 EditorView.updateListener.of((e) => {
                     if (e.docChanged) {
                         this.data.value = this.editor!.state.doc.toString()
@@ -87,7 +88,13 @@ export class Code extends Component {
         })
     }
     render() : HTMLElement{
-        this.element = <div contenteditable={false} onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}/>  as HTMLElement
+        const style={
+            padding: 10,
+            border: '1px solid #f0f0f0',
+            borderRadius: 4,
+            outline: 'none'
+        }
+        this.element = <div style={style} contenteditable={false} onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}/>  as HTMLElement
         return this.element
     }
 }

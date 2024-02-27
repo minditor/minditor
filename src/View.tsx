@@ -617,7 +617,7 @@ export class DocumentContentView extends EventDelegator{
                     // 有 range 时的输入法开始处理，等同于先删除 range
                     onNotPreventedDefault(onNotComposing(onKey('a', {meta:true})(this.selectAll.bind(this)))),
                 ]}
-                onBeforeInput={onNotPreventedDefault(onNotComposing(this.inputNotCompositionData.bind(this)))}
+                onBeforeInput={onNotPreventedDefault(onNotComposing(this.onFocused(this.inputNotCompositionData.bind(this))))}
                 onPaste={this.onFocused(this.paste.bind(this))}
                 onCut={this.onFocused(this.cut.bind(this))}
                 onCopy={this.onFocused(this.copy.bind(this))}

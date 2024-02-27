@@ -96,7 +96,8 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
                     // 一定要设置，不然在 chrome 上好像有 bug
                     height: 'fit-content',
                     // 不换行
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    zIndex: 100000
                 }
             }
 

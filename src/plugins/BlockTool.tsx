@@ -60,6 +60,7 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                     boxShadow: '2px 2px 5px #dedede',
                     transition: 'all',
                     whiteSpace: 'nowrap',
+                    zIndex: 100000
                 }
             }
 

@@ -17,9 +17,9 @@ import {
     Paragraph,
     scaffold,
     Text,
-    ULItem
+    ULItem,
+    createTOCTool
 } from "./src/index.js";
-import {createTOCTool} from "./src/plugins/TOCTool.js";
 
 const root= document.getElementById('root')!
 const types = {
