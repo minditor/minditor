@@ -65,7 +65,7 @@ export function createTOCTool( config?: any) {
                 }
             }
 
-            return <div style={style} >
+            return <div style={style} className="toc-container">
                 {() => {
                     return this.contents().map((content, index) => {
                         const style= () => {

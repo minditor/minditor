@@ -27,10 +27,6 @@ export class InlineCode extends InlineComponent {
     }
 
     toJSON(): any {
-        console.log('toJSON', {
-            ...super.toJSON(),
-            value: this.value
-        })
         return {
             ...super.toJSON(),
             value: this.value

@@ -20,7 +20,7 @@ import {less} from "@codemirror/lang-less"
 import {xml} from "@codemirror/lang-xml"
 import {yaml} from "@codemirror/lang-yaml"
 import {indentWithTab} from "@codemirror/commands"
-import {tomorrow as theme} from "thememirror"
+import {dracula as theme} from "thememirror"
 
 export type CodeData = {
     value: string,

@@ -339,6 +339,13 @@ export class Grid extends AxiiComponent {
             </div>
         )
     }
+    toJSON(): any {
+        return {
+            ...super.toJSON(),
+            columns: this.columns.data.map(c => c()),
+            data: this.innerData.data.map(row => row.data.map(cell => cell.doc.toJSON()))
+        };
+    }
 }
 
 

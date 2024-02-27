@@ -16,7 +16,7 @@ import {
     Paragraph,
     scaffold,
     Text,
-    ULItem, BlockData, DocumentData
+    ULItem, DocumentData
 } from "./src/index.js";
 import {createTOCTool} from "./src/plugins/TOCTool.js";
 

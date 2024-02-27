@@ -26,8 +26,19 @@
         word-wrap: break-word;
     }
 
+    [contenteditable]> *{
+      margin-block-end: 1ex;
+    }
+    [contenteditable]> *:first-child{
+      margin-block-start: 0;
+    }
+    [contenteditable]> *:last-child{
+      margin-block-end: 0;
+    }
 
     #root {
+      max-width: 800px;
+      margin: 0 auto;
       /* 必须提供 position 后面 pluginContainer 要用于定位*/
       position: relative;
       /*border: 1px #333 solid;*/
@@ -35,17 +46,29 @@
       /*用来取代 overflow-y 使得max-height 不要超出去的*/
       min-height: 0;
 
-      /* 留给旁边 blockTool 的*/
-      margin-left: 200px;
       overflow-x: visible;
       /*overflow-y: auto;*/
+    }
 
+    .toc-container a {
+        display: block;
+        padding: 5px 10px;
+        text-decoration: none;
+        color: #000;
+    }
+
+    .image-preview-root{
+      padding: 5ex 0;
+    }
+
+    img:hover{
+      outline: #f0f0f0 1px solid;
+      cursor: pointer;
     }
 
   </style>
 </head>
 <body>
-<h1 style="text-align: center">Minditor Debug Page</h1>
 <div id="root">
 </div>
 <script type="module" src="/index.tsx"></script>

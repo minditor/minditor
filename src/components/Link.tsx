@@ -74,7 +74,7 @@ export class Link extends AxiiInlineComponent {
                 onKeyDown={onESCKey(() => this.formVisible(false))}
                 onfocusout={() => this.formVisible(false)}
             >
-                <a href={this.href} targe='_blank'>{this.alt}</a>
+                <a href={this.href} target='_blank'>{this.alt}</a>
                 {form}
             </div>
         )

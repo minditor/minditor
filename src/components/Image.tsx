@@ -1,4 +1,4 @@
-import { createElement } from "axii";
+import {atom, Atom, createElement, Fragment} from "axii";
 import Uppy, {BasePlugin, PluginOptions} from '@uppy/core';
 import Dashboard from '@uppy/dashboard';
 
@@ -9,10 +9,10 @@ import '@uppy/image-editor/dist/style.min.css';
 import {Component} from "../DocumentContent.js";
 import AwsS3 from '@uppy/aws-s3';
 import XHR from '@uppy/xhr-upload'
+import {AxiiComponent} from "../AxiiComponent.js";
 
 type ImageData = {
     src: string
-    isNew?: boolean
     alt?: string
 }
 
@@ -28,12 +28,17 @@ class InlineImagePlugin extends BasePlugin {
         const files = this.uppy.getFiles()
         this.uppy.emit('upload-start', fileIDs)
         files.forEach((file) => {
-            const resp = {
-                status: 200,
-                body: {},
-                uploadURL: URL.createObjectURL(file.data)
-            }
-            this.uppy.emit('upload-success', file.id, resp)
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const resp = {
+                    status: 200,
+                    body: {},
+                    uploadURL: reader.result
+                }
+                this.uppy.emit('upload-success', file.id, resp)
+            };
+            reader.readAsDataURL(file.data);
+
         })
         return Promise.resolve()
     }
@@ -50,56 +55,62 @@ const uploaderTypes = {
 
 
 export function createImageBlock(uploadType: keyof typeof uploaderTypes, config: any) {
-    return class ImageBlock extends Component {
+    return class ImageBlock extends AxiiComponent {
         static displayName = 'Image'
         public element?: HTMLElement
         public uppy? : Uppy
+        public src: Atom<string>
         constructor(public data: ImageData) {
             super(data);
+            this.src = atom(data.src||'')
         }
         onMount = () => {
-            if (this.data.isNew || !this.data.src) {
+            console.log(this.data)
+            if (!this.data.src) {
                 this.uppy = new Uppy({
                     restrictions: {
                         maxNumberOfFiles:1,
                         allowedFileTypes: ['image/*']
                     }
                 })
-                    // @ts-ignore
-                    .use(uploaderTypes[uploadType]!, config)
-                    .use(Dashboard, { inline: true, target: this.element, proudlyDisplayPoweredByUppy:false, height:300 })
-                    .use(ImageEditor, { target: Dashboard })
-                    .on('upload-success', (file, response) => {
-
-                        // 更新自己
-                        // TODO 改成 AXIIComponent 来更新
-                        this.data.isNew = false
-                        this.data.src = response.uploadURL!
-                        const newElement = this.renderResult()
-                        this.element!.replaceWith(newElement)
-                    });
+                // @ts-ignore
+                .use(uploaderTypes[uploadType]!, config)
+                .use(Dashboard, { inline: true, target: this.element, proudlyDisplayPoweredByUppy:false, height:300 })
+                .use(ImageEditor, { target: Dashboard })
+                .on('upload-success', (file, response) => {
+                    // 更新自己
+                    this.src(response.uploadURL!)
+                });
             }
         }
         destroy() {
             super.destroy();
             delete this.uppy
         }
-
-        renderResult() {
-            const element = (this.data.isNew  ?
-                    <div className="image-uppy-root" contenteditable={false}></div> :
-                    <div className="image-preview-root"  contenteditable={false}>
-                        <img style={{maxWidth: '100%', width:'auto'}} src={this.data.src} alt={this.data.alt} />
-                    </div>
-            ) as unknown as HTMLElement
-
-            return element
+        renderContainer() {
+            return <div style={{display: 'block'}} contenteditable={false}></div>
         }
-        render() {
-            this.element = this.renderResult()
-            return this.element
+        renderInner() {
+            return <>
+                {() => !this.src() ? (this.element = <div className="image-uppy-root" contenteditable={false}></div> as  HTMLElement): null }
+                {() => this.src() ? (<div className="image-preview-root" style={{textAlign: "center"}} contenteditable={false}>
+                    <img style={{maxWidth: '80%', width: 'auto',   }} src={this.src()}
+                         alt={this.data.alt}/>
+                </div>) :null}
+            </>
+        }
+
+        toJSON(): any {
+            console.log('toJSON',{
+                ...super.toJSON(),
+                src: this.src(),
+            } )
+            return {
+                ...super.toJSON(),
+                src: this.src(),
+            };
         }
     }
 }
 
-export const InlineImageBlock = createImageBlock('inline', { id: 'MyPlugin' })
+export const InlineImageBlock = createImageBlock('inline', {id: 'MyPlugin'})
