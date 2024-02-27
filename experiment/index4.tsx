@@ -20,13 +20,20 @@ function pushEvent(e: Event) {
     events.push(e)
 }
 
+function preventDefault(e: Event) {
+    e.preventDefault()
+
+}
+
 createRoot(root).render(
     <div style={{height: '100%'}}>
         <div style={{display: 'flex', height: 600}}>
             <div contentEditable={true} style={{width: 500, grow: 1, border: 'solid black 1px'}}
                  onCompositionStartCapture={pushEvent}
                  onKeyDown={pushEvent}
-                 onCompositionEndCapture={pushEvent}
+                 onCompositionEndCapture={[pushEvent]}
+                 onInputCapture={[pushEvent, preventDefault]}
+                 onbeforeInputCapture={[pushEvent, preventDefault]}
             >
                 <p>
                     <span>123</span>
@@ -53,6 +60,7 @@ createRoot(root).render(
                 </p>
             </div>
             <div style={{width: 500, grow: 1, border: 'solid black 1px'}}>
+
                 {() => {
                     if (range()) {
                         return <pre>
@@ -70,14 +78,18 @@ createRoot(root).render(
 
         </div>
         <div>
-            {events.map((event:Event) => {
-                return <div>
-                    <span>type:{event.type}</span>
-                    <span> isComposing:{event.isComposing}</span>
-                    <span> key:{event.key}</span>
-                    <span> keyCode:{event.keyCode}</span>
-                </div>
-            })}
+            <table border={1}>
+                {events.map((event:Event) => {
+                    return <tr>
+                        <td>type:{event.type}</td>
+                        <td> isComposing:{event.isComposing}</td>
+                        <td> key:{event.key}</td>
+                        <td> keyCode:{event.keyCode}</td>
+                        <td> data:{event.data}</td>
+                    </tr>
+                })}
+            </table>
+
         </div>
     </div>
 )

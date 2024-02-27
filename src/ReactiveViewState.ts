@@ -27,9 +27,8 @@ export class ReactiveViewState {
     public rangeBeforeComposition: Atom<DocRange|null> = atom(null)
     public lastMouseEnteredBlock: Atom<Block|null> = atom(null)
     public visibleRangeRect!: Atom<{top:number, left: number, height:number, width: number}|null>
-    public visibleCursorRect!: Atom<{top:number, left: number, height:number, width: number}|null>
-    public destroyHandles: Set<(() => any)|void>
     public bodyViewPortSize: Atom<{width: number, height: number}> = atom({width: 0, height: 0})
+    public destroyHandles: Set<(() => any)|void>
     constructor(public view: DocumentContentView) {
         this.destroyHandles = new Set()
         this.destroyHandles.add(this.activateUserMousePosition())

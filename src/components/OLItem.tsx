@@ -79,7 +79,7 @@ export class OLItem extends AxiiTextBasedComponent {
         this.indexRoot?.destroy()
     }
     renderContainer() {
-        return <div style={{display:'flex', width:'100%'}} contenteditable={false}></div>
+        return <div style={{display:'flex', alignItems:'baseline'}} contenteditable={false}></div>
     }
 
     renderInner({children}: { children: any }) {

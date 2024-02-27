@@ -50,7 +50,7 @@ export class ULItem extends AxiiTextBasedComponent {
         this.indexRoot?.destroy()
     }
     renderContainer() {
-        return <div style={{display:'flex'}} contenteditable={false}></div>
+        return <div style={{display:'flex', alignItems:'baseline'}} contenteditable={false}></div>
     }
     renderInner({children}: { children: any }) {
         const dotStyle = () => {
@@ -70,7 +70,9 @@ export class ULItem extends AxiiTextBasedComponent {
             minWidth:0
         }
         return <>
-            <div style={dotStyle}>{() => LIST_DOTS[this.level()] ?? LIST_DOTS[0]}</div>
+            <div style={dotStyle}>
+                {() => LIST_DOTS[this.level()] ?? LIST_DOTS[0]}
+            </div>
             <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle}>
                 {children}
             </div>

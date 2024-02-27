@@ -332,20 +332,18 @@ export class DocumentContentView extends EventDelegator{
     resetUseDefaultBehavior() {
         this.usingDefaultBehavior = false
     }
-
     @saveHistoryPacket
     @setEndRange
-    inputOrReplaceWithChar ( e: KeyboardEvent) {
+    inputNotCompositionData(e: InputEvent) {
         const range = this.state.selectionRange()!
         const {startText,startBlock,  startOffset, endText, endOffset, isCollapsed, isInSameInline} = range
 
         const succeed = this.tryUseDefaultBehaviorForRange(range, e)
 
-        // FIXME 这里不能用 e.key，因为可能是中文标点。我们是无法从 e.key 中获取到的。
-        this.updateRange(range, e.key)
+        this.updateRange(range, e.data as string)
 
         this.resetUseDefaultBehavior()
-        this.dispatch(new CustomEvent(INPUT_CHAR_EVENT, {detail: e.key}))
+        this.dispatch(new CustomEvent(INPUT_CHAR_EVENT, {detail: e.data}))
 
         return {
             shouldSetRange: !succeed,
@@ -602,9 +600,11 @@ export class DocumentContentView extends EventDelegator{
             <div
                 spellcheck={false}
                 contenteditable
+                onKeyDownCapture={[
+                    onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onTabKey(this.changeLevel.bind(this)))))
+                ]}
                 onKeydown={[
-                    // CAUTION 这里用 this.onSelfView 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
-                    onNotPreventedDefault(onNotComposing(this.onFocused(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
+                    // onNotPreventedDefault(onNotComposing(this.onFocused(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
                     onNotPreventedDefault(onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))),
 
                     onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this))))),
@@ -617,16 +617,13 @@ export class DocumentContentView extends EventDelegator{
                     // 有 range 时的输入法开始处理，等同于先删除 range
                     onNotPreventedDefault(onNotComposing(onKey('a', {meta:true})(this.selectAll.bind(this)))),
                 ]}
-                onInput={this.onInput.bind(this)}
-                onKeyDownCapture={[
-                    onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onTabKey(this.changeLevel.bind(this)))))
-                ]}
+                onBeforeInput={onNotPreventedDefault(onNotComposing(this.inputNotCompositionData.bind(this)))}
                 onPaste={this.onFocused(this.paste.bind(this))}
                 onCut={this.onFocused(this.cut.bind(this))}
                 onCopy={this.onFocused(this.copy.bind(this))}
-                // CAUTION 这里用 this.onRangeCollapsed 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
+                // CAUTION 这里用 this.onFocused 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
                 onCompositionEndCapture={this.onFocused(this.inputComposedData.bind(this))}
-                // safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
+                // CAUTION 这里又有一个 deleteRange 是因为 safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
                 onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))}
             >
                 {this.renderBlockList(this.content.firstChild!)}
@@ -635,10 +632,7 @@ export class DocumentContentView extends EventDelegator{
 
         return this.element
     }
-    onInput(e: any) {
-        e.preventDefault()
-        console.log(e)
-    }
+
     // 这个函数被外部手动调用。用户可以自己决定什么时候把 element append 到 document 上。
     onMount() {
         if(!document.body.contains(this.element!)) return
@@ -1135,7 +1129,7 @@ export class DocumentContentView extends EventDelegator{
 
 
 
-const onNotComposing = eventAlias((e: KeyboardEvent) => !(e.isComposing || e.keyCode === 229))
+const onNotComposing = eventAlias((e: any) => !((e as KeyboardEvent).isComposing || (e as KeyboardEvent).keyCode === 229))
 const onComposing = eventAlias((e: KeyboardEvent) => e.isComposing || e.keyCode === 229)
 const onNotPreventedDefault = eventAlias((e: KeyboardEvent) => !e.defaultPrevented)
 

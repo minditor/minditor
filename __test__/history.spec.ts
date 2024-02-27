@@ -34,7 +34,7 @@ describe('insert', () => {
         range.setEnd(element.querySelector("[data-testid='22']")!, 0)
         doc.view.state.selectionRange(doc.view.createDocRange(range)!)
 
-        doc.view.inputOrReplaceWithChar(new KeyboardEvent('keydown', {key: '4'}))
+        doc.view.inputNotCompositionData(new InputEvent('input', {data: '4'}))
 
         expect(doc.content.toJSON()).toMatchObject([{
             type: 'Paragraph',
@@ -83,7 +83,7 @@ describe('insert', () => {
         range.setEnd(element.querySelector("[data-testid='22']")!.firstChild!, 2)
         doc.view.state.selectionRange(doc.view.createDocRange(range)!)
 
-        doc.view.inputOrReplaceWithChar(new KeyboardEvent('keydown', {key: '9'}))
+        doc.view.inputNotCompositionData(new InputEvent('input', {data: '9'}))
 
         expect(doc.content.toJSON()).toMatchObject([{
             type: 'Heading',
