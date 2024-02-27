@@ -15,6 +15,7 @@ export default {
   },
   build: {
     outDir: 'docs',
+    target: 'esnext',
     rollupOptions: {
       input: {
         index: resolve(__dirname, 'index.html'),

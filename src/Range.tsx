@@ -92,7 +92,9 @@ export class DocRange {
                 // CAUTION 这里处理了 startBlock 和 endBlock 相同的情况
                 while(currentText && currentText!== this.endText.next) {
                     if (currentText instanceof Text) {
-                        content += currentText === this.startText  ? currentText.data.value.slice(this.startOffset) : currentText.data.value
+                        content += currentText === this.startText  ?
+                            currentText.data.value.slice(this.startOffset, currentText === this.endText ? this.endOffset : currentText.data.value.length) :
+                            currentText.data.value
                     } else if ((currentText  as Text).toText)  {
                         content += (currentText as Text).toText()
                     } else {

@@ -4,6 +4,6 @@ export default {
     jsxFragment: 'Fragment',
   },
   define: {
-    __DEV__: true,
+    __DEV__: false,
   },
 }

@@ -6,7 +6,7 @@ import {DocumentContentHistory} from "./DocumentContentHistory.js";
 import {Clipboard} from "./Clipboard.js";
 
 export type DocumentData = {
-    name: string,
+    name?: string,
     children: BlockData[]
 }
 

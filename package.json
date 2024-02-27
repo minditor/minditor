@@ -1,6 +1,6 @@
 {
   "name": "minditor",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A highly customizable rich text editor for developers.",
   "main": "index.js",
   "scripts": {
@@ -12,7 +12,8 @@
     "build": "vite build",
     "build-site": "vite build -c vite.site.config.ts",
     "cypress": "cypress open",
-    "pw": "npm run test:compile && playwright test"
+    "pw": "npm run test:compile && playwright test",
+    "release": "node scripts/release.js"
   },
   "files": [
     "plugins"
