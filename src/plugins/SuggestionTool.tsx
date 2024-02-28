@@ -323,7 +323,7 @@ export function GridInsertHandle({insert}: CommonInsertHandleProps) {
                     padding: 10,
                     border: '1px solid #eee',
                     background: '#fff',
-                    boxShadow: '2px 2px 5px #dedede'
+                    boxShadow: '2px 2px 5px rgba(0,0,0,.1)'
                 }}
                 >
                     <GridPicker onChange={onGridChange} size={[10, 10]} unitSize={20}/>
@@ -372,7 +372,7 @@ export function CodeInsertHandle({insert}: CommonInsertHandleProps) {
                 <div style={{
                     border: '1px solid #eee',
                     background: '#fff',
-                    boxShadow: '2px 2px 5px #dedede',
+                    boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                     maxHeight: 400,
                     overflowY: 'auto'
                 }}

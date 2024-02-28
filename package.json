@@ -27,7 +27,6 @@
     "pw": "npm run test:compile && playwright test",
     "release": "node scripts/release.js"
   },
-
   "repository": {
     "type": "git",
     "url": "git+https://github.com/minditor/minditor.git"
@@ -62,6 +61,7 @@
     "@uppy/xhr-upload": "^3.6.2",
     "axii": "^2.0.41",
     "codemirror": "^6.0.1",
+    "copy-to-clipboard": "^3.3.3",
     "csstype": "^3.1.1",
     "eventemitter3": "^5.0.1",
     "highlight.js": "^11.8.0",

@@ -14,7 +14,7 @@ import {
     Text
 } from "./DocumentContent.js";
 import {
-    assert,
+    assert, IS_COMPOSITION_BEFORE_KEYDOWN, isAsyncFunction,
     setNativeCursor,
     setNativeRange,
     SHOULD_FIX_OFFSET_LAST,
@@ -41,13 +41,20 @@ function saveHistoryPacket(target: DocumentContentView, propertyKey: string, des
     const originalMethod = descriptor.value;
 
     // 重写原始方法
-    descriptor.value = function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
+    // TODO async 的情况可能需要 lock 整个文档，防止数据出问题。
+    descriptor.value = isAsyncFunction(originalMethod) ? async function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
+        const startRange = this.state.selectionRange()
+        this.history?.openPacket(startRange)
+        const result = await originalMethod.apply(this, args)
+        this.history?.closePacket(result?.range)
+        return result
+    } : function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
         const startRange = this.state.selectionRange()
         this.history?.openPacket(startRange)
         const result = originalMethod.apply(this, args)
         this.history?.closePacket(result?.range)
         return result
-    };
+    }
 
     return descriptor
 }
@@ -57,7 +64,16 @@ function setEndRange(target: DocumentContentView, propertyKey: string, descripto
     const originalMethod = descriptor.value;
 
     // 重写原始方法
-    descriptor.value = function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
+    descriptor.value = isAsyncFunction(originalMethod) ? async function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
+        const result = await originalMethod.apply(this, args)
+        if (result?.shouldSetRange) {
+            this.setRange(result.range)
+        }
+        // 如果 range 不在可见范围内，要 scrollIntoView
+        this.scrollIntoViewIfNeeded()
+
+        return result
+    } : function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
         const result = originalMethod.apply(this, args)
         if (result?.shouldSetRange) {
             this.setRange(result.range)
@@ -157,13 +173,12 @@ export class DocumentContentView extends EventDelegator{
     }
     @preventPatchIfUseDefaultBehavior
     patchPrepend ({ args }: EmitData<Parameters<DocumentContent["prepend"]>, ReturnType<DocumentContent["prepend"]>>) {
-        // FIXME prepend 出错
+        // FIXME prepend error
         const [docNode, ref] = args
         const refElement = this.docNodeToElement.get(ref)!as HTMLElement
         const element = this.renderDocNodeOrFragment(docNode)
         insertBefore(element!, refElement)
         this.callComponentOnMount()
-
     }
 
     @preventPatchIfUseDefaultBehavior
@@ -354,6 +369,9 @@ export class DocumentContentView extends EventDelegator{
     @setEndRange
     deleteRangeForReplaceWithComposition(e: KeyboardEvent) {
         const range = this.state.selectionRange()!
+        if(range.isCollapsed) {
+           return null
+        }
         // CAUTION 因为不能通过 e.preventDefault 阻止默认行为，所以这里通过手动设置 cursor 的方式阻止
         this.setCursor(range.startText, range.startOffset)
         this.updateRange(range, '')
@@ -607,7 +625,7 @@ export class DocumentContentView extends EventDelegator{
                 ]}
                 onKeydown={[
                     // onNotPreventedDefault(onNotComposing(this.onFocused(onCharKey(this.inputOrReplaceWithChar.bind(this))))),
-                    onNotPreventedDefault(onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))),
+                    onNotPreventedDefault(onNotCompositionStartBeforeKeydown(onComposing(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))))),
 
                     onNotPreventedDefault(onNotComposing(this.onRangeNotCollapsed(onBackspaceKey(this.deleteRange.bind(this))))),
                     onNotPreventedDefault(onNotComposing(this.onRangeCollapsed(onBackspaceKey(this.deleteLast.bind(this))))),
@@ -623,10 +641,11 @@ export class DocumentContentView extends EventDelegator{
                 onPaste={this.onFocused(this.paste.bind(this))}
                 onCut={this.onFocused(this.cut.bind(this))}
                 onCopy={this.onFocused(this.copy.bind(this))}
+                // CAUTION 这里又有一个 deleteRange 是因为 safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
+                onCompositionStartCapture={onCompositionStartBeforeKeydown(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))}
                 // CAUTION 这里用 this.onFocused 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
                 onCompositionEndCapture={this.onFocused(this.inputComposedData.bind(this))}
-                // CAUTION 这里又有一个 deleteRange 是因为 safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
-                onCompositionStartCapture={this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this))}
+
             >
                 {this.renderBlockList(this.content.firstChild!)}
             </div>
@@ -846,7 +865,7 @@ export class DocumentContentView extends EventDelegator{
     }
     @saveHistoryPacket
     @setEndRange
-    paste(e: ClipboardEvent) {
+    async paste(e: ClipboardEvent) {
         // TODO 根据是否有 shift  key 来决定是粘贴纯文本还是格式化的内容。
         e.preventDefault()
 
@@ -862,11 +881,9 @@ export class DocumentContentView extends EventDelegator{
         }
 
         // CAUTION 特别注意，由于上面对 range 进行了操作，所以下面始终只能使用 startText/startBlock，因为 endText/endBlock 很可能已经变了
-        // FIXME 逻辑错误
         if(e.clipboardData?.types.includes('application/json')){
-
             // const data = JSON.parse(e.clipboardData.getData('application/json')) as BlockData[]
-            const data = this.document.clipboard.getData('application/json', e) as BlockData[]
+            const data = await this.document.clipboard.getData('application/json', e) as BlockData[]
 
             if (data.length === 0) return
             if (data.length === 1) {
@@ -926,7 +943,7 @@ export class DocumentContentView extends EventDelegator{
             const range = this.state.selectionRange()!
             const currentRange = DocRange.cursor(range.startBlock, range.startText, range.startOffset)
             // const dataToPaste = e.clipboardData!.getData('text/plain')
-            const dataToPaste = this.document.clipboard.getData('text/plain', e)
+            const dataToPaste = await this.document.clipboard.getData('text/plain', e)
             this.updateRange(currentRange, dataToPaste)
             return {
                 shouldSetRange: true,
@@ -1129,7 +1146,8 @@ export class DocumentContentView extends EventDelegator{
     }
 }
 
-
+const onCompositionStartBeforeKeydown = eventAlias((e: KeyboardEvent) => IS_COMPOSITION_BEFORE_KEYDOWN)
+const onNotCompositionStartBeforeKeydown = eventAlias((e: KeyboardEvent) => !IS_COMPOSITION_BEFORE_KEYDOWN)
 
 
 const onNotComposing = eventAlias((e: any) => !((e as KeyboardEvent).isComposing || (e as KeyboardEvent).keyCode === 229))

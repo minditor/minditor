@@ -57,7 +57,7 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                     borderRadius: 4,
                     background: '#fff',
                     border: '1px solid #eee',
-                    boxShadow: '2px 2px 5px #dedede',
+                    boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                     transition: 'all',
                     whiteSpace: 'nowrap',
                     zIndex: 100000

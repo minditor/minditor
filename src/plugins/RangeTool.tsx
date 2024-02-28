@@ -52,10 +52,10 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
             // 2. 如果鼠标位置在 rect 上面，那么浮层就显示在  range 上面
             if (lastMouseUpPositionAfterRangeChange()!.top > (visibleRangeRect.raw!.top + visibleRangeRect.raw!.height / 2)) {
                 positionAttrs.top = visibleRangeRect.raw!.top + visibleRangeRect.raw!.height
-                positionAttrs.bottom = undefined // CAUTION 不能忽略，不然不会清空上一次的值
+                positionAttrs.transform= 'translateX(-50%)' // CAUTION 不能忽略，不然不会清空上一次的值
             } else {
-                positionAttrs.top = undefined // CAUTION 不能忽略，不然不会清空上一次的值
-                positionAttrs.bottom = -(visibleRangeRect.raw!.top)
+                positionAttrs.top = visibleRangeRect.raw!.top
+                positionAttrs.transform= 'translateX(-50%) translateY(-100%)' // CAUTION 不能忽略，不然不会清空上一次的值
             }
             positionAttrs.left = lastMouseUpPositionAfterRangeChange()!.left
 
@@ -63,11 +63,7 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
             if(!outsideDocBoundary) {
                 const boundaryRect = this.document.view.getContainerBoundingRect()!
                 positionAttrs.position = 'absolute'
-                if (lastMouseUpPositionAfterRangeChange()!.top > (visibleRangeRect.raw!.top + visibleRangeRect.raw!.height / 2)) {
-                    positionAttrs.top -= boundaryRect.top
-                } else {
-                    positionAttrs.bottom += boundaryRect.top
-                }
+                positionAttrs.top -= boundaryRect.top
                 positionAttrs.left -= boundaryRect.left
 
             }
@@ -82,16 +78,14 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
 
                 const positionAttrs = this.calculatePosition(outsideDocBoundary)
                 // TODO 没考虑 left 超出左右边界的问题。
-
                 return {
                     display: 'block',
                     ...positionAttrs,
-                    transform: 'translateX(-50%)',
                     padding: 8,
                     borderRadius: 6,
                     background: '#fff',
                     border: '1px solid #eee',
-                    boxShadow: '2px 2px 5px #dedede',
+                    boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                     transition: 'all',
                     // 一定要设置，不然在 chrome 上好像有 bug
                     height: 'fit-content',
@@ -204,6 +198,11 @@ function ColorPicker({onColorClick, onBackgroundColorClick}: ColorPickerProp) {
         "#ff5722",
     ]
 
+    const divider= {
+        height: 1,
+        background: '#eee',
+        marginBottom: 8,
+    }
 
     return <div>
         <div style={{display: 'flex', flexWrap: 'nowrap'}}>
@@ -213,6 +212,7 @@ function ColorPicker({onColorClick, onBackgroundColorClick}: ColorPickerProp) {
                 ))
             }
         </div>
+        <div style={divider}></div>
         <div style={{display: 'flex', flexWrap: 'nowrap'}}>
             {
                 backgroundColors.slice(0, backgroundColors.length / 2).map((color) => (
@@ -257,7 +257,8 @@ class ColorWidget extends RangeWidget {
                 borderRadius: 6,
                 background: '#fff',
                 border: '1px solid #eee',
-                boxShadow: '2px 2px 5px #dedede',
+                // 浅灰色半透明shadow
+                boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                 transition: 'all',
                 // 一定要设置，不然在 chrome 上好像有 bug
                 height: 'fit-content',

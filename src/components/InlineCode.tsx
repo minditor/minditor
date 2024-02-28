@@ -14,16 +14,16 @@ export class InlineCode extends InlineComponent {
     }
     onInput = (e: InputEvent) => {
         this.value = (e.target as HTMLElement).innerText as string
-        console.log('onInput', this.value)
-
     }
     render()  {
-        return <div style={{display: 'inline-block', background: '#eee', padding: '4px 8px'}} contenteditable={false}>
-            <span contenteditable={true}
-                  onInput={this.onInput}>
-                {this.data.value}
-            </span>
-        </div>
+        return (
+            <div style={{display: 'inline-block', background: '#eee', padding: 4, margin:1}} contenteditable={false}>
+                <span contenteditable={true}
+                      onInput={this.onInput}>
+                    {this.data.value}
+                </span>
+            </div>
+        )
     }
 
     toJSON(): any {

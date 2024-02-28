@@ -218,7 +218,7 @@ export class Paragraph extends TextBasedBlock {
         return this.firstChild instanceof Text && this.firstChild.isEmpty && !this.firstChild.next
     }
     render({children}: { children: any }) {
-        return <p>{children}</p>
+        return <p style={{minHeight:'1ex', wordWrap:'break-word'}}>{children}</p>
     }
 }
 

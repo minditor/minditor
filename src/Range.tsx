@@ -54,7 +54,15 @@ export class DocRange {
                 let currentText:Inline|null = this.startText
                 const contentData: InlineData[] = []
                 while(currentText && currentText!== this.endText.next) {
-                    contentData.push(currentText.toJSON())
+                    if (currentText === this.startText && currentText instanceof Text) {
+                        const value = currentText === this.startText  ?
+                            currentText.data.value.slice(this.startOffset, currentText === this.endText ? this.endOffset : currentText.data.value.length) :
+                            currentText.data.value
+                        contentData.push({ type: 'Text', value })
+                    } else {
+                        contentData.push(currentText.toJSON())
+                    }
+
                     currentText = currentText.next
                 }
                 blocks.push({
@@ -66,7 +74,12 @@ export class DocRange {
                 let currentText:Inline|null = this.endBlock.firstChild
                 const contentData: InlineData[] = []
                 while(currentText && currentText !== this.endText.next) {
-                    contentData.push(currentText.toJSON())
+                    if (currentText === this.endText && currentText instanceof Text) {
+                        const value = currentText.data.value.slice(0, this.endOffset)
+                        contentData.push({ type: 'Text', value })
+                    } else {
+                        contentData.push(currentText.toJSON())
+                    }
                     currentText = currentText.next
                 }
                 blocks.push({

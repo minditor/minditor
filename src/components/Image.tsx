@@ -65,7 +65,6 @@ export function createImageBlock(uploadType: keyof typeof uploaderTypes, config:
             this.src = atom(data.src||'')
         }
         onMount = () => {
-            console.log(this.data)
             if (!this.data.src) {
                 this.uppy = new Uppy({
                     restrictions: {

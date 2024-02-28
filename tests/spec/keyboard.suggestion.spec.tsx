@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 function nextTick() {
-    return new Promise(resolve => setTimeout(resolve, 1))
+    return new Promise(resolve => setTimeout(resolve, 16))
 }
 
 test.describe('SuggestionTool plugin', () => {

@@ -86,9 +86,10 @@ export class ReactiveViewState {
     activateLastMouseUpPositionAfterRangeChange() {
         const removeMouseUpListener =  this.view.listen('mouseup', (e: MouseEvent) => {
             // 这里需要用 nextTask 是因为但按住 shift key 的时候 mouseup 事件发生在 selectionchange 之后
+            const { clientX, clientY } = e
             nextTask(() => {
                 if (this.selectionRange() && !this.selectionRange()?.isCollapsed) {
-                    this.lastMouseUpPositionAfterRangeChange({left: e.clientX, top: e.clientY})
+                    this.lastMouseUpPositionAfterRangeChange({left: clientX, top: clientY})
                 }
             })
         })

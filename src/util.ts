@@ -113,6 +113,10 @@ export function insertAfter( newNode: Node, referenceNode: Node) {
   referenceNode.parentNode?.insertBefore(newNode, referenceNode.nextSibling)
 }
 
+export function isAsyncFunction(func: any) {
+  return func.constructor.name === 'AsyncFunction';
+}
+
 export const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
 
 export const IS_FF = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
