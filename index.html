@@ -5,10 +5,6 @@
   <title>Minditor - Rich Text Editor</title>
   <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico">
   <style>
-    [contenteditable] {
-        outline: 0px solid transparent;
-        white-space: pre-wrap;
-    }
     html, body {
       height: 100%;
       box-sizing: border-box;
@@ -20,20 +16,24 @@
       display: flex;
       flex-direction: column;
     }
+
+    [contenteditable] {
+      outline: none;
+    }
     /*非常重要，不然空行显示不出来*/
-    p {
+    .content-container p {
       min-height: 1em;
       /*自动换行*/
         word-wrap: break-word;
     }
 
-    [contenteditable]> *{
+    .content-container> *{
       margin-block-end: 1ex;
     }
-    [contenteditable]> *:first-child{
+    .content-container> *:first-child{
       margin-block-start: 0;
     }
-    [contenteditable]> *:last-child{
+    .content-container> *:last-child{
       margin-block-end: 0;
     }
 
@@ -60,6 +60,10 @@
         padding: 5px 10px;
         text-decoration: none;
         color: #000;
+
+    }
+    .toc-container a:hover{
+        background-color: #f0f0f0;
     }
 
     .image-preview-root{
@@ -89,7 +93,10 @@
 <div id="header">
   <img src="/Minditor.svg" />
   <div id="badges">
-    <img alt="NPM Downloads" src="https://img.shields.io/npm/dy/minditor">
+    <img alt="Static Badge" src="https://img.shields.io/badge/Microsoft_Edge-121.0-green">
+    <img alt="Static Badge" src="https://img.shields.io/badge/Chrome-122.0-green">
+    <img alt="Static Badge" src="https://img.shields.io/badge/Firefox-123.0-green">
+    <img alt="Static Badge" src="https://img.shields.io/badge/Safari-17.3-green">
     <img alt="NPM Version" src="https://img.shields.io/npm/v/minditor">
     <img alt="GitHub License" src="https://img.shields.io/github/license/minditor/minditor">
     <a href="https://github.com/minditor/minditor">

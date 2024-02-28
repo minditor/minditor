@@ -598,6 +598,8 @@ export class DocumentContentView extends EventDelegator{
     render() {
         this.element = (
             <div
+                className="content-container"
+                style={{whiteSpace:'pre-wrap', outline:'none'}}
                 spellcheck={false}
                 contenteditable
                 onKeyDownCapture={[
@@ -860,7 +862,8 @@ export class DocumentContentView extends EventDelegator{
         }
 
         // CAUTION 特别注意，由于上面对 range 进行了操作，所以下面始终只能使用 startText/startBlock，因为 endText/endBlock 很可能已经变了
-        if(this.document.clipboard.types.includes('application/json')){
+        // FIXME 逻辑错误
+        if(e.clipboardData?.types.includes('application/json')){
 
             // const data = JSON.parse(e.clipboardData.getData('application/json')) as BlockData[]
             const data = this.document.clipboard.getData('application/json', e) as BlockData[]

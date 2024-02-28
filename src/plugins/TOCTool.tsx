@@ -57,6 +57,8 @@ export function createTOCTool( config?: any) {
                     display: 'block',
                     position: 'absolute',
                     right: 'calc(100% + 60px)',
+                    height: '100%',// pluginContainer 和 文档高度一样
+                    overflowY: 'auto',
                     padding: 10,
                     borderRadius: 4,
                     background: '#fff',

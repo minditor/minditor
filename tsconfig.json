@@ -41,6 +41,7 @@
     "readme.tsx",
     "site/**/*",
     "__test__/**/*",
+    "vite.prod.config.ts"
   ],
 
 }

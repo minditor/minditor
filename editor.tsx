@@ -50,7 +50,9 @@ async function callApi(apiName: string, data: any) {
     return await res.json()
 }
 
-const jsonData: DocumentData = await callApi('readFile', ['/Users/camus/Work/minditor/readme1.json'])
+const readmeFile = '/Users/camus/Work/minditor/readme_en.json'
+
+const jsonData: DocumentData = await callApi('readFile', [readmeFile])
 
 const result = scaffold(root, {data: jsonData, types, plugins}, )
 result.render()
@@ -59,6 +61,6 @@ document.addEventListener('keydown', async (e) => {
     if (e.key === 's' && e.metaKey) {
         e.preventDefault()
         console.log('save', result.doc.toJSON())
-        await callApi('writeFile', ['/Users/camus/Work/minditor/readme1.json', JSON.stringify(result.doc.toJSON())])
+        await callApi('writeFile', [readmeFile, JSON.stringify(result.doc.toJSON())])
     }
 })

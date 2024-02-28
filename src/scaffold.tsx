@@ -115,7 +115,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
     pluginContainer.style.position = 'absolute'
     pluginContainer.style.left = '0px'
     pluginContainer.style.top = '0px'
-    pluginContainer.style.height = '0px'
+    pluginContainer.style.height = '100%'
     pluginContainer.style.width = '0px'
     pluginContainer.style.overflow = 'visible'
 
