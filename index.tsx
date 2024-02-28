@@ -27,6 +27,7 @@ const searchObj = Object.fromEntries(
 const language = searchObj.language || 'en'
 
 let fetchResult
+
 if (language === 'cn') {
     // @ts-ignore
     fetchResult = await fetch('readme_cn.json')
@@ -58,6 +59,6 @@ const plugins = [
     createTOCTool()
 ]
 //@ts-ignore
-const result = scaffold(root, {data: jsonData, types, plugins}, )
+const result = scaffold(root, {data: jsonData, types, plugins} )
 result.render()
 

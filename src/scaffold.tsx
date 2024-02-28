@@ -138,15 +138,9 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
         </>
     )
 
-    // 1. axii app 先render，确保节点在 dom 上
     const appRoot = createRoot(container)
-    appRoot.render(appElement)
 
-    // 3. plugins render
-    const pluginInstances = docConfig.plugins.map(Plugin => {
-        return new Plugin(doc)
-    })
-
+    let pluginInstances: Plugin[] = []
 
     return {
         container,
@@ -159,6 +153,16 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
             appRoot.destroy()
         },
         render() {
+            // 这样就允许 container 里面可以现有 loading
+            container.innerHTML = ''
+            // 1. axii app 先render，确保节点在 dom 上
+            appRoot.render(appElement)
+
+            // 2. plugins render
+            pluginInstances = docConfig.plugins.map(Plugin => {
+                return new Plugin(doc)
+            })
+            // 3. doc render
             doc.render()
             pluginInstances.forEach(plugin => {
                 plugin.renderPluginView(!!config?.pluginContainer)
