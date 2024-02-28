@@ -22,7 +22,7 @@
     "test:server": "npm run dev --prefix tests/server -- --port $npm_config_port",
     "dev": "vite",
     "build": "vite build --config vite.prod.config.ts",
-    "build-site": "vite build -c vite.site.config.ts",
+    "build-site": "rimraf docs && vite build -c vite.site.config.ts",
     "cypress": "cypress open",
     "pw": "npm run test:compile && playwright test",
     "release": "node scripts/release.js"

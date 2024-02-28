@@ -13,6 +13,7 @@ export default {
       'minditor': './src/index.ts',
     }
   },
+  assetsInclude: ['readme_cn.json', 'readme_en.json'],
   build: {
     outDir: 'docs',
     target: 'esnext',

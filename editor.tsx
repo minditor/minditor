@@ -50,7 +50,7 @@ async function callApi(apiName: string, data: any) {
     return await res.json()
 }
 
-const readmeFile = '/Users/camus/Work/minditor/readme_en.json'
+const readmeFile = '/Users/camus/Work/minditor/public/readme_en.json'
 
 const jsonData: DocumentData = await callApi('readFile', [readmeFile])
 

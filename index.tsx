@@ -19,7 +19,22 @@ import {
     ULItem, DocumentData,
     createTOCTool
 } from "./src/index.js";
-import jsonData from './README.json'
+
+// parse query 中的 language，如果没有就是 en
+const searchObj = Object.fromEntries(
+    window.location.search.slice(1).split('&').map(pair => pair.split('='))
+)
+const language = searchObj.language || 'en'
+
+let fetchResult
+if (language === 'cn') {
+    // @ts-ignore
+    fetchResult = await fetch('readme_cn.json')
+} else {
+    // @ts-ignore
+    fetchResult = await fetch('readme_en.json')
+}
+const jsonData = await fetchResult.json() as DocumentData
 
 const root= document.getElementById('root')!
 const types = {
