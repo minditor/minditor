@@ -2,6 +2,9 @@
   "name": "readme",
   "children": [
     {
+      "type": "Image"
+    },
+    {
       "type": "Paragraph",
       "content": [
         {
