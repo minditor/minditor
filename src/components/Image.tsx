@@ -17,7 +17,6 @@ type ImageData = {
 }
 
 
-
 class InlineImagePlugin extends BasePlugin {
     constructor(uppy: Uppy, opts?: PluginOptions) {
         super(uppy, opts);
@@ -38,7 +37,6 @@ class InlineImagePlugin extends BasePlugin {
                 this.uppy.emit('upload-success', file.id, resp)
             };
             reader.readAsDataURL(file.data);
-
         })
         return Promise.resolve()
     }
@@ -46,6 +44,7 @@ class InlineImagePlugin extends BasePlugin {
         this.uppy.addUploader(this.uploader)
     }
 }
+
 
 const uploaderTypes = {
     aws:AwsS3,
@@ -92,10 +91,12 @@ export function createImageBlock(uploadType: keyof typeof uploaderTypes, config:
         renderInner() {
             return <>
                 {() => !this.src() ? (this.element = <div className="image-uppy-root" contenteditable={false}></div> as  HTMLElement): null }
-                {() => this.src() ? (<div className="image-preview-root" style={{textAlign: "center"}} contenteditable={false}>
-                    <img style={{maxWidth: '80%', width: 'auto',   }} src={this.src()}
-                         alt={this.data.alt}/>
-                </div>) :null}
+                {
+                    () => this.src() ? (<div className="image-preview-root" style={{textAlign: "center"}} contenteditable={false}>
+                        <img style={{maxWidth: '80%', width: 'auto',   }} src={this.src()}
+                             alt={this.data.alt}/>
+                    </div>) :null
+                }
             </>
         }
 
@@ -111,5 +112,6 @@ export function createImageBlock(uploadType: keyof typeof uploaderTypes, config:
         }
     }
 }
+
 
 export const InlineImageBlock = createImageBlock('inline', {id: 'MyPlugin'})

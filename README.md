@@ -24,7 +24,7 @@ Minditor is a block-level rich text editor that prioritizes both the end-user ed
 3. Editor Blocks/InlineBlocks can be implemented with components from any framework.
 4. Beyond common events and APIs, the Plugin system also offers developers a set of important reactive states by default, simplifying the development of Plugins.
 
-Visit the [official website](https://minditor.com) for more information.
+Visit the [official website](https://minditor.dev) for more information.
 
 <div>
 <img src="screenshot.png" alt="Minditor Screenshot" width="100%"/>
