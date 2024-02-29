@@ -12,6 +12,7 @@ type HeadingData = {
 export class Heading extends AxiiTextBasedComponent {
     static displayName = 'Heading'
     static asTextNode = true
+
     static unwrap(doc: DocumentContent, block: Block) {
         const heading = block as Heading
         const fragment = doc.deleteBetween(heading.firstChild!, null, heading)
@@ -19,17 +20,19 @@ export class Heading extends AxiiTextBasedComponent {
         doc.replace(newPara, heading)
         return newPara
     }
+
     public level: Atom<number>
     public useIndex: Atom<boolean>
     public index: number[]
     public manualIndex?: number[]
     public displayIndex: Atom<string>
     public indexRoot?: ReturnType<typeof createRoot>
+
     constructor(public data: HeadingData) {
         super();
-        this.useIndex = atom(data.useIndex||false)
-        this.manualIndex = data.manualIndex? reactive([...data.manualIndex]) : undefined
-        this.level = atom(data.level||0)
+        this.useIndex = atom(data.useIndex || false)
+        this.manualIndex = data.manualIndex ? reactive([...data.manualIndex]) : undefined
+        this.level = atom(data.level || 0)
         this.index = computed(() => {
             if (!this.useIndex()) return []
 
@@ -49,33 +52,34 @@ export class Heading extends AxiiTextBasedComponent {
                 const prevIndexData = (sameTypePrevBlock as Heading).index
 
                 const prefix = prevIndexData.slice(0, this.level())
-                const lastSameLevelIndex = prevIndexData[this.level()] ??  -1
+                const lastSameLevelIndex = prevIndexData[this.level()] ?? -1
                 return [...prefix, lastSameLevelIndex + 1]
 
             } else {
-                return (new Array(this.level()+1)).fill(0)
+                return (new Array(this.level() + 1)).fill(0)
             }
         })
 
         this.displayIndex = computed(() => {
             if (this.useIndex()) {
-                return this.index.map(i => i+1).join('.')
+                return this.index.map(i => i + 1).join('.')
             } else {
                 return ''
             }
         })
     }
+
     destroy() {
         destroyComputed(this.index)
         destroyComputed(this.displayIndex)
     }
 
     renderInner({children}: { children: any }) {
-        const Tag = `h${this.level()+1}`
+        const Tag = `h${this.level() + 1}`
 
         // @ts-ignore
-        const result =  <Tag id={this.id}>
-            {() => this.displayIndex() ? <span style={{marginRight:8}}>{this.displayIndex()}</span> : null}
+        const result = <Tag id={this.id}>
+            {() => this.displayIndex() ? <span style={{marginRight: 8}}>{this.displayIndex()}</span> : null}
             <span data-testid='heading-editable-container' contenteditable={true}>{children}</span>
         </Tag> as HTMLElement
 
@@ -92,13 +96,14 @@ export class Heading extends AxiiTextBasedComponent {
             manualIndex: this.manualIndex
         }
     }
+
     toText() {
         let content = this.useIndex() ? this.displayIndex() + ' ' : ''
         let current = this.firstChild
         while (current) {
             if (current instanceof Text) {
                 content += current.data.value
-            } else if( (current as Text).toText ){
+            } else if ((current as Text).toText) {
                 content += (current as Text).toText()
             } else {
                 // 忽略不能 toText 的

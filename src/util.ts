@@ -126,6 +126,7 @@ export const IS_CHROME = navigator.userAgent.toLowerCase().indexOf('chrome') > -
 export const SHOULD_FIX_OFFSET_LAST = IS_FF
 
 export const IS_COMPOSITION_BEFORE_KEYDOWN = IS_SAFARI
-// CAUTION chrome 在尾部的 backspace 不触犯 selection change，ff fox 删除整个文字后光标出去了。
+// CAUTION backspace at end of text in Chrome will not trigger selection change.
+// CAUTION ff will lost cursor after delete whole text.
 export const SHOULD_RESET_CURSOR_AFTER_BACKSPACE = IS_CHROME && !IS_FF
 export const ZWSP = '​'

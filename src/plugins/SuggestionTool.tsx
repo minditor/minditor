@@ -9,7 +9,7 @@ import Grid from "../icons/Grid";
 import Right from "../icons/Right.js";
 import {BlockData, Component, InlineComponent, InlineData} from "../DocumentContent.js";
 import {GridPicker} from '../components/Grid.js'
-import {CodeLanguagePicker, Code as CodeBlock} from "../components/CodeMirror.js";
+import {Code as CodeBlock, CodeLanguagePicker} from "../components/CodeMirror.js";
 
 
 function onInputKey(key: string) {
@@ -18,17 +18,10 @@ function onInputKey(key: string) {
     }
 }
 
-function justAfterChar( handle: (...args:any[]) => boolean) {
-    return function(this: Plugin, e: unknown) {
-        const range = this.document.view.state.selectionRange()!
-        return handle(e) && (!range.startText.prev() && range.startOffset === 1 )
-    }
-}
-
 export class SuggestionWidget {
     constructor(public document: Document, public parent: SuggestionTool) {}
     static isBlock = true
-    // render icon。上面可以自定义 click 事件
+    // render icon
     render(): JSX.Element {
         return <span>icon</span>
     }
@@ -41,7 +34,7 @@ class SuggestionTool extends Plugin {
     public blockWidgets: SuggestionWidget[] = []
     public inlineWidgets: SuggestionWidget[] = []
     public static deactivateEvents = {
-        // TODO 增加更多判断，例如按退格一直把 / 也删掉了。
+        // TODO more diactivate events like use delete the trigger '/' char.
         keydown: onESCKey(() => true)
     }
     public selectedIndex = atom(-1)
@@ -188,26 +181,6 @@ export function createSuggestionTool(SuggestionClasses: typeof SuggestionWidget[
     }
 }
 
-
-function isSubclassOf(subClass: Function, superClass:Function) {
-    // 从当前类的原型开始
-    let prototype = Object.getPrototypeOf(subClass.prototype);
-
-    // 沿着原型链向上查找
-    while (prototype != null) {
-        // 检查当前原型是否是超类的原型
-        if (prototype === superClass.prototype) {
-            return true;
-        }
-        // 向上移动到下一个原型
-        prototype = Object.getPrototypeOf(prototype);
-    }
-
-    // 如果没有找到超类的原型，返回 false
-    return false;
-}
-
-// TODO 好像还需要增加初始化的参数，有的组件需要。
 export function createSuggestionWidget(Handle: JSX.ElementClass, type: string, isBlock: boolean = false) : typeof SuggestionWidget{
     return class OneSuggestionWidget extends SuggestionWidget {
         static displayName =`${type}SuggestionWidget`

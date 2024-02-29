@@ -14,15 +14,7 @@ export type TOCToolConfig = {
 
 }
 
-// type Heading = {
-//     level: () => number,
-//     toText: () => string,
-//     id: string,
-//     next: Block|null,
-//     prev: () => Block|null,
-// }
-
-
+// TODO support use custom container out of document
 export function createTOCTool( config?: any) {
     return class OneTOCToolPlugin extends TOCToolPlugin {
         public contents: Atom<Heading[]> = atom([])
@@ -57,7 +49,7 @@ export function createTOCTool( config?: any) {
                     display: 'block',
                     position: 'absolute',
                     right: 'calc(100% + 60px)',
-                    height: '100%',// pluginContainer 和 文档高度一样
+                    height: '100%',// pluginContainer is as same height of document, so we can also set to 100%
                     overflowY: 'auto',
                     padding: 10,
                     borderRadius: 4,

@@ -1,9 +1,8 @@
-import {Atom, atom, createElement, createRoot, Fragment, Host} from "axii";
+import {Atom, atom, createElement, createRoot, Fragment} from "axii";
 import {Document, DocumentData} from "./Document.js";
 import {DocNode, EmitData, EVENT_ANY} from "./DocumentContent.js";
 import {Plugin} from "./Plugin.js";
 import {GlobalState} from "./globals.js";
-import jsonData from "../readme1.json";
 import {Packet} from "./DocumentContentHistory.js";
 
 export type ScaffoldConfig = {
@@ -99,13 +98,10 @@ export type ScaffoldHandle = {
 }
 
 export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: ScaffoldConfig): ScaffoldHandle {
-
-
-    // CAUTION 为了实现 doc-scroll-container 在外层控了高度的时候不超出高度，没控制高度的时候能自由增长，必须用 flex 的这个方案。
+    // CAUTION we use flex to layout the app, so when container has a fixed height, the app will be fixed height.
+    //  when container has no fixed height, the app will auto grow as its contents grow.
     container.style.display = 'flex'
     container.style.flexDirection = 'column'
-
-    // TODO 检查父元素的 overflow 设置会不会到值 plugin 显示不出来。
 
     const docScrollContainer = <div
         className="doc-scroll-container"
@@ -153,7 +149,7 @@ export function scaffold(container: HTMLElement, docConfig: DocConfig, config?: 
             appRoot.destroy()
         },
         render() {
-            // 这样就允许 container 里面可以现有 loading
+            // user may render loading inside container before rendering the doc.
             container.innerHTML = ''
             // 1. axii app 先render，确保节点在 dom 上
             appRoot.render(appElement)

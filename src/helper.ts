@@ -20,7 +20,7 @@ export function reversMatchStr(str: string, toMatch: string) : false | string {
             --i
         }
 
-        // toMatch 遍历完了，说明是完整匹配了
+        // toMatch characters is all tested, that means match
         if (i === -1) {
             return skippedChars.join('')
         } else {
@@ -34,7 +34,7 @@ export function reversMatchStr(str: string, toMatch: string) : false | string {
 
 export function reverseMatchStrPair(str: string, [startStr, endStr] : [string, string]): false|string {
     const endSkipped = reversMatchStr(str, endStr)
-    if (endSkipped === false) return false // end 都没有match 成功
+    if (endSkipped === false) return false // end did not match
     return reversMatchStr(str.slice(0,  -(endStr.length + endSkipped.length)), startStr)
 
 }
@@ -56,7 +56,7 @@ export function reverseFindMatchRange(inputEndText: Inline, inputEndOffset: numb
         }
         endPointer = endPointer.prev()
     }
-    // end 都没匹配，就不用考虑 start 了
+    // end did not match, so we can return
     if (!endText) return false
 
     let startText

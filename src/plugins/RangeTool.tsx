@@ -1,5 +1,5 @@
 /**@jsx createElement*/
-import {createElement, atom} from 'axii'
+import {atom, createElement} from 'axii'
 import {Plugin} from "../Plugin.js";
 import {Document} from "../Document.js";
 import Bold from "../icons/Bold";
@@ -7,15 +7,12 @@ import Italic from "../icons/Italic";
 import Underline from "../icons/Underline";
 import LineThrough from "../icons/Linethrough";
 import Link from "../icons/Link.js";
-import {DocRange} from "../Range.js";
 import {Inline, InlineComponent, Text} from "../DocumentContent.js";
 
 
 export class RangeWidget {
-    constructor(public document: Document) {
-    }
-
-    // render icon。上面可以自定义 click 事件
+    constructor(public document: Document) {}
+    // render icon, click event can be attached here
     render(): JSX.Element {
         return <span>icon</span>
     }
@@ -24,8 +21,6 @@ export class RangeWidget {
 class RangeTool extends Plugin {
     public rangeWidgets: RangeWidget[] = []
 }
-
-
 
 
 export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
@@ -47,9 +42,7 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
             } as any
 
             positionAttrs.position = 'fixed'
-            // 根据最后鼠标停的位置，来决定浮层的位置
-            // 1. 如果鼠标位置在 rect 下面，那么浮层就显示在  range 下面
-            // 2. 如果鼠标位置在 rect 上面，那么浮层就显示在  range 上面
+            // calculate position based on last mouse position, always at the side that close to mouse position
             if (lastMouseUpPositionAfterRangeChange()!.top > (visibleRangeRect.raw!.top + visibleRangeRect.raw!.height / 2)) {
                 positionAttrs.top = visibleRangeRect.raw!.top + visibleRangeRect.raw!.height
                 positionAttrs.transform= 'translateX(-50%)' // CAUTION 不能忽略，不然不会清空上一次的值
@@ -59,7 +52,7 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
             }
             positionAttrs.left = lastMouseUpPositionAfterRangeChange()!.left
 
-            // 如果和  view 在同一个 boundary 之内，使用同样的 scroll，那么使用 absolute 定位
+            // if this plugin is in same container with View, then it should use position `absolute`, so they can share scroll event.
             if(!outsideDocBoundary) {
                 const boundaryRect = this.document.view.getContainerBoundingRect()!
                 positionAttrs.position = 'absolute'
@@ -77,7 +70,7 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
                 }
 
                 const positionAttrs = this.calculatePosition(outsideDocBoundary)
-                // TODO 没考虑 left 超出左右边界的问题。
+                // TODO vertical range boundary
                 return {
                     display: 'block',
                     ...positionAttrs,
@@ -87,15 +80,14 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
                     border: '1px solid #eee',
                     boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                     transition: 'all',
-                    // 一定要设置，不然在 chrome 上好像有 bug
+                    // must set to 'fit-content' or it will have display bug on Chrome
                     height: 'fit-content',
-                    // 不换行
+                    // no change line
                     whiteSpace: 'nowrap',
                     zIndex: 100000
                 }
             }
 
-            // CAUTION 特别注意这里的 stopPropagation，不然会影响到 document 的 mouseup 等事件
             return <div style={style} data-testid="rangeTool-container">
                 <div style={{display:'flex', whiteSpace: 'nowrap'}}>
                     {() => this.rangeWidgets.map((widget: RangeWidget) => {
@@ -119,7 +111,7 @@ class DecorationWidget extends RangeWidget {
         this.document.view.formatCurrentRange({[formatName]: true})
     }
 
-    // TODO 获取原来的 format。展示到  icon 上
+    // TODO show orgin format on icon
     render() {
         return <div style={{display:'flex', flexWrap: 'nowrap'}}>
             {
@@ -242,7 +234,7 @@ class ColorWidget extends RangeWidget {
     }
 
     render() {
-        // TODO 获取原来的 format。展示到  icon 上
+        // TODO show origin color on icon
 
         const hover = atom(false)
 
@@ -257,12 +249,11 @@ class ColorWidget extends RangeWidget {
                 borderRadius: 6,
                 background: '#fff',
                 border: '1px solid #eee',
-                // 浅灰色半透明shadow
                 boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                 transition: 'all',
-                // 一定要设置，不然在 chrome 上好像有 bug
+                // must set to 'fit-content' or it will have display bug on Chrome
                 height: 'fit-content',
-                // 不换行
+                // no change line
                 whiteSpace: 'nowrap'
             })
         }

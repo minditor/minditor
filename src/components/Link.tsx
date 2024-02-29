@@ -1,5 +1,4 @@
 import {Atom, atom, createElement, onESCKey, RenderContext} from "axii";
-import {InlineComponent} from "../DocumentContent.js";
 import {Input} from "../lib/Input.js";
 import {AxiiInlineComponent} from "../AxiiComponent.js";
 
@@ -46,7 +45,6 @@ export class Link extends AxiiInlineComponent {
         const formStyle = () => {
             return {
                 display: this.formVisible() ? 'block' : 'none',
-                // display: 'block',
                 position: 'absolute',
                 top: 0,
                 left:0,

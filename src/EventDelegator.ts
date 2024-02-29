@@ -16,9 +16,8 @@ const documentEvents: DocumentEventsHandle = {
 
 
 export class EventDelegator {
-    // 两层结构，第一层事件名，第二层是 capture
+    // first level key is event name, second level key is capture
     public eventToCallbacks  = new Map<string, Map<boolean, Set<Function>>>()
-    // 两层结构，第一层是事件名，第二层是 capture
     public eventToListener = new Map<string, Map<boolean, EventCallbackWithCapture>>()
     public boundElements = new Set<HTMLElement>()
     public childDelegators: {[k:string]:EventDelegator} ={}
@@ -76,14 +75,12 @@ export class EventDelegator {
 
             const newListenerMap = new Map()
             this.eventToListener.set(event, newListenerMap)
-
-
         }
 
         if (!this.eventToListener.get(event)!.get(capture)) {
             const listener = this.createListener(event, this.eventToCallbacks.get(event)!.get(capture)!, capture)
             this.eventToListener.get(event)!.set(capture, listener)
-            // 给所有已绑定的 Element 上添加 listener
+            // add listener to all bound elements
             if (documentEvents[event]) {
                 document.addEventListener(event, listener, listener.capture)
             } else if (this.boundElements.size) {

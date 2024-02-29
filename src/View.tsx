@@ -1,4 +1,4 @@
-import {atom, createElement, eventAlias, onBackspaceKey, onEnterKey, onTabKey, onKey} from 'axii'
+import {createElement, eventAlias, onBackspaceKey, onEnterKey, onKey, onTabKey} from 'axii'
 import {
     Block,
     BlockData,
@@ -6,7 +6,7 @@ import {
     DocNode,
     DocNodeFragment,
     DocumentContent,
-    EmitData, EVENT_ANY,
+    EmitData,
     FormatData,
     Inline,
     InlineComponent,
@@ -14,7 +14,9 @@ import {
     Text
 } from "./DocumentContent.js";
 import {
-    assert, IS_COMPOSITION_BEFORE_KEYDOWN, isAsyncFunction,
+    assert,
+    IS_COMPOSITION_BEFORE_KEYDOWN,
+    isAsyncFunction,
     setNativeCursor,
     setNativeRange,
     SHOULD_FIX_OFFSET_LAST,
@@ -37,11 +39,9 @@ export const INPUT_CHAR_EVENT= 'inputChar'
 
 
 function saveHistoryPacket(target: DocumentContentView, propertyKey: string, descriptor: PropertyDescriptor) {
-    // 保存原始方法的引用
     const originalMethod = descriptor.value;
 
-    // 重写原始方法
-    // TODO async 的情况可能需要 lock 整个文档，防止数据出问题。
+    // TODO should we lock the whole document when running async method?
     descriptor.value = isAsyncFunction(originalMethod) ? async function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
         const startRange = this.state.selectionRange()
         this.history?.openPacket(startRange)
@@ -60,16 +60,13 @@ function saveHistoryPacket(target: DocumentContentView, propertyKey: string, des
 }
 
 function setEndRange(target: DocumentContentView, propertyKey: string, descriptor: PropertyDescriptor) {
-    // 保存原始方法的引用
     const originalMethod = descriptor.value;
 
-    // 重写原始方法
     descriptor.value = isAsyncFunction(originalMethod) ? async function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
         const result = await originalMethod.apply(this, args)
         if (result?.shouldSetRange) {
             this.setRange(result.range)
         }
-        // 如果 range 不在可见范围内，要 scrollIntoView
         this.scrollIntoViewIfNeeded()
 
         return result
@@ -78,7 +75,6 @@ function setEndRange(target: DocumentContentView, propertyKey: string, descripto
         if (result?.shouldSetRange) {
             this.setRange(result.range)
         }
-        // 如果 range 不在可见范围内，要 scrollIntoView
         this.scrollIntoViewIfNeeded()
 
         return result
@@ -90,9 +86,7 @@ function setEndRange(target: DocumentContentView, propertyKey: string, descripto
 
 
 function preventPatchIfUseDefaultBehavior(target: DocumentContentView, propertyKey: string, descriptor: PropertyDescriptor) {
-    // 保存原始方法的引用
     const originalMethod = descriptor.value;
-    // 重写原始方法
     descriptor.value = function (this: DocumentContentView, ...args: Parameters<typeof originalMethod>) {
         if (!this.usingDefaultBehavior) {
             originalMethod.apply(this, args)
@@ -185,7 +179,7 @@ export class DocumentContentView extends EventDelegator{
     patchReplace ({ args }: EmitData<Parameters<DocumentContent["replace"]>, ReturnType<DocumentContent["replace"]>>) {
         const [docNode, ref] = args
         const refElement = this.docNodeToElement.get(ref) as HTMLElement|undefined
-        // 可能不是 body 上的 dom 操作。
+        // the dom may not on body
         if (refElement) {
             const element = this.renderDocNodeOrFragment(docNode)
             refElement.replaceWith(element!)
@@ -211,7 +205,7 @@ export class DocumentContentView extends EventDelegator{
     patchUpdateText ({ args}: EmitData<Parameters<DocumentContent["updateText"]>, ReturnType<DocumentContent["updateText"]>>) {
         const [text, ref] = args
         const element = this.docNodeToElement.get(ref)!
-        // 这样就能让空的 text node 也能有光标。
+        // ZWSP is used to keep the cursor in the empty text
         element.textContent = text.length === 0 ? ZWSP : text
     }
     patchFormatText ({ args}: EmitData<Parameters<DocumentContent["formatText"]>, ReturnType<DocumentContent["formatText"]>>) {
@@ -268,40 +262,39 @@ export class DocumentContentView extends EventDelegator{
         }
         return result
     }
-    // CAUTION 浏览器的默认行为和预期有点不一致：
-    //  1. chrome/safari 如果 startOffset 是 0，并且有上一个节点，那么插入的数据变成了上一个节点的最后面，而不是 startText
-    //  2. firefox 是不删除 startText, 插入到 startText 中，并且不合并 endText。
-    //  结论是我们统一行为，不管 startOffset 是多少，都插入到 startText 中。
+    // CAUTION browsers default behavior is same.
+    //  1. In chrome/safari, if startOffset is 0 and THERE IS previous text node, new data will be insert into last text, not this startText.
+    //  2. firefox will not delete startText  and insert new text into startText, keep endText not deleted.
+    //  Here we use a unique strategy: always insert to startText。
     updateRange(range: DocRange, replaceTextValue = '', dontMergeBlock = false) {
         const { startBlock, startText, startOffset, endBlock, endText, endOffset } = range
-        // 1. 先更新大的 block 和 inline 结构
+        // 1. update block and inline structure first
         if (range.isInSameBlock ) {
             if (!range.isInSameInline&& !range.isSibling) {
                 this.content.deleteBetween(startText.next!, endText, startBlock)
             }
         } else {
-            // 跨越 block 的输入
+            // handle range across blocks
             if (startText.next) {
                 this.content.deleteBetween(startText.next!, null, startBlock)
             }
             const remainEndFragment = this.content.deleteBetween(endText, null, endBlock)
-            // 删除中间和结尾的的 block
+            // delete all blocks between startBlock and endBlock
             this.content.deleteBetween(startBlock.next!, endBlock.next, this.content)
 
-            // 如果有剩余的 fragment，插入到 startBlock 后面
-            // TODO 还要判断是不是 endText 也删完了。
+            // insert fragments into startBlock if there are any.
+            // TODO check if endText is also emtpy?
             if (remainEndFragment) {
                 if (!dontMergeBlock) {
                     this.append(remainEndFragment, startText, startBlock)
                 } else {
-                    // 创建个新的 para
                     const newPara = this.content.createParagraph(remainEndFragment)
                     this.append(newPara, startBlock, this.content)
                 }
             }
         }
 
-        // 2. 再更新 startText 和 endText 的值
+        // 2. update startText and endText
         if (range.isInSameInline) {
             const newTextValue = startText.data.value.slice(0, startOffset) + replaceTextValue + startText.data.value.slice(endOffset)
             this.updateText(newTextValue, startText)
@@ -309,7 +302,7 @@ export class DocumentContentView extends EventDelegator{
             const newStartTextValue = startText.data.value.slice(0, startOffset) + replaceTextValue
             const newEndTextValue = endText.data.value.slice(endOffset)
 
-            // CAUTION 分开更新才是正确的。因为加入 startText 上面有 format，那么合并进来的 endText 也会带上，这就不符合预期了。
+            // CAUTION we should update startText and endText separately, because both of them may have formats, if we merge them, the format may be wrong.
             this.updateText(newStartTextValue, startText)
 
             if (newEndTextValue.length) {
@@ -325,7 +318,7 @@ export class DocumentContentView extends EventDelegator{
         const canUseDefaultBehaviorInBackspace = !(e instanceof KeyboardEvent && e.key === 'Backspace') ||
             !SHOULD_RESET_CURSOR_AFTER_BACKSPACE && !(isCollapsed && startOffset < 2 && startText.data.value.length < 2)
 
-        // CAUTION 特别注意，这里能这么判断是因为 docRange 在创建的时候已经把 focus 在上个节点尾部和下个节点头部之类的特殊情况抹平了。
+        // CAUTION these checks depend on the DocRange have handled all the odd offset cases across browsers.
         const canUseDefaultBehaviorInInputOrDeletion = isCollapsed ?
             (startOffset!== 0 && (SHOULD_FIX_OFFSET_LAST ? endOffset !== endText.data.value.length : true)) :
             (startOffset!== 0 && endOffset!== endText.data.value.length && isInSameInline)
@@ -372,11 +365,11 @@ export class DocumentContentView extends EventDelegator{
         if(range.isCollapsed) {
            return null
         }
-        // CAUTION 因为不能通过 e.preventDefault 阻止默认行为，所以这里通过手动设置 cursor 的方式阻止
+        // CAUTION e.preventDefault is not working here, so we reset cursor to avoid default behavior.
         this.setCursor(range.startText, range.startOffset)
         this.updateRange(range, '')
 
-        // CAUTION 这里要重新 set cursor 是因为 range 可能删除完了，这时候要把 cursor 调整到 ZWSP 后面。
+        // CAUTION we returned cursor here is because range may be all deleted, we need to set cursor to a ZWSP end.
         return { shouldSetRange: true, range: DocRange.cursor(range.startBlock, range.startText, range.startOffset)}
     }
 
@@ -397,10 +390,10 @@ export class DocumentContentView extends EventDelegator{
         }
     }
 
-    // CAUTION 如果  range 刚好删完了 startText，
-    //  chrome 的行为是新增字符在后面 Text 的头部
-    //  firefox/safari 是在前面 Text 的尾部
-    //  我们统一行为，不删 startText，不合并 endText
+    // CAUTION if all startText is deleted,
+    //  chrome will put new text at head of next text node,
+    //  while firefox/safari put new text at end of the startText.
+    //  we use the strategy of keeping the startText and not delete endText at same time.
     @saveHistoryPacket
     @setEndRange
     deleteRange(e: KeyboardEvent) {
@@ -418,7 +411,7 @@ export class DocumentContentView extends EventDelegator{
                 endCursorBlock = range.startBlock
                 endCursorText = range.startText.prev()! as Text
                 endCursorOffset = range.startText.prev()!.data.value.length
-                // 头也没有文字了，删除掉
+                // no text, delete all.
                 this.content.deleteBetween(range.startText, range.startText.next, range.startBlock)
             }
         }
@@ -426,18 +419,17 @@ export class DocumentContentView extends EventDelegator{
         return { shouldSetRange: !succeed, range: DocRange.cursor(endCursorBlock!, endCursorText as Text, endCursorOffset)}
     }
 
-
     @saveHistoryPacket
     @setEndRange
     deleteLast(e: KeyboardEvent) {
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock } = range
-        // 文章开头，不做任何操作
+        // if it is the head of the document, do nothing
         let endCursorBlock
         let endCursorText
         let endCursorOffset
 
-        // 1. 在 text 的中间删除，可以尝试使用默认行为
+        // 1. in the middle of the text, try to use default behavior
         if (startOffset !== 0) {
             const succeed = this.tryUseDefaultBehaviorForRange(range, e)
             const nextRange = this.deleteLastChar()
@@ -445,22 +437,21 @@ export class DocumentContentView extends EventDelegator{
             return { shouldSetRange: !succeed, range: nextRange}
         }
 
-        // 下面的全部不用默认行为
+        // not in the middle, prevent default behavior
         e.preventDefault()
 
-        // 2. 在段落头部(!startText.prev() && startOffset === 0)
+        // 2. at head of para(!startText.prev() && startOffset === 0)
         if (!startText.prev()) {
-            // 2.1 如果自己有 unwrap
+            // 2.1 if the block has unwrap method, call it
             if ((startBlock.constructor as typeof Block).unwrap) {
-                // 1.2.1 这个 block 有 unwrap 方法，那么调用 unwrap 方法
-                // heading/listItem 之类的在头部删除会变成 paragraph
+                // heading/listItem will unwrap into para
                 const newPara = (startBlock.constructor as typeof Block).unwrap!(this.content, startBlock)
                 if (newPara) {
                     endCursorBlock = newPara
                     endCursorText = newPara.firstChild as Text
                     endCursorOffset = 0
                 } else {
-                    // 1.2.2 如果返回了 undefined，说明组件内部能做响应式的处理，range 不变。
+                    // 1.2.2 if unwrap returned undefined, that means it is same block, the range should not change
                     endCursorBlock = startBlock
                     endCursorText = startText
                     endCursorOffset = 0
@@ -469,30 +460,30 @@ export class DocumentContentView extends EventDelegator{
                 return { shouldSetRange: true, range: DocRange.cursor(endCursorBlock!, endCursorText! as Text, endCursorOffset!)}
             }
 
-            // 2.2. 前面没有了，什么也不发生
+            // 2.2. nothing before startBlock, do nothing
             if (!startBlock.prev()) return { shouldSetRange: true, range }
 
 
-            // 2.3. 如果上一个是 Component
+            // 2.3. the last block is Component
             if (startBlock.prev() instanceof Component) {
                 this.content.deleteBetween(startBlock.prev()!, startBlock, this.content)
                 return { shouldSetRange: true, range }
             }
 
-            // 2.4. 如果上一个段落是空段落。
+            // 2.4. the last block is an empty para
             if (startBlock.prev() instanceof Paragraph && (startBlock.prev() as Paragraph).isEmpty) {
-                // 删除上一个空的 Para
+                // delete the empty para
                 this.content.deleteBetween(startBlock.prev()!, startBlock, this.content)
                 return { shouldSetRange: true, range }
             }
 
-            // 2.5. 上一个段落是非空段落或者其他与 Para 兼容的 block。（不兼容的需要继承 Component）
-            // 2.5.1. 自己是 Component，等同与 focus 到上个段落的极为
+            // 2.5. the last block is a normal block
+            // 2.5.1. the last block is a component, set range to the end of the last block
             if(startBlock instanceof Component) {
                 return { shouldSetRange: true, range: DocRange.cursor(startBlock.prev()!, startBlock.prev()?.lastChild! as Text, Infinity)}
             }
 
-            // 2.5.2. 自己是普通的 block，都是可以兼容的。那么把自己的内容移到上一个段落
+            // 2.5.2. if the last block and this block both are Paragraph compatible, merge them
             if(startBlock.prev()){
                 const isStartBlockEmptyPara = (startBlock instanceof Paragraph) &&  (startBlock as Paragraph).isEmpty
                 const previousBlock = startBlock.prev()!
@@ -500,7 +491,7 @@ export class DocumentContentView extends EventDelegator{
                 const inlineFrag = this.content.deleteBetween(startBlock.firstChild!, null, startBlock)
                 const previousBlockLastChild = previousBlock.lastChild!
                 if(!isStartBlockEmptyPara){
-                    // 如果自己是 empty para，那么自己的 空 Text 不要插入到上面去
+                    // is this block is not empty para, append it to the end of previous block.
                     this.append(inlineFrag, previousBlock.lastChild!, previousBlock)
                 }
 
@@ -519,13 +510,13 @@ export class DocumentContentView extends EventDelegator{
         }
 
 
-        // 3. 在非段落头部，但仍然是 startOffset === 0 的情况
-        //  CAUTION 能 focus 在 0 说明上一个节点一定是 InlineComponent，因为如果是 Text，就会自动 focus 到上个节点尾部。
-        //   自身一定是 Text，InlineComponent 的内部 focus 我们不管理。
+        // 3. at the head of non-para with startOffset === 0.
+        //  CAUTION The previous node MUST BE an InlineComponent, because if not, the offset will not be the end of the last text node.
+        //   this node MUST BE text, because we do not manage InlineComponent range.
         assert(startText.prev() instanceof InlineComponent, 'prev should only be InlineComponent when startOffset === 0')
-        // 上一个节点是 InlineComponent，直接删除
+        // previous node is an InlineComponent, delete it
         this.content.deleteBetween(startText.prev()!, startText, startBlock)
-        // 转移到上一个 Text 结尾
+        // change cursor to the end of the last text node
         const nextRange = startText.prev()! instanceof Text ?
             DocRange.cursor(startBlock, startText.prev()! as Text, startText.prev()!.data.value.length) :
             range
@@ -546,7 +537,7 @@ export class DocumentContentView extends EventDelegator{
         } else if (isEndFull) {
             splitInline = startText.next!
         } else {
-            // 文字中间
+            // in the middle of text
             splitInline = this.splitText(startText, startOffset, startBlock)
         }
         const newPara = this.splitByInline(startBlock, splitInline)
@@ -570,7 +561,7 @@ export class DocumentContentView extends EventDelegator{
         } else {
             this.updateRange(this.state.selectionRange()!, '')
             const newPara = this.splitByInline(startBlock, startText.next)
-            // 处理 startText 也变空的问题
+            // handle startText empty situation
             if(startText.data.value.length === 0 && startText.prev()) {
                 this.content.deleteBetween(startText, startText.next, startBlock)
             }
@@ -589,13 +580,13 @@ export class DocumentContentView extends EventDelegator{
         const range = this.state.selectionRange()!
         const { startBlock, startText, startOffset, endBlock, endText, endOffset, isCollapsed, isInSameBlock, isInSameInline } = range
         e.preventDefault()
-        // 如果不在段首
+        // if it is not head of para
         if (startOffset !== 0 || startText.prev() || !(startBlock.constructor as typeof Block)[method]) {
-            // 不支持制表符
+            // we DO NOT insert TAB into text.
             return null
         }
 
-        // 在段首，并且有 unwrap/wrap 方法
+        // it is head of para and the block has wrap/unwrap method
         const newBlock = (startBlock.constructor as typeof Block)[method]!(this.content, startBlock)
         if (newBlock) {
             return { shouldSetRange: true, range: DocRange.cursor(newBlock, newBlock.firstChild as Text, 0)}
@@ -609,7 +600,7 @@ export class DocumentContentView extends EventDelegator{
     formatCurrentRange(formatData: FormatData) {
         const currentRange = this.state.selectionRange()!
         const [firstFormattedText, lastFormattedText] = this.formatRange(currentRange, formatData)
-        // 重置 range
+        // reset range
         return {shouldSetRange:true, range: new DocRange(currentRange.startBlock, firstFormattedText, 0, currentRange.endBlock, lastFormattedText, lastFormattedText.data.value.length)}
     }
 
@@ -641,9 +632,8 @@ export class DocumentContentView extends EventDelegator{
                 onPaste={this.onFocused(this.paste.bind(this))}
                 onCut={this.onFocused(this.cut.bind(this))}
                 onCopy={this.onFocused(this.copy.bind(this))}
-                // CAUTION 这里又有一个 deleteRange 是因为 safari 的 composition 是在 keydown 之前的，必须这个时候 deleteRange
+                // CAUTION we bind deleteRangeForReplaceWithComposition here is because safari dispatch composition event before keydown, we must delete range here.
                 onCompositionStartCapture={onCompositionStartBeforeKeydown(this.onRangeNotCollapsed(this.deleteRangeForReplaceWithComposition.bind(this)))}
-                // CAUTION 这里用 this.onFocused 是为了判断这个事件是不是属于当前的 view。因为我们有嵌套。
                 onCompositionEndCapture={this.onFocused(this.inputComposedData.bind(this))}
 
             >
@@ -654,7 +644,7 @@ export class DocumentContentView extends EventDelegator{
         return this.element
     }
 
-    // 这个函数被外部手动调用。用户可以自己决定什么时候把 element append 到 document 上。
+    // this method can be called manually when the element is attached to body by user.
     onMount() {
         if(!document.body.contains(this.element!)) return
 
@@ -666,7 +656,7 @@ export class DocumentContentView extends EventDelegator{
         this.componentsToCallOnMount.forEach(c => c.onMount())
         this.componentsToCallOnMount.clear()
     }
-    // TODO 真正才从内存 history 里面销毁的时候调用，不然元素还是可以留着复用。
+    // TODO should only call it when remove from memory
     callComponentOnUnmount() {
         this.componentsToCallOnUnmount.forEach(c => c.onUnmount())
         this.componentsToCallOnUnmount.clear()
@@ -679,16 +669,15 @@ export class DocumentContentView extends EventDelegator{
         return this.boundaryContainer?.getBoundingClientRect()
     }
 
-    // deleteRangeForComposition 是 replace，要允许 allowOffset0
     createDocRange(range: Range){
-        // CAUTION 为了统一所有浏览器的行为，这里创造出来的 docRange 和实际的 dom Range 不一致。
-        //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
-        //  2. cursor 默认 focus 到上一个文字的尾部.
-        //  3. range 默认头部是自己的，尾部也是自己的
+        // CAUTION DocRange is not the same as browser default Range.
+        //  1. native cursor in empty text will be set after ZWSP, but user will still get startOffset === 0 in DocRange.
+        //  2. if previous node is text, startOffset is always the end of previous text node.
+        //  3. the start and end is always set to current node in range.
         const { startContainer, startOffset, endContainer, endOffset, collapsed } = range
         const startContainerText = this.findFirstTextFromElement(startContainer)!
         const endContainerInline = this.findFirstTextFromElement(endContainer)
-        // setNativeCursor 时会调用 removeAllRange，会触发 range 重新计算，此时是不合法的。
+        // setNativeCursor will call removeAllRange and cause docRange recomputed, at this time, the range is temporary, so we should not return it.
         if (!startContainerText || !endContainerInline) return null
 
         let startText = startContainerText
@@ -697,31 +686,31 @@ export class DocumentContentView extends EventDelegator{
         let docEndOffset = endOffset
         if (collapsed) {
             if (startOffset === 1 && startText.isEmpty) {
-                //  1. cursor 在空节点里面是自动调整到 ZWSP 的后面，所以允许是 0。
+                //  1. native cursor set to ZWSP end, but we still present to user as 0.
                 docStartOffset = 0
                 docEndOffset = 0
             } else if (startOffset === 0 && !startText.isEmpty && startContainerText.prev() instanceof Text) {
-                //  2. cursor 默认 focus 到上一个文字的尾部.
+                //  2. cursor always set to last text end.
                 startText = startContainerText.prev() as Text
                 docStartOffset = startText.data.value.length
                 endInline = startText
                 docEndOffset = docStartOffset
             }
         } else {
-            // 3. range 默认头部是自己的，尾部也是自己的
+            // 3. if range is full, the range should always represent the node itself.
             // 如果 startOffset 定位到了上个节点的尾部，我们要把它修正回来。
             if (startOffset!==0 && startOffset === startContainerText.data.value.length && startContainerText.next instanceof Text) {
                 startText = startContainerText.next
                 docStartOffset = 0
             }
 
-            // 如果 endOffset 定位到了下个节点的尾部，我们要把它修正回来。
+            // if endOffset is set to next node head, we should fix it.
             if (endOffset === 0 && endContainerInline?.prev() instanceof Text) {
                 endInline = endContainerInline.prev() as Text
                 docEndOffset = endInline.data.value.length
             }
 
-            // 因为我们会在空节点里面插入一个 ZWSP，这个时候可能 endOffset 会是 1，所以也要修正回来
+            // because we used ZWSP so the endOffset maybe 1, we should fix it.
             if (startText === endInline && startText.isEmpty) {
                 docEndOffset = 0
             }
@@ -736,39 +725,39 @@ export class DocumentContentView extends EventDelegator{
         return element.getBoundingClientRect()
     }
     onRangeNotCollapsed = eventAlias<KeyboardEvent>(() => {
-        // CAUTION 注意这里的写法，一定要先判断 range 是存在的。不然 InlineComponent 里面的行为也会被捕获
+        // CAUTION should ALWAYS check range to make sure the event is from THIS document
         return !!this.state.selectionRange() && !this.state.selectionRange()!.isCollapsed
     })
     onRangeCollapsed = eventAlias<any>(() => {
-        // CAUTION 注意这里的写法，一定要先判断 range 是存在的。不然 InlineComponent 里面的行为也会被捕获
+        // CAUTION should ALWAYS check range to make sure the event is from THIS document
         return !!this.state.selectionRange() && this.state.selectionRange()!.isCollapsed
     })
     onFocused = eventAlias<any>(() => {
         return !!this.state.selectionRange()
     })
     /**
-     * 下面是 Utils
+     *  Utils
      **/
     selectAll(e: KeyboardEvent) {
         e.stopPropagation()
         e.preventDefault()
         const { isInSameBlock, startBlock, startText, endText, isFullBlock } = this.state.selectionRange()!
         if (!isInSameBlock || isFullBlock) {
-            // 选中全文
+            // select all document
             this.setRange(new DocRange(this.content.firstChild!, this.content.firstChild!.firstChild as Text, 0, this.content.lastChild!, this.content.lastChild!.lastChild as Text, Infinity))
         } else {
-            // 选中完整的 block
+            // select all block
             this.setRange(new DocRange(startBlock, startBlock.firstChild as Text, 0, startBlock, startBlock.lastChild as Text, Infinity))
         }
     }
     setCursor(docNode: DocNode, offset: number) {
-        // FIXME 没考虑 InlineComponent 和 Component
+        // FIXME focus on Component/InlineComponent?
         const isNodeBlock = docNode instanceof Block
         const focusText = isNodeBlock ? (docNode as Block)[offset === 0 ? 'firstChild' : 'lastChild'] as Text : docNode as Text
         const element = this.docNodeToElement.get(focusText)!
-        // 可能是个空的所以没有 text child
+        // maybe empty
         const startContainer = element.firstChild || element
-        // CAUTION 注意这里，如果是空节点，会渲染出一个 ZWSP，要调整到这个后面，不然有的浏览器就回自动插入到上一元素的末尾。
+        // CAUTION set to 1 if empty, we will insert a ZWSP.
         const startOffset = focusText.isEmpty ?
             1 :
             (offset === Infinity ? focusText.data.value.length : offset)
@@ -776,7 +765,7 @@ export class DocumentContentView extends EventDelegator{
     }
     setRange(docRange: DocRange) {
         const startContainer = this.docNodeToElement.get(docRange.startText)!.firstChild!
-        // CAUTION 注意这里，如果是空节点，会渲染出一个 ZWSP，要调整到这个后面，不然有的浏览器就回自动插入到上一元素的末尾。
+        // CAUTION set to 1 if empty, we will insert a ZWSP.
         const startOffset = docRange.startText.isEmpty ?
             1 :
             (docRange.startOffset === Infinity ? docRange.startText.data.value.length : docRange.startOffset)
@@ -824,7 +813,7 @@ export class DocumentContentView extends EventDelegator{
                 }
             }
         } else {
-            // 头部的
+            // start
             const startBlockRange = new DocRange(
                 startBlock,
                 startText,
@@ -834,7 +823,7 @@ export class DocumentContentView extends EventDelegator{
                 startBlock.lastChild!.data.value.length
             );
             firstFormattedText = this.formatRange(startBlockRange, formatData)[0]
-            // 尾部的
+            // end
             const endBlockRange = new DocRange(
                 endBlock,
                 endBlock.firstChild as Text,
@@ -845,7 +834,7 @@ export class DocumentContentView extends EventDelegator{
             )
             lastFormattedText = this.formatRange(endBlockRange, formatData)[1]
 
-            // 中间的
+            // middle
             let currentBlock: Block|null = startBlock.next
             while (currentBlock && currentBlock !== endBlock) {
                 const blockFullRange = new DocRange(
@@ -866,13 +855,13 @@ export class DocumentContentView extends EventDelegator{
     @saveHistoryPacket
     @setEndRange
     async paste(e: ClipboardEvent) {
-        // TODO 根据是否有 shift  key 来决定是粘贴纯文本还是格式化的内容。
+        // TODO check if shift key is pressed
         e.preventDefault()
 
         const range = this.state.selectionRange()!
         const {startText, startBlock, isCollapsed, startOffset} = range
 
-        // 先清理完 selection
+        // clean selection first
         if (!isCollapsed) {
             this.updateRange(range, '')
         }
@@ -880,9 +869,8 @@ export class DocumentContentView extends EventDelegator{
             this.splitText(startText, startOffset, startBlock)
         }
 
-        // CAUTION 特别注意，由于上面对 range 进行了操作，所以下面始终只能使用 startText/startBlock，因为 endText/endBlock 很可能已经变了
+        // CAUTION we only handle startBlock/endBlock here, because startText/endText is handled above and may be changed by this step.
         if(e.clipboardData?.types.includes('application/json')){
-            // const data = JSON.parse(e.clipboardData.getData('application/json')) as BlockData[]
             const data = await this.document.clipboard.getData('application/json', e) as BlockData[]
 
             if (data.length === 0) return
@@ -914,16 +902,16 @@ export class DocumentContentView extends EventDelegator{
 
                 let afterCursorFrag = startText.next ? this.content.deleteBetween(startText.next, null, startBlock) : null
 
-                // 1. 先处理头部的合并
+                // 1. handle start
                 if (startText.isEmpty) {
-                    //replace 掉这个空节点
+                    //replace
                     this.replace(headParaFrag, startText, startBlock)
                 }else {
-                    // append 到后面
+                    // append
                     this.append(headParaFrag, startText, startBlock)
                 }
 
-                // 2. 处理结尾。创建新的 Para
+                // 2. handle end, create new Para
                 const newPara = this.content.createParagraph(endParaFrag)
                 const lastInNewPara = newPara.lastChild as Text
                 this.append(newPara, startBlock, this.content)
@@ -931,7 +919,9 @@ export class DocumentContentView extends EventDelegator{
                     this.append(afterCursorFrag, newPara.lastChild!, newPara)
                 }
 
-                // 3. 因为中间可能有 Component，我们用 append 的时候会自动在后面价格空的 Para。而这里不需要，因为一定有后面的 Para
+                // 3. because paste component may have Component, and this.append always make sure there is an empty
+                //  para behind Component which is not what we want HERE, so we handle endBlock first and then handle middle blocks.
+                //  so use `this.append` will not append an empty para after the last block.
                 if (middleBlockFrag) {
                     this.append(middleBlockFrag, startBlock, this.content)
                 }
@@ -942,7 +932,6 @@ export class DocumentContentView extends EventDelegator{
         } else {
             const range = this.state.selectionRange()!
             const currentRange = DocRange.cursor(range.startBlock, range.startText, range.startOffset)
-            // const dataToPaste = e.clipboardData!.getData('text/plain')
             const dataToPaste = await this.document.clipboard.getData('text/plain', e)
             this.updateRange(currentRange, dataToPaste)
             return {
@@ -950,7 +939,7 @@ export class DocumentContentView extends EventDelegator{
                 range: DocRange.cursor(range.startBlock, range.startText, range.startOffset + dataToPaste.length)
             }
         }
-        // TODO 解析  DOM 内容?
+        // TODO DOM content?
         // const domparser = new DOMParser()
         // const result = domparser.parseFromString(e.clipboardData!.getData('text/html'), 'text/html')
         // console.log(result)
@@ -963,7 +952,6 @@ export class DocumentContentView extends EventDelegator{
         const range = this.state.selectionRange()!
         // e.clipboardData!.setData('application/json', rangeData)
         this.document.clipboard!.setData('application/json', range.toJSON(), e)
-        // 存一下纯文字版本？
         // e.clipboardData!.setData('text/plain', range.toText())
         this.document.clipboard!.setData('text/plain', range.toText(), e)
 
@@ -979,7 +967,6 @@ export class DocumentContentView extends EventDelegator{
         // e.clipboardData!.setData('application/json', rangeData)
         this.document.clipboard!.setData('application/json', range.toJSON(), e)
 
-        // 存一下纯文字版本？
         // e.clipboardData!.setData('text/plain', range.toText())
         this.document.clipboard!.setData('text/plain', range.toText(), e)
 
@@ -1032,7 +1019,6 @@ export class DocumentContentView extends EventDelegator{
     deleteLastChar() {
         const range = this.state.selectionRange()!
         const { startText, startOffset, startBlock } = range
-        // 文章开头，不做任何操作
         let endCursorBlock = startBlock
         let endCursorText = startText
         let endCursorOffset = startOffset - 1
@@ -1061,19 +1047,19 @@ export class DocumentContentView extends EventDelegator{
         }
 
 
-        // cursor 在段尾，产生一个新的空的 para
+        // cursor at the end, append newBlock after block
         if (!inline) {
             this.append(newBlock, block, this.content)
             return newBlock
         }
 
-        // cursor 在段首，上面产生一个新的 Para
+        // cursor at the head, prepend newBlock before block
         if (!inline.prev()) {
             this.prepend(newBlock, block, this.content)
             return block
         }
 
-        // 在中间
+        // in middle
         const inlineFrag = this.deleteBetween(inline, null, block)
         this.replace(inlineFrag, newBlock.firstChild!, newBlock)
 
@@ -1087,7 +1073,7 @@ export class DocumentContentView extends EventDelegator{
         this.append(splitInline, text, block)
         return splitInline
     }
-    // 相比 content 的 api，下面 View 的同名 api 会自动检查是否需要在头部尾部增加 ZWSP 或者空 Para。
+    // These api always make sure there is an empty para after the Component.
     append(...args: Parameters<DocumentContent["append"]>) {
         const result = this.content.append(...args)
         if (!result.next && !(result.constructor as typeof Component).asTextNode) {
@@ -1132,7 +1118,7 @@ export class DocumentContentView extends EventDelegator{
     }
     // 下面三个只是为了保持接口一致，实际上只是转发调用。
     deleteBetween(...args: Parameters<DocumentContent["deleteBetween"]>) {
-        // FIXME deleteBetween 之后也要考虑是否需要增加 ZWSP 和空 Para
+        // FIXME deleteBetween should handle ZWSP and empty para too.
         return this.content.deleteBetween(...args)
     }
     updateText(...args: Parameters<DocumentContent["updateText"]>) {
@@ -1142,7 +1128,7 @@ export class DocumentContentView extends EventDelegator{
         return this.content.formatText(...args)
     }
     destroy() {
-        // TODO 销毁 ReactiveState 中的监听？
+        // TODO destroy reactive state?
     }
 }
 

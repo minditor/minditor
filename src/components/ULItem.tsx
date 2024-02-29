@@ -1,6 +1,6 @@
-import {Atom, atom, computed, createElement, createRoot, destroyComputed, reactive, Fragment} from "axii";
-import {Block, DocumentContent, Text, TextBasedBlock} from "../DocumentContent.js";
-import {AxiiComponent, AxiiTextBasedComponent} from "../AxiiComponent.js";
+import {Atom, atom, createElement, createRoot, Fragment} from "axii";
+import {Block, DocumentContent, Text} from "../DocumentContent.js";
+import {AxiiTextBasedComponent} from "../AxiiComponent.js";
 
 type IndexData = {
     level: number,
@@ -66,7 +66,7 @@ export class ULItem extends AxiiTextBasedComponent {
             wordWrap:'bread-word',
             overflowWrap:'break-word',
             whiteSpace:'normal',
-            // CAUTION 这个是触发换行的关键
+            // CAUTION If minWidth is no set, the content will no change line.
             minWidth:0
         }
         return <>

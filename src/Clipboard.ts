@@ -1,6 +1,5 @@
 import copy from 'copy-to-clipboard'
 
-
 const IS_NATIVE_CLIPBOARD_SUPPORTED = navigator && navigator.clipboard && window.isSecureContext
 
 export class Clipboard {
@@ -32,7 +31,6 @@ export class Clipboard {
     if (e) {
       rawData = e.clipboardData?.getData(type)
     } else if (IS_NATIVE_CLIPBOARD_SUPPORTED) {
-      // 从 navigator.clipboard 读取
         rawData = await navigator.clipboard.readText()
     }
 

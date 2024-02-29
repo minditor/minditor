@@ -16,7 +16,7 @@ import DeleteRound from "../icons/DeleteRound.js";
 import {Drag} from "../lib/Drag.js";
 import {AxiiComponent} from "../AxiiComponent.js";
 
-// FIXME 这里应该从 context 里面读取。
+// FIXME should read from context
 const types = {
     Paragraph,
     Text,
@@ -67,7 +67,7 @@ export class Grid extends AxiiComponent {
         const plugins = [
             ...markdownPlugins,
             createRangeTool(defaultFormatWidgets),
-            createSuggestionTool(defaultSuggestionWidgets )
+            createSuggestionTool(defaultSuggestionWidgets)
         ]
         // plugin 显示在外面
         return scaffold(container, {data, types, plugins}, {pluginContainer: this.pluginContainer})
@@ -123,6 +123,7 @@ export class Grid extends AxiiComponent {
             })
         })
     }
+
     renderTopHandle() {
         const topHandleStyle = () => ({
             position: 'absolute',
@@ -149,7 +150,7 @@ export class Grid extends AxiiComponent {
                                     cursor: 'pointer'
                                 }}
                             >
-                                { index!() !== 0 ? null : (
+                                {index!() !== 0 ? null : (
                                     <span
                                         style={{
                                             width: HANDLE_SIZE,
@@ -204,12 +205,10 @@ export class Grid extends AxiiComponent {
                         }
                         return <div style={handleStyle}>{addIcon}</div>
                     })}
-
-
             </div>
         )
-
     }
+
     renderLeftHandle(rowIndex: Atom<number>, index: Atom<number>) {
         const style = () => ({
             display: this.hover() ? 'block' : 'none',
@@ -222,7 +221,7 @@ export class Grid extends AxiiComponent {
         return () => index!() !== 0 ? null :
             (
                 <div style={style}>
-                    {() => rowIndex!() !==0 ? null : (
+                    {() => rowIndex!() !== 0 ? null : (
                         <span
                             style={{
                                 position: 'absolute',
@@ -234,8 +233,8 @@ export class Grid extends AxiiComponent {
                                 cursor: 'pointer'
                             }}
                             onClick={() => this.addRow(index!())}>
-                                                    <AddRoundIcon size={10}/>
-                                                </span>
+                            <AddRoundIcon size={10}/>
+                        </span>
                     )}
                     <span
                         style={{
@@ -250,8 +249,8 @@ export class Grid extends AxiiComponent {
                         }}
                         onClick={() => this.deleteRow(index!())}
                     >
-                                                    <DeleteRound size={10}/>
-                                                </span>
+                        <DeleteRound size={10}/>
+                    </span>
                     <span
                         style={{
                             position: 'absolute',
@@ -263,14 +262,15 @@ export class Grid extends AxiiComponent {
                             cursor: 'pointer'
                         }}
                         onClick={() => this.addRow(index!() + 1)}>
-                                                    <AddRoundIcon size={10}/>
-                                                </span>
+                            <AddRoundIcon size={10}/>
+                        </span>
                 </div>
             )
     }
+
     renderRightHandle(index: Atom<number>) {
         const delta = atom({x: this.columns.at(index!)!.raw, y: 0})
-        // 绑定宽度和 computed
+        // bind width and mouse move delta
         computed(() => {
             this.columns.at(index!)!(delta().x)
         })
@@ -280,6 +280,7 @@ export class Grid extends AxiiComponent {
             delta={delta}
         />
     }
+
     renderInner() {
         const style = {
             position: 'relative',
@@ -339,6 +340,7 @@ export class Grid extends AxiiComponent {
             </div>
         )
     }
+
     toJSON(): any {
         return {
             ...super.toJSON(),
@@ -349,7 +351,7 @@ export class Grid extends AxiiComponent {
 }
 
 
-// 提供给 Plugin 用的
+// for BlockTool Plugin
 export type GridPluginProps = {
     onChange: (data: [number, number]) => void,
     size: [number, number],
@@ -357,7 +359,7 @@ export type GridPluginProps = {
 }
 
 export function GridPicker({onChange, size, unitSize}: GridPluginProps) {
-    // 用 table 渲染出  size 指定的 x * y 的格子
+    // use table to render x*y grid
     const hoverPosition = atom({x: -1, y: -1})
     return (
         <table
@@ -371,14 +373,14 @@ export function GridPicker({onChange, size, unitSize}: GridPluginProps) {
                         const style = () => ({
                             width: unitSize,
                             height: unitSize,
-                            background: x < (hoverPosition().x+1)  && y < (hoverPosition().y+1)  ? '#e5e5e5' : 'white'
+                            background: x < (hoverPosition().x + 1) && y < (hoverPosition().y + 1) ? '#e5e5e5' : 'white'
                         })
 
                         return (
                             <td
                                 style={{border: '1px solid #eee'}}
                                 onMouseEnter={() => hoverPosition({x, y})}
-                                onClick={() => onChange([x+1, y+1])}
+                                onClick={() => onChange([x + 1, y + 1])}
                             >
                                 <div style={style}></div>
                             </td>

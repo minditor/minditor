@@ -110,7 +110,8 @@ export function setAttributes(attributes: AttributesArg, element: HTMLElement, i
         setAttribute(element, name, attribute)
       }
     } else if (name === 'style' || name==='dangerouslySetInnerHTML' || (!/^_+/.test(name) && !(typeof attribute === 'object'))) {
-      // 不允许 _ 开头的私有attribute，不允许 attribute 为数组或者对象
+      // '_' as start char is no allowed.
+      // Object value is not allowed.
       setAttribute(element, name, attribute)
     } else if (name === '_uuid') {
       setAttribute(element, 'data-uuid', getId())
@@ -152,7 +153,6 @@ export function createElement(type: JSXElementType, props: AttributesArg, ...chi
     return type({ ...props, children })
   }
 
-  // TODO 处理 attributes
   let container
   if (type === Fragment) {
     container = new ExtendedDocumentFragment()

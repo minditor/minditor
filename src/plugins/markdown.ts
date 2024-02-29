@@ -16,31 +16,30 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
         public static activateEvents = {
             inputChar: onInputKey(' ')
         }
-        run({  } : PluginRunArgv) : boolean | undefined{
-            // debugger
+        run({} : PluginRunArgv) : boolean | undefined{
             const { view, history } = this.document
             const startRange = view.state.selectionRange()
             const { startText,  startBlock,  isEndFull,isCollapsed, endText } = startRange!
-            //  1. 只能在 Para 的 content 里面产生
+            //  1. should only in Paragraph content
             if (!(startBlock instanceof Paragraph || startBlock instanceof Heading)) return false
-            // 2. 只能在头部输入
+            // 2. should on at head of content
             if (startBlock.firstChild !== startText) return false
-            // 3. 头部就必须匹配
+            // 3. start text should match initialCharacters
             if (startText.data.value.slice(0, initialCharacters.length) !== initialCharacters) return false
 
-            // 支持 # 类型的 也支持 ```js 类型的
-            // 去掉结尾的空格
+            // support only initialCharacters link '##' or initialCharacters with more info like '```js'
+            // remove trailing space
             const textToMatch = startText.data.value.slice(0, startText.data.value.length - 1)
             const matchedText = reversMatchStr(textToMatch, initialCharacters)
             if (matchedText === false) return false
 
             history.openPacket(startRange)
-            // 1. 先把 startText 中的 initialCharacters + 空格删掉
+            // 1. remove initialCharacters and space
             const newTextAfterCursor = startText.data.value.slice(initialCharacters.length + 1)
             view.updateText(newTextAfterCursor, startText)
-            // 2. 把所有的 Text 取出来
+            // 2. get all text from startText
             const titleTextFrag = view.deleteBetween(startText, null, startBlock)
-            // 3. 替换成新的 Heading block
+            // 3. replace with new Heading block
             const newBlock = createBlock.call(this, titleTextFrag)
             view.replace(newBlock, startBlock, this.document.content)
             view.setCursor(newBlock, 0)
@@ -52,64 +51,48 @@ function createBlockCommands(initialCharacters: string, createBlock: Function, a
 }
 
 
-
-
 function createFormatCommands([startChars, closeChars]: [string, string], key: string, value = true) {
     return class FormatPlugin extends Plugin{
         public static displayName = `format(${startChars}-${closeChars})`
         public static activateEvents = {
-            // inputChar 是我们的自定义事件
+            // inputChar is a custom event dispatched by View
             inputChar: onInputKey(' ')
         }
         run({ } : PluginRunArgv): boolean | undefined  {
             const { view, history } = this.document
             const startRange = view.state.selectionRange()
-            const { startText,  startBlock,  isEndFull,isCollapsed, endText, startOffset, endOffset } = startRange!
+            const { startBlock, endText, endOffset } = startRange!
 
-            // debugger
-
-            // 1. 如果最后的末尾都没和 closeChars 匹配，就不用管了
+            // 1. if last chars is not match with closeChars, we can return.
             if (endText.data.value.slice(endOffset - closeChars.length -1, endOffset-1) !== closeChars) return false
-            // 2. 没有找到匹配的 range
+            // 2. if no range matched, we can return.
             const matchedDocRange = reverseFindMatchRange(endText!, endOffset-1, startChars, closeChars, startBlock)
             if (!matchedDocRange) return false
 
             history.openPacket(startRange)
-            // 删除空格
+            // 1. delete space in text.
             const newEndTextWithoutSpace = endText.data.value.slice(0, endOffset-1) + endText.data.value.slice(endOffset)
             view.updateText(newEndTextWithoutSpace, endText)
-            //2. 再执行 format。
+            //2. do format.
             const [firstFormattedText, lastFormattedText] = view.formatRange(matchedDocRange, {[key]: value})
-            //3. 删掉 startText 和 endText 的 startChars 和 closeChars
+            //3. delete startChars and closeChars
             const newStartTextWithoutStartChars = firstFormattedText.data.value.slice(startChars.length)
 
             view.updateText(newStartTextWithoutStartChars, firstFormattedText)
             const newEndTextWithoutCloseChars = lastFormattedText.data.value.slice(0, - closeChars.length)
             view.updateText(newEndTextWithoutCloseChars, lastFormattedText)
-            // 穿件一个空字符 Text 用来放 cursor
+            // 4. add an empty text after lastFormattedText for cursor
             const emptyText = this.document.content.createFromData({type: 'Text', value: ''}) as Text
             view.append(emptyText, lastFormattedText, startBlock)
-            //4. restore selection 到下一个节点的空格后面
+            // 5. restore cursor to the empty text
             view.setCursor(emptyText!, 0)
-            // CAUTION 异地昂要 return true，表示执行了
+            // CAUTION we should return true to indicate that we have handled the event.
             const endRange = new DocRange(startBlock, emptyText!, 0, startBlock, emptyText!, 0)
             history.closePacket(endRange)
             return true
         }
     }
 }
-
-//
-//
-// function createCodeBlock(lang: string, blockNode: NodeType) {
-//     return blockNode.root!.replaceNode({
-//         type: 'Code',
-//         props: {
-//             lang
-//         }
-//     }, blockNode)
-// }
-//
 
 
 function createHeadingBlock(this: Plugin, titleTextFrag: DocNodeFragment, level: number) {
@@ -134,15 +117,15 @@ class IndexedHeadingPlugin extends Plugin{
         const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock,  isEndFull,isCollapsed, endText, endOffset } = startRange!
-        //  1. 只能在 Heading 的 content 里面产生
+        //  1. only in Heading content
         if (!(startBlock instanceof Heading)) return false
-        // 2. 只能在头部输入
+        // 2. range should at head of content
         if (startBlock.firstChild !== startText) return false
-        // 3. 头部就必须匹配 x.x.x. 的形式
+        // 3. text should match `x.x.x.` pattern
         if (!/^(\d\.)+\s$/.test(startText.data.value.slice(0, endOffset))) return false
 
         history.openPacket(startRange)
-        // TODO 应该允许只修改该 data，保持 reactive
+        // TODO should use Heading.level() to change instead of replace block
         const newHeading = new Heading({...startBlock.toJSON(), useIndex: true})
         const headingContent = view.deleteBetween(startText, null, startBlock)
         newHeading.firstChild = headingContent.retrieve() as Text
@@ -164,11 +147,11 @@ class OrderedListPlugin extends Plugin{
         const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock, endOffset } = startRange!
-        //  1. 只能在 Heading 的 content 里面产生
+        //  1. only in Paragraph content
         if (!(startBlock instanceof Paragraph)) return false
-        // 2. 只能在头部输入
+        // 2. only at head of content
         if (startBlock.firstChild !== startText) return false
-        // 3. 头部就必须匹配 x.x.x. 的形式
+        // 3. text should match `x.x.x.` pattern
         if (!/^(\d\.)+\s$/.test(startText.data.value.slice(0, endOffset))) return false
 
         history.openPacket(startRange)
@@ -189,7 +172,7 @@ class InlineCodePlugin extends Plugin{
     public static activateEvents = {
         inputChar: onInputKey(' ')
     }
-    run({  } : PluginRunArgv) : boolean | undefined{
+    run({} : PluginRunArgv) : boolean | undefined{
         const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock,  isEndFull, startOffset,isCollapsed, endText, endOffset } = startRange!
@@ -227,11 +210,11 @@ class BlockCodePlugin extends Plugin{
         const { view, history } = this.document
         const startRange = view.state.selectionRange()
         const { startText,  startBlock,  isEndFull,isCollapsed, endText, endOffset } = startRange!
-        //  1. 只能在 Heading 的 content 里面产生
+        //  1. only in Paragraph content
         if (!(startBlock instanceof Paragraph)) return false
-        // 2. 只能在头部输入的唯一的字符里面输入
+        // 2. only at head of content, and the start text should be the only child of its parent Paragraph
         if (startText.prev() || startText.next) return false
-        // 3. 必须匹配 ```lang 的形式
+        // 3. should match '```language' pattern
         const matched = startText.data.value.match(/^```(\w+)\s$/)
         if (!matched) return false
         const language = matched?.[1]
@@ -253,7 +236,7 @@ export const defaultMarkdownPlugins: (typeof Plugin)[] = [
     createFormatCommands(['~~', '~~'], 'lineThrough'),
     IndexedHeadingPlugin,
     OrderedListPlugin,
-    // CAUTION Code Block 应该在 InlineCode 之上，不然匹配顺序错了
+    // CAUTION Code Block must be placed before InlineCodePlugin, or it will first match InlineCodePlugin
     BlockCodePlugin,
     InlineCodePlugin,
 ]

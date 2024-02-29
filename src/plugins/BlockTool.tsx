@@ -30,7 +30,7 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                 position: 'fixed',
                 top: blockUnitRect.top
             } : {
-                // plugin container 确保了自己是相对于 container 定位的，所以这里可以用 absolute。
+                // plugin container uses position `relative` to the document, so we can use position `absolute` here.
                 position: 'absolute',
                 top: blockUnitRect.top - boundaryRect.top
             }
@@ -42,9 +42,8 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
             const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
 
             const style = () => {
-                // range 看不见了，display 要 none
+                // should display none if there is no range.
                 if (!this.hover() && (!lastMouseEnteredBlock() || lastActiveDeviceType() !== 'mouse')) return {display: 'none'}
-                // if (!hover() &&( !lastMouseEnteredBlock())) return { display: 'none'}
 
                 const positionAttrs = this.calculatePosition(outsideDocBoundary)
 
@@ -78,7 +77,6 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                 <div style={iconStyle}>
                     {<Menu size={16}/>}
                 </div>
-                {/*{() => { this.hover() ? this.items.map(item => item.render()) : null }}*/}
                 <div style={widgetContainerStyle}>
                     {this.items.map(item => item.render())}
                 </div>
@@ -127,7 +125,6 @@ export const ImageInsertWidget = createInsertWidget(ImageInsertHandle, 'Image')
 export const GridInsertWidget = createInsertWidget(GridInsertHandle, 'Grid')
 export const CodeInsertWidget = createInsertWidget(CodeInsertHandle, 'Code')
 
-// TODO 复制、剪切、删除
 export class DeleteWidget extends BlockToolWidget {
     public static displayName = `DeleteBlockWidget`
     deleteBlock = () => {
@@ -239,9 +236,7 @@ export class CutWidget extends BlockToolWidget {
     }
 }
 
-// TODO Block 自己的配置 menu
-
-
+// TODO Block can have a widget to set its settings.
 export const defaultBlockWidgets = [DeleteWidget, CopyWidget, CutWidget, ImageInsertWidget, GridInsertWidget, CodeInsertWidget]
 
 

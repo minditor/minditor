@@ -15,9 +15,6 @@ export class DocNodeFragment {
     retrieve() {
         this.retrieved = true
         return this.head
-        // const head = this.head
-        // this.head = null
-        // return head
     }
 }
 
@@ -54,12 +51,11 @@ export class DocNode {
 
 export class Block extends DocNode {
     static displayName = 'Block'
-    // 在头部按 backspace 是否变成一个普通的 Paragraph
     static unwrap?: (doc: DocumentContent, block: any) => void|undefined|Block
     static wrap?: (doc: DocumentContent, block: any) => void|undefined|Block
-    // 在 content 中间按回车的时候，是否应该分割成同样类型的新 Block，如果不是就默认创建 Paragraph。
+    // indicate whether the block can be split into two blocks of the same type
     static splitAsSameType = false
-    // 如果 splitAsSameType 为 true，就必须重写这个函数
+    // if splitAsSameType is set to true, Block should rewrite this createEmpty method
     static createEmpty(referenceBlock?: any) {
         return new this()
     }
@@ -107,17 +103,13 @@ export type EmitData<T, U> = {
 
 export const EVENT_ANY = Symbol('ANY')
 
-// 方法装饰器
+// decorator to auto emit event
 export function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: PropertyDescriptor) {
-    // 保存原始方法的引用
     const originalMethod = descriptor.value;
 
-    // 重写原始方法
     descriptor.value = function (this: EventEmitter, ...args: Parameters<typeof originalMethod>) {
-        // 调用原始方法
         const result = originalMethod.apply(this, args);
 
-        // 触发事件
         this.emit(propertyKey, {
             method: propertyKey,
             args,
@@ -130,7 +122,6 @@ export function AutoEmit(target: EventEmitter, propertyKey: string, descriptor: 
             result
         } as EmitData<Parameters<typeof originalMethod>, ReturnType<typeof originalMethod>>);
 
-        // 返回原始方法的结果
         return result;
     };
 
@@ -203,7 +194,7 @@ export class TextBasedBlock extends Block {
             } else if( (current as Text).toText ){
                 content += (current as Text).toText()
             } else {
-                // 忽略不能 toText 的
+                // ignore Inline which cannot be converted to text
             }
             current = current.next
         }
@@ -231,7 +222,7 @@ export class DocumentContent extends EventEmitter {
             const docNode = new BlockClass(docNodeData)
 
             if(docNodeData.content) {
-                // 如果不是 TextBasedBlock，就不会有 content，像 Code 等 Component，使用其他字段来存值的。
+                // only TextBasedBlock have content
                 docNode.firstChild = DocumentContent.createInlinesFromData(docNodeData.content, docNodeTypes)
             }
 
@@ -319,7 +310,7 @@ export class DocumentContent extends EventEmitter {
         if (ref) {
             ref.next = appendNode
         } else {
-            // ref 为 null 说明 parent 应该是空的
+            // if there is no ref that means the parent is empty
             parent!.firstChild = appendNode
         }
 
@@ -380,7 +371,7 @@ export class DocumentContent extends EventEmitter {
         return [firstNewNode, lastNewNode]
     }
 
-    // 包括开头，不包括结尾
+    // the delete method will delete start node but no end node
     @AutoEmit
     deleteBetween<T extends DocNode>(start: T, end: T | null, parent?: DocumentContent|Block) {
         // assert( !parent || (parent instanceof DocumentContent && start instanceof Block || parent instanceof Block && start instanceof Inline), 'parent and start type not match')
@@ -391,15 +382,14 @@ export class DocumentContent extends EventEmitter {
         if (beforeStart) {
             beforeStart.next = end
         } else {
-            // 是从头删的
+            // from first child
             parent!.firstChild = end
         }
 
-
         if (end) {
-            // 链条的尾部清理
+            // clean the end of list
             end.prev()!.next = null
-            // 剩余部分的头部清理
+            // reset end.prev
             end.prev(beforeStart)
         }
 
@@ -481,10 +471,6 @@ export class InlineComponent extends Inline {
     onUnmount(){
 
     }
-}
-
-export type InlineComponentContext = {
-    block: Block
 }
 
 export class Component extends Block {

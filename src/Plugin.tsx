@@ -1,7 +1,7 @@
 import {Document} from "./Document";
 import {state as globalKM} from "./globals";
-import {atom, createRoot, createElement} from 'axii'
-import {assert, nextJob, nextTask} from "./util";
+import {atom, createElement, createRoot} from 'axii'
+import {assert, nextTask} from "./util";
 
 export type EventMatchHandle = (this:Plugin, e: unknown) => boolean
 export type EventCallback = (this:Plugin, e: unknown, args?: PluginRunArgv) => any
@@ -9,12 +9,11 @@ export type PluginRunArgv = {
 
 }
 
-
 export class Plugin {
     public static displayName = 'Plugin'
     public static activateEventListeners: WeakMap<Document, Map<string, Set<EventCallback>>> = new WeakMap()
     public static deactivateEventListeners: WeakMap<Document, Map<string, Set<EventCallback>>> = new WeakMap()
-    // Plugin 自己需要覆盖的
+    // Plugin use these to listen to events and decide whether to activate or deactivate
     public static activateEvents: {[k: string]: (e:any) => boolean}
     public static deactivateEvents: {[k: string]: (e:any) => boolean}
     public activated = atom(false)
@@ -23,9 +22,11 @@ export class Plugin {
     constructor(public document: Document) {
         this.addActivateEventListeners()
     }
+    // for one-time execution. triggered when activate events dispatched
     run(args: PluginRunArgv) : any{
 
     }
+    // for plugin which need to render a consistent view
     render(outsideDocBoundary = false): JSX.Element|null {
         return null
     }
@@ -66,9 +67,8 @@ export class Plugin {
             if (!callbacks) {
                 activateEventListeners.set(eventName, (callbacks = new Set()))
                 const listener = (e:any) => {
-                    // CAUtION 因为允许文档嵌套，所以我们需要在这里判断是否是当前文档的事件
-                    //  我们没有使用阻止事件冒泡的方式是因为，万一以后有外部监听内部的需求的话，还能用事件。
-                    //  而且应该 内部 document 是否应该当做一个完整的盒子不冒泡任何出来，应该是个严肃的需要讨论的事情。
+                    // CAUtION because we allow document inside document and event may bubble out,
+                    //  we need to check if the event is form THIS document.
                     if (!this.document.view.state.selectionRange()) return
 
                     const args = {
@@ -78,8 +78,8 @@ export class Plugin {
                         docRange: this.document.view.state.selectionRange
                     }
 
-                    // CAUTION 所有的 plugin 合在一起，只要有一个 plugin 激活了，就不会再激活其他的 plugin
-                    // CAUTION 放到 nextTask 里面 run 这样用户可以放心的处理 history 等
+                    // CAUTION only one plugin will be activated at a time
+                    // CAUTION wrap in nextTask so plugin can get right state of History and other things
                     nextTask(() => {
                         for(let callback of callbacks!) {
                             if(callback.call(this, e, args)) break

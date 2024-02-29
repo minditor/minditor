@@ -89,7 +89,7 @@ export class DocumentContentHistory extends EventEmitter{
         this.currentPacket!.endRange = endRange
         this.packets.push(this.currentPacket!)
         this.currentPacket = null
-        // TODO updateText 的 packet 合并
+        // TODO consecutive updateText packets should be merged
     }
     @AutoEmit
     undo() {
@@ -98,7 +98,7 @@ export class DocumentContentHistory extends EventEmitter{
         const packet = this.packets.at(-1-this.undoIndex)!
         for(let i = packet.stack.length - 1; i >= 0; i--) {
             const event = packet.stack[i]
-            // FIXME type 应该怎么写？
+            // FIXME type
             // @ts-ignore
             DocumentContentHistory[event.method](this.doc.content, event)
         }
@@ -114,7 +114,7 @@ export class DocumentContentHistory extends EventEmitter{
         const packet = this.packets.at(-1-this.undoIndex)!
         for(let i = 0; i < packet.stack.length; i++) {
             const event = packet.stack[i]
-            // FIXME type 应该怎么写？
+            // FIXME type
             // @ts-ignore
             this.doc.content[event.method](...event.args)
         }

@@ -52,6 +52,6 @@ export class Document {
     }
     destroy() {
         this.view.destroy()
-        // TODO history 要进 indexDB ？
+        // TODO save history to IndexDB?
     }
 }

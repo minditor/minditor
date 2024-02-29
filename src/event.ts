@@ -10,20 +10,16 @@ export type EventDelegator = {
     subDelegators: {[key: string]: EventDelegator}
 }
 
-
 type EventCallbackWithCapture = EventListenerOrEventListenerObject & {
     capture: boolean
 }
 
-
 const documentEvents = ['selectionchange']
-
 
 export function createDelegator(namespace = 'global'): EventDelegator {
     const eventCallbacksByEventName: {[key: string] : Set<Function>} = {}
     const eventToCallbackRef: {[key: string] : EventCallbackWithCapture} = {}
     const attachedElements = new Set<HTMLElement>()
-
 
     const subDelegators: EventDelegator['subDelegators'] ={}
 
@@ -42,7 +38,7 @@ export function createDelegator(namespace = 'global'): EventDelegator {
 
 
     function trigger(event: Event, element?: HTMLElement) {
-        // CAUTION 手动  trigger 永远在  element 上
+        // CAUTION manual dispatchEvent always use element as target
         if (element) {
             element.dispatchEvent(event)
         } else {
@@ -67,7 +63,7 @@ export function createDelegator(namespace = 'global'): EventDelegator {
             eventCallbacksByEventName[event] = new Set()
             const callback = createCallback(eventCallbacksByEventName[event], capture)
             eventToCallbackRef[event] = callback
-            // 已经 attach 过了，但是还没有监听该 event
+            // attached, but not delegated
             if (attachedElements.size) {
                 attachedElements.forEach(attachedEl => attachedEl.addEventListener(event, callback, callback.capture))
             }
@@ -102,7 +98,7 @@ export function createDelegator(namespace = 'global'): EventDelegator {
 
         Object.entries(eventToCallbackRef).forEach(([event, callback]) => {
             if (documentEvents.includes(event)) {
-                // TODO 是不是要改造一下 event？改到 element 上？
+                // TODO should use target as event listener host?
                 document.addEventListener(event, callback, callback.capture)
             } else {
                 element.addEventListener(event, callback, callback.capture)

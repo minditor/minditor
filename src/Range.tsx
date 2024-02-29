@@ -48,7 +48,7 @@ export class DocRange {
 
         let currentBlock:Block|null = this.startBlock
         while(currentBlock && currentBlock !== this.endBlock.next) {
-            // CAUTION 注意这里已经处理了 startBlock 和 endBlock 相同的情况
+            // CAUTION here include the situation that startBlock and endBlock are the same
             if (currentBlock === this.startBlock) {
                 // 从 startText 一直到尾部都存起来
                 let currentText:Inline|null = this.startText
@@ -70,7 +70,7 @@ export class DocRange {
                     content: contentData
                 })
             } else if (currentBlock === this.endBlock) {
-                // 从头到 endText 都存起来
+                // save from start to endText
                 let currentText:Inline|null = this.endBlock.firstChild
                 const contentData: InlineData[] = []
                 while(currentText && currentText !== this.endText.next) {
@@ -87,7 +87,7 @@ export class DocRange {
                     content: contentData
                 })
             } else {
-                // 整个 block 都存起来
+                // save the whole block
                 blocks.push(currentBlock.toJSON())
             }
             currentBlock = currentBlock.next
@@ -100,9 +100,8 @@ export class DocRange {
         let currentBlock:Block|null = this.startBlock
         while(currentBlock && currentBlock !== this.endBlock.next) {
             if (currentBlock === this.startBlock) {
-                // 从 startText 一直到尾部都存起来
                 let currentText:Inline|null = this.startText
-                // CAUTION 这里处理了 startBlock 和 endBlock 相同的情况
+                // CAUTION here include the situation that startBlock and endBlock are the same
                 while(currentText && currentText!== this.endText.next) {
                     if (currentText instanceof Text) {
                         content += currentText === this.startText  ?
@@ -111,13 +110,12 @@ export class DocRange {
                     } else if ((currentText  as Text).toText)  {
                         content += (currentText as Text).toText()
                     } else {
-                        // 不能变成 text 的 Inline 节点忽略
+                        // ignore those Inline nodes that can't be converted to text
                     }
                     currentText = currentText.next
                 }
 
             } else if (currentBlock === this.endBlock) {
-                // 从头到 endText 都存起来
                 let currentText:Inline|null = this.endBlock.firstChild
                 while(currentText && currentText !== this.endText.next) {
                     if (currentText instanceof Text) {
@@ -125,16 +123,15 @@ export class DocRange {
                     } else  if ((currentText  as Text).toText)  {
                         content += (currentText as Text).toText()
                     } else {
-                        // 不能变成 text 的 Inline 节点
+                        // ignore those Inline nodes that can't be converted to text
                     }
                     currentText = currentText.next
                 }
             } else {
-                // 整个 block 都存起来
                 if ((currentBlock as TextBasedBlock).toText) {
                     content += (currentBlock as TextBasedBlock).toText()
                 } else {
-                    // 不能处理的 block
+                    // ignore those block that can't be converted to text
                 }
             }
             currentBlock = currentBlock.next

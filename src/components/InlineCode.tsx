@@ -1,5 +1,5 @@
 import {createElement} from "axii";
-import {Inline, InlineComponent} from "../DocumentContent.js";
+import {InlineComponent} from "../DocumentContent.js";
 
 type InlineCodeData = {
     value: string

@@ -54,7 +54,7 @@ export class AxiiTextBasedComponent extends AxiiComponent {
             } else if( (current as Text).toText ){
                 content += (current as Text).toText()
             } else {
-                // 忽略不能 toText 的
+                // ignore Inline which cannot be converted to text
             }
             current = current.next
         }

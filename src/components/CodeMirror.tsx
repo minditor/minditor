@@ -1,7 +1,5 @@
 import {createElement, atom} from 'axii'
-import 'highlight.js/styles/xcode.css'
 import {Component} from "../DocumentContent.js";
-
 
 import {basicSetup} from "codemirror"
 import {EditorView, keymap} from "@codemirror/view"
@@ -27,7 +25,6 @@ export type CodeData = {
     language: keyof (typeof Code)['langToPlugin']
 }
 
-// TODO language selection
 export class Code extends Component {
     static displayName = 'Code'
     public element?: HTMLElement

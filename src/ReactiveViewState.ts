@@ -49,15 +49,15 @@ export class ReactiveViewState {
     }
     activateVisibleRangeRect() {
         const lastScrollEvent = atom<Event>(null)
-        // 这里的 this.view.globalState.document.addEventListener 是改造过的。
+        // CAUTION this.view.globalState.document.addEventListener is different from document.addEventListener, it returns a function to remove listener
         const removeScrollListener = this.view.globalState.document.addEventListener('scroll', (event) => {
             lastScrollEvent(event)
         })
 
-        // TODO 处理是否可见的问题？
+        // TODO use IntersectionObserver to detect visible range?
         this.visibleRangeRect = atomComputed(() => {
             if (!this.selectionRange()) return null
-            // CAUTION 读一下，这样每次 scrollEvent 都会触发重新计算 range.getBoundingClientRect()
+            // CAUTION call lastScrollEvent here, so every time scroll event fired will trigger range.getBoundingClientRect recompute
             lastScrollEvent()
 
             const range = this.view.globalState.selectionRange!
@@ -85,8 +85,8 @@ export class ReactiveViewState {
     }
     activateLastMouseUpPositionAfterRangeChange() {
         const removeMouseUpListener =  this.view.listen('mouseup', (e: MouseEvent) => {
-            // 这里需要用 nextTask 是因为但按住 shift key 的时候 mouseup 事件发生在 selectionchange 之后
             const { clientX, clientY } = e
+            // CAUTION we use nextTask here is because selection change event is fired after mouseup event where shift key is used.
             nextTask(() => {
                 if (this.selectionRange() && !this.selectionRange()?.isCollapsed) {
                     this.lastMouseUpPositionAfterRangeChange({left: clientX, top: clientY})
@@ -138,12 +138,10 @@ export class ReactiveViewState {
                 const range = this.view.globalState.rangeBeforeComposition!
 
                 if (isRangeEqual(this.lastRangeBeforeComposition, range)) {
-                    // console.log('range not changed', range, range.startOffset, range.endOffset)
                     return
                 }
 
                 const docRange = this.view.createDocRange(range)
-                // console.log('last range before composition', docRange.startText.props.value, docRange.startOffset, docRange.endText.props.value, docRange.endOffset)
                 this.rangeBeforeComposition(docRange)
                 this.lastRangeBeforeComposition = range.cloneRange()
             }

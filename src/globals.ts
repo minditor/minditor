@@ -43,16 +43,15 @@ export const state:GlobalState = (function() {
 
     document.addEventListener('selectionchange', (e) => {
         if (!isComposing) {
-            // CAUTION 特别注意这里要重新读 selection
+            // CAUTION we should use `window.getSelection()` to read selection, because in some browser, the selection object is always new, cannot be reused.
             rangeBeforeComposition = window.getSelection()!.rangeCount > 0 ? window.getSelection()!.getRangeAt(0) : null
         }
     })
 
 
-
     document.addEventListener('keydown', (e) => {
         if (hasCursor) {
-            // CAUTION keydown 发生在 compositionstart 之前，这个时候 selection 还没变，所以应该在这里记录 isComposing 才能保证正确
+            // CAUTION keydown happens before compositionstart, and the selection is not changed yet, we should record 'isComposing' here.
             if (e.isComposing || e.keyCode === 229) {
                 isComposing = true
             }
