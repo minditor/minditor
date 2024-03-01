@@ -795,7 +795,6 @@ describe('format range', () => {
         const range = document.createRange()
         const from = getByTestID(doc.element!, 'pt11')!
         const to = getByTestID(doc.element!, 'pt13')!
-
         range.setStart(from.firstChild!, 2)
         range.setEnd(to.firstChild!, 2)
 
@@ -813,6 +812,30 @@ describe('format range', () => {
                 {type: 'Text', value: '13'}
             ]
         }])
+
+        const range2 = document.createRange()
+        const from2 = getByText(doc.element!, '11', {exact:true})!
+        const to2 = getByText(doc.element!, '13', {exact:true})!
+        range2.setStart(from2.firstChild!, 1)
+        range2.setEnd(to2.firstChild!, 1)
+
+        view.formatRange(doc.view.createDocRange(range2)!,{underline: true})
+
+        const newData2 = doc.toJSON().children
+
+        expect(newData2).toMatchObject([{
+            type: 'Paragraph',
+            content: [
+                {type: 'Text', value: 'pt'},
+                {type: 'Text', value: '1', formats: {bold: true}},
+                {type: 'Text', value: '1', formats: {bold: true, underline:true}},
+                {type: 'Text', value: 'pt12', formats: {bold: true, underline:true}},
+                {type: 'Text', value: 'pt', formats: {bold: true, underline:true}},
+                {type: 'Text', value: '1', formats: {underline:true}},
+                {type: 'Text', value: '3'}
+            ]
+        }])
+
     })
 
 

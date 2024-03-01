@@ -1071,7 +1071,7 @@ export class DocumentContentView extends EventDelegator{
     splitText(text:Text, offset: number, block: Block) {
         const originValue = text.data.value
         this.content.updateText(originValue.slice(0, offset), text)
-        const splitInline = new Text({value: originValue.slice(offset)})
+        const splitInline = new Text({value: originValue.slice(offset), formats: {...(text.data?.formats ||{})}})
         this.append(splitInline, text, block)
         return splitInline
     }
