@@ -34,6 +34,6 @@ export class InlineCode extends InlineComponent {
     }
 
     toText() {
-        return this.value
+        return `\`${this.value}\``
     }
 }

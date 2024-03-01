@@ -85,4 +85,7 @@ export class ULItem extends AxiiTextBasedComponent {
             level: this.level(),
         }
     }
+    toText(): string {
+        return `- ${super.toText()}`;
+    }
 }

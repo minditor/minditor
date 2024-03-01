@@ -65,7 +65,9 @@ export class Code extends Component {
         }
     }
     toText() {
-        return this.editor?.state.doc.toString() ?? this.data.value
+        return `\`\`\`${this.data.language}
+${this.editor?.state.doc.toString() ?? this.data.value}
+\`\`\``
     }
     onMount() {
         this.editor =new EditorView({

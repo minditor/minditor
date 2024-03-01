@@ -98,18 +98,6 @@ export class Heading extends AxiiTextBasedComponent {
     }
 
     toText() {
-        let content = this.useIndex() ? this.displayIndex() + ' ' : ''
-        let current = this.firstChild
-        while (current) {
-            if (current instanceof Text) {
-                content += current.data.value
-            } else if ((current as Text).toText) {
-                content += (current as Text).toText()
-            } else {
-                // 忽略不能 toText 的
-            }
-            current = current.next
-        }
-        return content
+        return this.displayIndex() + ' ' + super.toText()
     }
 }
