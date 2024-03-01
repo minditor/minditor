@@ -42,7 +42,6 @@ Minditor provides the following commands for quick editing:
 - Type - + [Space] at the beginning of a paragraph to insert an unordered list. 
 - Type 1. + [Space]at the beginning of a paragraph to insert an ordered list.- Type ` + [ANY_CHARS] + ` to insert Inline Code.
 - Type ``` + [Language Name] at  the beginning of a paragraph to  insert a code editor.
-  Range Tool Plugin
 
 ## 2.3 Range Tool Plugin
 Hovering over selected text with the mouse will display a floating toolbar, allowing you to change font styles or create links.
