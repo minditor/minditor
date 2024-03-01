@@ -373,20 +373,22 @@ export class DocumentContentView extends EventDelegator{
         return { shouldSetRange: true, range: DocRange.cursor(range.startBlock, range.startText, range.startOffset)}
     }
 
-    @saveHistoryPacket
     @setEndRange
     inputComposedData (e: CompositionEvent) {
         const cursorBeforeComposition = this.state.rangeBeforeComposition()!
+        // CAUTION manually call openPacket here because we use cursorBeforeComposition as startCursor
+        this.history?.openPacket(cursorBeforeComposition)
+
         const succeed = this.tryUseDefaultBehaviorForRange(cursorBeforeComposition, e)
-
         this.updateRange(cursorBeforeComposition, e.data)
-
         this.resetUseDefaultBehavior()
         this.dispatch(new CustomEvent(INPUT_CHAR_EVENT, {detail: e.data}))
 
+        const endCursor = DocRange.cursor(cursorBeforeComposition.startBlock, cursorBeforeComposition.startText, cursorBeforeComposition.startOffset + e.data.length)
+        this.history?.closePacket(endCursor)
         return {
             shouldSetRange: !succeed,
-            range: DocRange.cursor(cursorBeforeComposition.startBlock, cursorBeforeComposition.startText, cursorBeforeComposition.startOffset + e.data.length)
+            range: endCursor
         }
     }
 
