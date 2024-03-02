@@ -45,6 +45,9 @@ export class AxiiComponent extends Component {
 
 export class AxiiTextBasedComponent extends AxiiComponent {
     static asTextNode = true
+    renderContainer() {
+        return <div style={{display: 'block'}} contenteditable={true}></div>
+    }
     toText() {
         let content = ''
         let current = this.firstChild

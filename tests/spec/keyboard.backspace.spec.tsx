@@ -95,8 +95,7 @@ test.describe('keyboard Backspace actions', () => {
 
       // CAUTION 一定要定位到 heading 的 contenteditable 的位置输入，不然在 chromium/webkit 里面会自动跳到最外面的 contenteditable。
       // 1.2 执行动作
-      const headingEditable = await page.getByTestId('heading-editable-container').first().elementHandle()
-      await headingEditable!.press('Backspace')
+      await page.doc.element.press('Backspace')
 
       // 2.1 测试数据结构
       const dataToCompare = structuredClone(data)

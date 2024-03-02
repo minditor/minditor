@@ -78,13 +78,10 @@ export class Heading extends AxiiTextBasedComponent {
         const Tag = `h${this.level() + 1}`
 
         // @ts-ignore
-        const result = <Tag id={this.id}>
-            {() => this.displayIndex() ? <span style={{marginRight: 8}}>{this.displayIndex()}</span> : null}
+        return <Tag id={this.id}>
+            {() => this.displayIndex() ? <span contenteditable={false} style={{marginRight: 8, userSelect:"none"}}>{this.displayIndex()}</span> : null}
             <span data-testid='heading-editable-container' contenteditable={true}>{children}</span>
         </Tag> as HTMLElement
-
-        result.contentEditable = 'false'
-        return result
     }
 
     toJSON(): any {

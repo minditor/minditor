@@ -50,13 +50,14 @@ export class ULItem extends AxiiTextBasedComponent {
         this.indexRoot?.destroy()
     }
     renderContainer() {
-        return <div style={{display:'flex', alignItems:'baseline'}} contenteditable={false}></div>
+        return <div style={{display:'flex', alignItems:'baseline'}} contenteditable={true}></div>
     }
     renderInner({children}: { children: any }) {
         const dotStyle = () => {
             return {
                 marginRight: 8,
                 marginLeft: this.level() * 18,
+                userSelect: 'none'
             }
         }
         const contentStyle =  {
@@ -67,10 +68,10 @@ export class ULItem extends AxiiTextBasedComponent {
             overflowWrap:'break-word',
             whiteSpace:'normal',
             // CAUTION If minWidth is no set, the content will no change line.
-            minWidth:0
+            minWidth:0,
         }
         return <>
-            <div style={dotStyle}>
+            <div style={dotStyle} contenteditable={false}>
                 {() => LIST_DOTS[this.level()] ?? LIST_DOTS[0]}
             </div>
             <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle}>

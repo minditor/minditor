@@ -88,7 +88,8 @@ export class OLItem extends AxiiTextBasedComponent {
                 marginLeft: this.level() * 18,
                 flexGrow:0,
                 flexShrink:0,
-                flexBasis:'auto'
+                flexBasis:'auto',
+                userSelect: 'none'
             }
         }
 

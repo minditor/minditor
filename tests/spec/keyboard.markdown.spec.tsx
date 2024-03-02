@@ -39,7 +39,7 @@ test.describe('markdown insert commands', () => {
 
     // 1.2 执行动作
     await page.doc.element.press('#')
-    await page.doc.element.press(' ')
+    await page.doc.element.press('Space')
     // CAUTION plugin 都是在 nextTick 里面执行的，所以这里要等一下。
     await nextTick()
 
