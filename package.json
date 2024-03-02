@@ -1,6 +1,6 @@
 {
   "name": "minditor",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A highly customizable rich text editor for developers.",
   "type": "module",
   "types": "./dist/minditor.d.ts",
