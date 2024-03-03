@@ -42,7 +42,7 @@ const plugins = [
     createSuggestionTool(defaultSuggestionWidgets),
     createTOCTool()
 ]
-const result = scaffold(root, {data: jsonData, types, plugins})
+const result = scaffold(root, {data: jsonData, types, plugins}, {debug: true})
 result.render()
 
 

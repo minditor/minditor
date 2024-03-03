@@ -105,7 +105,7 @@ export class OLItem extends AxiiTextBasedComponent {
         }
         return <>
             <div style={dotStyle}><span>{this.displayIndex}</span></div>
-            <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle}>
+            <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle} data-content-container={true}>
                 {children}
             </div>
         </>

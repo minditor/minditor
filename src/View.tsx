@@ -145,7 +145,6 @@ export class DocumentContentView extends EventDelegator{
     }
     @preventPatchIfUseDefaultBehavior
     patchAppend ({ args }: EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>) {
-    // patchAppend =({ args }: EmitData<Parameters<DocumentContent["append"]>, ReturnType<DocumentContent["append"]>>) => {
         const [docNode, ref, parent] = args
         if (ref) {
             const refElement = this.docNodeToElement.get(ref!) as HTMLElement
@@ -157,8 +156,9 @@ export class DocumentContentView extends EventDelegator{
                 this.element!.appendChild(element!)
             } else {
                 const parentElement = this.docNodeToElement.get(parent!) as HTMLElement
+                const contentContainer = parentElement.querySelector('[data-content-container]') || parentElement
                 const element = this.renderDocNodeOrFragment(docNode)
-                parentElement.appendChild(element!)
+                contentContainer.appendChild(element!)
             }
         }
 
@@ -444,7 +444,7 @@ export class DocumentContentView extends EventDelegator{
 
         // 2. at head of para(!startText.prev() && startOffset === 0)
         if (!startText.prev()) {
-            // 2.1 if the block has unwrap method, call it
+            // 2.1 if the block has `unwrap` method, call it
             if ((startBlock.constructor as typeof Block).unwrap) {
                 // heading/listItem will unwrap into para
                 const newPara = (startBlock.constructor as typeof Block).unwrap!(this.content, startBlock)

@@ -95,7 +95,7 @@ export class Inline extends DocNode {
 
 
 export type EmitData<T, U> = {
-    method: string,
+    method: keyof typeof DocumentContent,
     args: T,
     result: U
 }

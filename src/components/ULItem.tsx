@@ -74,7 +74,7 @@ export class ULItem extends AxiiTextBasedComponent {
             <div style={dotStyle} contenteditable={false}>
                 {() => LIST_DOTS[this.level()] ?? LIST_DOTS[0]}
             </div>
-            <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle}>
+            <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle} data-content-container={true}>
                 {children}
             </div>
         </>

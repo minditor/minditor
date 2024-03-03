@@ -80,7 +80,7 @@ export class Heading extends AxiiTextBasedComponent {
         // @ts-ignore
         return <Tag id={this.id}>
             {() => this.displayIndex() ? <span contenteditable={false} style={{marginRight: 8, userSelect:"none"}}>{this.displayIndex()}</span> : null}
-            <span data-testid='heading-editable-container' contenteditable={true}>{children}</span>
+            <span data-testid='heading-editable-container' contenteditable={true} data-content-container={true}>{children}</span>
         </Tag> as HTMLElement
     }
 
