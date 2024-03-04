@@ -1,7 +1,7 @@
 import {atom, Atom, atomComputed, destroyComputed} from 'axii'
-import {idleThrottle, nextJob, nextTask} from "./util";
-import {Block, DocNode} from "./DocumentContent.js";
-import {CONTENT_RANGE_CHANGE, DocumentContentView} from "./View";
+import {idleThrottle, nextTask} from "./util";
+import {Block, DocNode, DocumentContent} from "./DocumentContent.js";
+import {DocumentContentView} from "./View";
 import {DocRange} from "./Range.js";
 
 type Position = {
@@ -11,12 +11,6 @@ type Position = {
     bottom?: number
 }
 
-type DeviceInfo = {
-    type: 'mouse'|'keyboard',
-    key: string,
-    top: number,
-    left: number
-}
 
 export class ReactiveViewState {
     public lastActiveDeviceType: Atom<'mouse'|'keyboard'|null> = atom(null)
@@ -25,7 +19,7 @@ export class ReactiveViewState {
     public selectionRange: Atom<DocRange|null> = atom(null)
     public hasRange!: Atom<boolean>
     public rangeBeforeComposition: Atom<DocRange|null> = atom(null)
-    public lastMouseEnteredBlock: Atom<Block|null> = atom(null)
+    public lastMouseEnteredActiveBlock: Atom<Block|null> = atom(null)
     public visibleRangeRect!: Atom<{top:number, left: number, height:number, width: number}|null>
     public bodyViewPortSize: Atom<{width: number, height: number}> = atom({width: 0, height: 0})
     public destroyHandles: Set<(() => any)|void>
@@ -148,9 +142,31 @@ export class ReactiveViewState {
         })
     }
     activateMouseEnteredBlockNode() {
-        return this.view.listen('block:mouseenter', (e: CustomEvent) => {
-            this.lastMouseEnteredBlock(this.view.elementToDocNode.get(e.target as HTMLElement) as Block)
+        const deleteBetweenListener = ({args}: {args:any}) => {
+            const [start, end, parent] = args as [DocNode, DocNode, DocNode|DocumentContent]
+            if (parent instanceof DocumentContent)  {
+
+                let startBlock: DocNode|null = start
+                while(startBlock && startBlock!== end) {
+                    if (startBlock === this.lastMouseEnteredActiveBlock()) {
+                        this.lastMouseEnteredActiveBlock(null)
+                        break
+                    }
+                    startBlock = startBlock.next
+                }
+            }
+        }
+
+        this.view.content.addListener('deleteBetween', deleteBetweenListener)
+
+        const removeViewMouseEnterListener =  this.view.listen('block:mouseenter', (e: CustomEvent) => {
+            this.lastMouseEnteredActiveBlock(this.view.elementToDocNode.get(e.target as HTMLElement) as Block)
         })
+
+        return () => {
+            this.view.content.removeListener('deleteBetween', deleteBetweenListener)
+            removeViewMouseEnterListener()
+        }
     }
 
 }

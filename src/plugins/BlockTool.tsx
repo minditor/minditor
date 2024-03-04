@@ -22,9 +22,9 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
         }
 
         calculatePosition(outsideDocBoundary: boolean) {
-            const {lastMouseEnteredBlock} = this.document.view.state
+            const {lastMouseEnteredActiveBlock} = this.document.view.state
             const boundaryRect = this.document.view.getContainerBoundingRect()!
-            const blockUnitRect = this.document.view.getBoundingRectOfBlock(lastMouseEnteredBlock()!)
+            const blockUnitRect = this.document.view.getBoundingRectOfBlock(lastMouseEnteredActiveBlock()!)
 
             return outsideDocBoundary ? {
                 position: 'fixed',
@@ -39,11 +39,11 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
         public hover = atom(false)
 
         render(outsideDocBoundary: boolean) {
-            const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+            const {lastMouseEnteredActiveBlock, lastActiveDeviceType} = this.document.view.state
 
             const style = () => {
                 // should display none if there is no range.
-                if (!this.hover() && (!lastMouseEnteredBlock() || lastActiveDeviceType() !== 'mouse')) return {display: 'none'}
+                if (!(lastMouseEnteredActiveBlock() && lastActiveDeviceType() === 'mouse')) return {display: 'none'}
 
                 const positionAttrs = this.calculatePosition(outsideDocBoundary)
 
@@ -101,16 +101,16 @@ export function createInsertWidget(InsertHandle: any, widgetName: string = 'Bloc
         public static displayName = `Insert${widgetName}Widget`
         insert = (initialData:BlockData) => {
             this.document.history.openPacket(this.document.view.state.selectionRange())
-            const {lastMouseEnteredBlock} = this.document.view.state
+            const {lastMouseEnteredActiveBlock} = this.document.view.state
             const Block = this.document.content.createFromData(initialData)
-            this.document.view.replace(Block, lastMouseEnteredBlock()!, this.document.content)
+            this.document.view.replace(Block, lastMouseEnteredActiveBlock()!, this.document.content)
             this.document.history.closePacket(null)
         }
 
         render() {
-            const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+            const {lastMouseEnteredActiveBlock, lastActiveDeviceType} = this.document.view.state
             return () => {
-                if (lastActiveDeviceType() ==='mouse' && lastMouseEnteredBlock() instanceof Paragraph && (lastMouseEnteredBlock() as Paragraph)!.isEmpty) {
+                if (lastActiveDeviceType() ==='mouse' && lastMouseEnteredActiveBlock() instanceof Paragraph && (lastMouseEnteredActiveBlock() as Paragraph)!.isEmpty) {
                     return <div style={{padding:'6px 0'}}>
                         <InsertHandle insert={this.insert}/>
                     </div>
@@ -130,14 +130,14 @@ export class DeleteWidget extends BlockToolWidget {
     deleteBlock = () => {
         const range = this.document.view.state.selectionRange()
         this.document.history.openPacket(range)
-        const {lastMouseEnteredBlock} = this.document.view.state
-        this.document.view.deleteBetween(lastMouseEnteredBlock()!, lastMouseEnteredBlock()!.next, this.document.content)
-        this.document.history.closePacket(range?.startBlock === lastMouseEnteredBlock()  ? null : range)
+        const {lastMouseEnteredActiveBlock} = this.document.view.state
+        this.document.view.deleteBetween(lastMouseEnteredActiveBlock()!, lastMouseEnteredActiveBlock()!.next, this.document.content)
+        this.document.history.closePacket(range?.startBlock === lastMouseEnteredActiveBlock()  ? null : range)
     }
     render() {
-        const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+        const {lastMouseEnteredActiveBlock, lastActiveDeviceType} = this.document.view.state
         return () => {
-            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredBlock() instanceof Paragraph && (lastMouseEnteredBlock() as Paragraph)!.isEmpty)) {
+            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredActiveBlock() instanceof Paragraph && (lastMouseEnteredActiveBlock() as Paragraph)!.isEmpty)) {
                 return <div style={{padding:'6px 0'}}>
                     <div
                         style={{
@@ -163,16 +163,16 @@ export class DeleteWidget extends BlockToolWidget {
 export class CopyWidget extends BlockToolWidget {
     public static displayName = `CopyBlockWidget`
     copyBlock = () => {
-        const {lastMouseEnteredBlock} = this.document.view.state
-        this.document.clipboard.setData('application/json', [lastMouseEnteredBlock()!.toJSON()])
-        if ((lastMouseEnteredBlock() as TextBasedBlock).toText) {
-            this.document.clipboard.setData('text/plain', (lastMouseEnteredBlock() as TextBasedBlock).toText())
+        const {lastMouseEnteredActiveBlock} = this.document.view.state
+        this.document.clipboard.setData('application/json', [lastMouseEnteredActiveBlock()!.toJSON()])
+        if ((lastMouseEnteredActiveBlock() as TextBasedBlock).toText) {
+            this.document.clipboard.setData('text/plain', (lastMouseEnteredActiveBlock() as TextBasedBlock).toText())
         }
     }
     render() {
-        const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+        const {lastMouseEnteredActiveBlock, lastActiveDeviceType} = this.document.view.state
         return () => {
-            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredBlock() instanceof Paragraph && (lastMouseEnteredBlock() as Paragraph)!.isEmpty)) {
+            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredActiveBlock() instanceof Paragraph && (lastMouseEnteredActiveBlock() as Paragraph)!.isEmpty)) {
                 return <div style={{padding:'6px 0'}}>
                     <div
                         style={{
@@ -200,9 +200,9 @@ export class CutWidget extends BlockToolWidget {
     cutBlock = () => {
         const range = this.document.view.state.selectionRange()
         this.document.history.openPacket(range)
-        const {lastMouseEnteredBlock} = this.document.view.state
-        const cutBlock = lastMouseEnteredBlock()!
-        this.document.view.deleteBetween(lastMouseEnteredBlock()!, lastMouseEnteredBlock()!.next, this.document.content)
+        const {lastMouseEnteredActiveBlock} = this.document.view.state
+        const cutBlock = lastMouseEnteredActiveBlock()!
+        this.document.view.deleteBetween(lastMouseEnteredActiveBlock()!, lastMouseEnteredActiveBlock()!.next, this.document.content)
 
         this.document.clipboard.setData('application/json', [cutBlock.toJSON()])
         if ((cutBlock as TextBasedBlock).toText) {
@@ -211,9 +211,9 @@ export class CutWidget extends BlockToolWidget {
         this.document.history.closePacket(range?.startBlock === cutBlock ? null : range)
     }
     render() {
-        const {lastMouseEnteredBlock, lastActiveDeviceType} = this.document.view.state
+        const {lastMouseEnteredActiveBlock, lastActiveDeviceType} = this.document.view.state
         return () => {
-            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredBlock() instanceof Paragraph && (lastMouseEnteredBlock() as Paragraph)!.isEmpty)) {
+            if (lastActiveDeviceType() ==='mouse' && !(lastMouseEnteredActiveBlock() instanceof Paragraph && (lastMouseEnteredActiveBlock() as Paragraph)!.isEmpty)) {
                 return <div style={{padding:'6px 0'}}>
                     <div
                         style={{

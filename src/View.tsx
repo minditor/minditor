@@ -114,8 +114,8 @@ export class DocumentContentView extends EventDelegator{
         super()
         this.globalState = globalState
         this.history = document.history
-        this.state = new ReactiveViewState(this)
         this.content = document.content
+        this.state = new ReactiveViewState(this)
         this.content.on('append', this.patchAppend.bind(this))
         this.content.on('prepend', this.patchPrepend.bind(this))
         this.content.on('replace', this.patchReplace.bind(this))
