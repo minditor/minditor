@@ -19,7 +19,7 @@
     "jsxFactory": "createElement",
     "jsxFragmentFactory": "Fragment",
     "lib": ["esnext", "dom"],
-    "types": ["node"],
+    "types": ["node", "vitest"],
     "allowSyntheticDefaultImports": true,
     "declaration": true,
     "paths": {
@@ -40,8 +40,9 @@
     "react-calendar.tsx",
     "readme.tsx",
     "site/**/*",
-    "__test__/**/*",
+    "vitestExtend.d.ts",
+    "__test__",
     "vite.prod.config.ts"
-  ],
+  ]
 
 }

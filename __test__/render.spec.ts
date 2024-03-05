@@ -1,9 +1,8 @@
 /**
  * @vitest-environment jsdom
  */
-import {DocumentContent, Paragraph, Text, DocumentContentView, Heading, OLItem, Document} from "../src/index.js";
-import { state as globalState} from '../src/globals.js'
-import {expect, describe, test} from "vitest";
+import {Document, Heading, OLItem, Paragraph, Text} from "../src/index.js";
+import {describe, expect, test} from "vitest";
 
 describe('basic render', () => {
     test('render Paragraph', () => {

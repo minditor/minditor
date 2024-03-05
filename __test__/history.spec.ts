@@ -358,6 +358,8 @@ describe('delete at content head', () => {
         doc.render()
         const element = doc.element!
 
+        const elementCloneBeforeChange = element.cloneNode(true)
+
         const range = document.createRange()
         range.setStart(getByTestID(element, 'section')!, 0)
         range.setEnd(getByTestID(element, 'section')!, 0)
@@ -386,6 +388,8 @@ describe('delete at content head', () => {
         expect(element.textContent).toBe('sectionpt11pt12pt13')
         doc.history.undo()
         expect(doc.content.toJSON()).toMatchObject(contentData)
+        // @ts-ignore FIXME typescript error, vitest type augment not working.
+        expect(elementCloneBeforeChange).toMatchDOM(element)
     })
 
     test('delete at head with previous sibling in tree', () => {
@@ -591,6 +595,8 @@ describe('delete at content head', () => {
         doc.render()
         const element = doc.element!
 
+        const elementCloneBeforeChange = element.cloneNode(true)
+
         const range = document.createRange()
         const from = getByTestID(element, 'l213')!
         range.setStart(from, 0)
@@ -643,6 +649,9 @@ describe('delete at content head', () => {
         expect(element.textContent).toBe('1.l11l12l131.1.l111l112l1132.l21l22l23l213l212l2131.l31l32l33')
         doc.history.undo()
         expect(doc.content.toJSON()).toMatchObject(contentData)
+        // @ts-ignore FIXME typescript error, vitest type augment not working.
+        expect(elementCloneBeforeChange).toMatchDOM(element)
+
     })
 })
 

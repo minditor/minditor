@@ -7,5 +7,6 @@ export default defineConfig({
     test: {
         // ...
         include: ['__test__/**/*.spec.ts'],
+        setupFiles: ['__test__/extend.ts'],
     },
 })
