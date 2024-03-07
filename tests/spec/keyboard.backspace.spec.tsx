@@ -10,6 +10,7 @@ import { data as multiSectionData } from './data/multiSection'
 import { data as nestedListData } from './data/nestedList'
 import { data as multiParaData } from './data/multiPara'
 import { data as inlineComponentData } from './data/inlineComponent'
+import { data as miscData } from './data/misc'
 // import { data } from './data/playgroundMultiPara'
 import {extend, stringifyNodeData} from "./extend";
 
@@ -74,7 +75,55 @@ test.describe('keyboard Backspace actions', () => {
           collapsed: true
         })
       }, [originFirstParaLastText])
+    })
 
+    test('Empty Para head with List as prev. Should delete empty para.', async ({page}) => {
+      await page.load('misc')
+      const data = miscData
+      const allText = stringifyNodeData(data)
+      const focusTestId = 'emptyParaHead'
+
+      const focusTextEl = await page.getByTestId(focusTestId).elementHandle()
+
+      // 1.1 设置焦点
+      await page.setSelection(focusTextEl, 0)
+      await page.expect(() => window.getSelection()!.rangeCount === 1)
+
+      // 1.2 执行动作
+      await page.doc.element.press('Backspace')
+
+      // 2.1 测试数据结构
+      const dataToCompare = structuredClone(data)
+      dataToCompare.children.pop()
+      expect(await page.doc.root.toJSON()).toMatchObject(dataToCompare.children)
+
+
+      const lastText = dataToCompare.children.at(-1)!.content.at(-1)!.value
+      // 2.2 测试 dom
+      await page.evaluate(([lastText, dataToCompare, allText]) => {
+        const originPara = window.page.getByText(lastText as string, {exact:true}).parentElement!
+        const contentContainer = originPara.parentElement!.parentElement
+
+        window.expectDOMMatch(contentContainer,
+            <any>
+              <any data-testignorechildren></any>
+              <any data-testignorechildren></any>
+              <any data-testignorechildren></any>
+            </any>
+        )
+      }, [lastText, dataToCompare, allText])
+
+
+      const originFirstParaLastText = data.children[0].content.at(-1)!.value
+      // 2.3 range 测试
+      await page.evaluate(([lastText]) => {
+        const focusEl = window.page.getByText(lastText, {exact:true})
+        window.expectSelectionMatch({
+          startContainer: focusEl!.firstChild,
+          startOffset: lastText.length,
+          collapsed: true
+        })
+      }, [lastText])
     })
 
     test('Section content head. Should become paragraph.', async ({page}) => {

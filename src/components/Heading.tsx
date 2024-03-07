@@ -11,7 +11,6 @@ type HeadingData = {
 
 export class Heading extends AxiiTextBasedComponent {
     static displayName = 'Heading'
-    static asTextNode = true
 
     static unwrap(doc: DocumentContent, block: Block) {
         const heading = block as Heading

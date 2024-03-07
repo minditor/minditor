@@ -467,7 +467,7 @@ export class DocumentContentView extends EventDelegator{
 
 
             // 2.3. the last block is Component
-            if (startBlock.prev() instanceof Component) {
+            if (startBlock.prev() instanceof Component && !(startBlock.prev()!.constructor as typeof Component).asTextNode!) {
                 this.content.deleteBetween(startBlock.prev()!, startBlock, this.content)
                 return { shouldSetRange: true, range }
             }
@@ -480,7 +480,7 @@ export class DocumentContentView extends EventDelegator{
             }
 
             // 2.5. the last block is a normal block
-            // 2.5.1. the last block is a component, set range to the end of the last block
+            // 2.5.1. the start block is a component, set range to the end of the last block
             if(startBlock instanceof Component) {
                 return { shouldSetRange: true, range: DocRange.cursor(startBlock.prev()!, startBlock.prev()?.lastChild! as Text, Infinity)}
             }

@@ -51,6 +51,7 @@ export class DocNode {
 
 export class Block extends DocNode {
     static displayName = 'Block'
+    static asTextNode?: boolean
     static unwrap?: (doc: DocumentContent, block: any) => void|undefined|Block
     static wrap?: (doc: DocumentContent, block: any) => void|undefined|Block
     // indicate whether the block can be split into two blocks of the same type
@@ -185,6 +186,7 @@ export class Text extends Inline {
 
 
 export class TextBasedBlock extends Block {
+    static asTextNode = true
     toText() {
         let content = ''
         let current = this.firstChild
