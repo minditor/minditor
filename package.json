@@ -10,9 +10,9 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/axii.js",
-      "require": "./dist/axii.umd.cjs",
-      "types": "./dist/axii.d.ts"
+      "import": "./dist/minditor.js",
+      "require": "./dist/minditor.umd.cjs",
+      "types": "./dist/minditor.d.ts"
     }
   },
   "scripts": {
