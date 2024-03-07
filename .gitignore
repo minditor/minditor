@@ -23,7 +23,6 @@ nohup.out
 _site
 _data
 dist
-lib
 typings
 coverage
 .next
