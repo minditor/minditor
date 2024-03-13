@@ -78,7 +78,7 @@ export class OLItem extends AxiiTextBasedComponent {
         this.indexRoot?.destroy()
     }
     renderContainer() {
-        return <div style={{display:'flex', alignItems:'baseline'}} contenteditable={false}></div>
+        return <div style={{display:'flex', alignItems:'baseline'}} contenteditable={true}></div>
     }
 
     renderInner({children}: { children: any }) {
@@ -104,7 +104,7 @@ export class OLItem extends AxiiTextBasedComponent {
             minWidth:0
         }
         return <>
-            <div style={dotStyle}><span>{this.displayIndex}</span></div>
+            <div style={dotStyle} contenteditable={false}><span>{this.displayIndex}</span></div>
             <div contenteditable={true} data-testid='ULItem-editable-container' style={contentStyle} data-content-container={true}>
                 {children}
             </div>
