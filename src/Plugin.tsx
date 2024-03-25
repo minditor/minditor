@@ -16,6 +16,7 @@ export class Plugin {
     // Plugin use these to listen to events and decide whether to activate or deactivate
     public static activateEvents: {[k: string]: (e:any) => boolean}
     public static deactivateEvents: {[k: string]: (e:any) => boolean}
+    public static position: 'sameScroll' | 'sameContainer' | 'outOfScroll' = 'sameContainer'
     public activated = atom(false)
     public root?: ReturnType<typeof createRoot>
     public removeListenerHandles = new Set<() => any>()
@@ -122,5 +123,4 @@ export class Plugin {
             this.activate()
         }
     }
-
 }

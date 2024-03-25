@@ -108,6 +108,7 @@ export class DocumentContentView extends EventDelegator{
     public attached = false
     public componentsToCallOnMount =  new Set<Component|InlineComponent>()
     public componentsToCallOnUnmount =  new Set<Component|InlineComponent>()
+    public scrollContainer: HTMLElement|null = null
 
     constructor(public document: Document, globalState: GlobalState ) {
 
@@ -665,7 +666,7 @@ export class DocumentContentView extends EventDelegator{
     }
 
     get boundaryContainer() {
-        return this.element?.parentElement
+        return this.scrollContainer ?? this.element?.parentElement
     }
     getContainerBoundingRect() {
         return this.boundaryContainer?.getBoundingClientRect()

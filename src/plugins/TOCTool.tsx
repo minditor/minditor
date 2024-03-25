@@ -8,13 +8,13 @@ import {Heading} from "../components/Heading.js";
 
 class TOCToolPlugin extends Plugin {
     public static displayName = `TOCTool`
+    public static position: (typeof Plugin)['position'] = 'outOfScroll'
 }
 
 export type TOCToolConfig = {
 
 }
 
-// TODO support use custom container out of document
 export function createTOCTool( config?: any) {
     return class OneTOCToolPlugin extends TOCToolPlugin {
         public contents: Atom<Heading[]> = atom([])
@@ -47,10 +47,10 @@ export function createTOCTool( config?: any) {
             const style = () => {
                 return {
                     display: 'block',
-                    position: 'absolute',
-                    right: 'calc(100% + 60px)',
-                    height: '100%',// pluginContainer is as same height of document, so we can also set to 100%
-                    overflowY: 'auto',
+                    // position: 'absolute',
+                    // right: 'calc(100% + 60px)',
+                    // height: '100%',// pluginContainer is as same height of document, so we can also set to 100%
+                    // overflowY: 'auto',
                     padding: 10,
                     borderRadius: 4,
                     background: '#fff',

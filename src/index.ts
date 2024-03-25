@@ -22,3 +22,4 @@ export * from './plugins/TOCTool.js'
 export * from './scaffold.js'
 export {AxiiComponent} from "./AxiiComponent.js";
 export {AxiiInlineComponent} from "./AxiiComponent.js";
+export {DebugApp} from "./DebugApp.js";

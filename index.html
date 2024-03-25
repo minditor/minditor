@@ -28,8 +28,10 @@
       margin-block-end: 0;
     }
 
+
     #root {
-      max-width: 800px;
+      max-width: 1200px;
+      width: auto;
       margin: 0 auto;
       /* 必须提供 position 后面 pluginContainer 要用于定位*/
       position: relative;
@@ -40,6 +42,12 @@
 
       overflow-x: visible;
       /*overflow-y: auto;*/
+    }
+
+    @media (max-width: 1200px) {
+      #root {
+        max-width: 100%;
+      }
     }
 
     /* HTML: <div class="loader"></div> */

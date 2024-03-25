@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        body {
+            color: #fff
+        }
+        #container {
+            display: flex;
+            align-items: stretch;
+            height: 400px;
+            border: 1px dashed #000;
+            justify-content: center;
+        }
+
+        #containerLeft {
+            background-color: #2f5aae;
+            width: 100px;
+            overflow-y:auto;
+        }
+
+        #containerLeftContent {
+            height: 1000px;
+        }
+
+        #containerRight {
+            background-color: #c00e16;
+        }
+
+        #containerMiddle {
+            flex-grow: 1;
+            display: flex;
+            align-items: flex-start;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        #pluginContainer {
+            position: absolute;
+            left:0;
+            top:0;
+            height: 100%;
+        }
+
+        #docLeft {
+            background-color: #baa65e;
+        }
+
+        #docMiddle {
+            flex-grow:1
+        }
+
+        #docHeader {
+            background-color: #5ca240;
+            height: 100px;
+        }
+
+        #docContent {
+            background-color: #a534be;
+            height: 800px;
+        }
+
+        #docFooter {
+            background-color: #10141a;
+            height: 100px;
+            min-width: 300px;
+        }
+
+        #docRight {
+            width: 100px;
+            background-color: #38cac5;
+        }
+    </style>
+</head>
+<body>
+
+<div id="container">
+    <div id="containerLeft">
+        <div id="containerLeftContent"></div>
+    </div>
+    <div id="scrollContainer">
+        <div id="pluginContainer">
+            plugin
+        </div>
+        <div id="docLeft">doc left</div>
+        <div id="docContainer">
+            <div id="docHeader">doc header</div>
+            <div id="docContent">doc content</div>
+            <div id="docFooter">doc footer</div>
+        </div>
+        <div id="docRight">doc right</div>
+    </div>
+    <div id="containerRight">container right</div>
+</div>
+
+</body>
+</html>

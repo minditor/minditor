@@ -20,6 +20,7 @@ export class RangeWidget {
 
 class RangeTool extends Plugin {
     public rangeWidgets: RangeWidget[] = []
+    public static position: (typeof Plugin)['position'] = 'outOfScroll'
 }
 
 
@@ -58,8 +59,8 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
                 positionAttrs.position = 'absolute'
                 positionAttrs.top -= boundaryRect.top
                 positionAttrs.left -= boundaryRect.left
-
             }
+
             return positionAttrs
         }
         render(outsideDocBoundary: boolean) {
@@ -84,7 +85,7 @@ export function createRangeTool(RangeWidgets: (typeof RangeWidget)[]) {
                     height: 'fit-content',
                     // no change line
                     whiteSpace: 'nowrap',
-                    zIndex: 100000
+                    zIndex: 100000000
                 }
             }
 

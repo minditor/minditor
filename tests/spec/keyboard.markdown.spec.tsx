@@ -170,7 +170,7 @@ test.describe('markdown insert commands', () => {
 
     // 2.2 测试 dom
     await page.evaluate(([ ZWSP]) => {
-      const contentContainer = window.page.getByTestId('root').firstChild!.firstChild!
+      const contentContainer = window.page.getByTestId('docContent').firstChild!
       window.expectDOMMatch(contentContainer,
           <any>
             <any data-testignorechildren></any>

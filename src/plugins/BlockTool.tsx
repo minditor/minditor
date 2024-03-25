@@ -11,6 +11,7 @@ import Cut from "../icons/Cut.js";
 
 class BlockToolPlugin extends Plugin {
     public static displayName = `BlockTool`
+    public static position: (typeof Plugin)['position'] = 'outOfScroll'
     public items: BlockToolWidget[] = []
 }
 
@@ -28,11 +29,13 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
 
             return outsideDocBoundary ? {
                 position: 'fixed',
-                top: blockUnitRect.top
+                top: blockUnitRect.top,
+                left: blockUnitRect.left
             } : {
                 // plugin container uses position `relative` to the document, so we can use position `absolute` here.
                 position: 'absolute',
-                top: blockUnitRect.top - boundaryRect.top
+                top: blockUnitRect.top - boundaryRect.top,
+                left: blockUnitRect.left
             }
         }
 
@@ -50,8 +53,10 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                 return {
                     display: 'block',
                     ...positionAttrs,
-                    right: 'calc(100% + 10px)',
+                    // right: 'calc(100% + 10px)',
+                    transform: 'translate(-100%, 0)',
                     marginTop: -10,
+                    marginLeft: -10,
                     padding: 10,
                     borderRadius: 4,
                     background: '#fff',
@@ -59,7 +64,7 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                     boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                     transition: 'all',
                     whiteSpace: 'nowrap',
-                    zIndex: 100000
+                    zIndex: 100000000
                 }
             }
 

@@ -59,6 +59,13 @@ const plugins = [
     createTOCTool()
 ]
 //@ts-ignore
-const result = scaffold(root, {data: jsonData, types, plugins} )
+const result = scaffold(root, {data: jsonData, types, plugins}, {
+    styles: {
+        containerLeft: {
+            flexShrink: 0,
+            flexGrow: 0,
+        }
+    }
+} )
 result.render()
 
