@@ -25,6 +25,7 @@ export class AxiiInlineComponent extends InlineComponent {
 export class AxiiComponent extends Component {
 
     public axiiRoot: any
+    public axiiSettingsRoot: any
     renderContainer() {
         return <div style={{display: 'block'}} contenteditable={false}></div>
     }
@@ -40,6 +41,15 @@ export class AxiiComponent extends Component {
         this.axiiRoot = createRoot(rootElement as HTMLElement)
         this.axiiRoot.render(this.renderInner(...argv))
         return rootElement
+    }
+    renderSettingsInner(): JSX.Element | null {
+        return null
+    }
+    renderSettings() {
+        const settingsElement = <div />
+        this.axiiSettingsRoot = createRoot(settingsElement as HTMLElement)
+        this.axiiSettingsRoot.render(this.renderSettingsInner())
+        return settingsElement
     }
 }
 

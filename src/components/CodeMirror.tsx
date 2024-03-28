@@ -1,5 +1,6 @@
-import {createElement, atom} from 'axii'
+import {createElement, atom, Atom} from 'axii'
 import {Component} from "../DocumentContent.js";
+import {Input} from "../lib/Input.js";
 
 import {basicSetup} from "codemirror"
 import {EditorView, keymap} from "@codemirror/view"
@@ -19,13 +20,17 @@ import {xml} from "@codemirror/lang-xml"
 import {yaml} from "@codemirror/lang-yaml"
 import {indentWithTab} from "@codemirror/commands"
 import {dracula as theme} from "thememirror"
+import {AxiiComponent} from "../AxiiComponent.js";
 
 export type CodeData = {
     value: string,
-    language: keyof (typeof Code)['langToPlugin']
+    language: keyof (typeof Code)['langToPlugin'],
+    codeId?: string,
+    codeRunnerUrl?: string
+    passCodeThrough?: 'localstorage' | 'url',
 }
 
-export class Code extends Component {
+export class Code extends AxiiComponent {
     static displayName = 'Code'
     public element?: HTMLElement
     static langToPlugin = {
@@ -50,8 +55,15 @@ export class Code extends Component {
         yaml: yaml()
     }
     public editor?: EditorView
+    public codeId: Atom<string> = atom('')
+    public codeRunnerUrl: Atom<string> = atom('')
+    public passCodeThrough: Atom<'localstorage' | 'url'> = atom('localstorage')
     constructor(public data: CodeData) {
         super(data);
+        this.codeId(data.codeId || '')
+        this.codeRunnerUrl(data.codeRunnerUrl || '/playground.html')
+        this.passCodeThrough(data.passCodeThrough || 'localstorage')
+
     }
     focus() {
         this.editor?.focus()
@@ -86,15 +98,59 @@ ${this.editor?.state.doc.toString() ?? this.data.value}
             parent: this.element
         })
     }
-    render() : HTMLElement{
+    renderInner() : HTMLElement{
         const style={
             padding: 10,
             border: '1px solid #f0f0f0',
             borderRadius: 4,
             outline: 'none'
         }
-        this.element = <div style={style} contenteditable={false} onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}/>  as HTMLElement
-        return this.element
+        const buttonStyle= {
+            display: 'inline-block',
+            padding: '5px 10px',
+            fontSize:12,
+            backgroundColor: '#050404',
+            color: 'white',
+            borderRadius: 4,
+            cursor: 'pointer'
+        }
+
+        return <div>
+            {this.element = <div style={style} contenteditable={false} onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}></div> as HTMLElement}
+            {() => this.codeId() ? (<div style={{display: 'flex', justifyContent: 'flex-end', marginTop: 4, gap: 8}}>
+                <div style={buttonStyle}>
+                    Copy
+                </div>
+                <div style={buttonStyle} onClick={this.openCodeRunner}>
+                    Play
+                </div>
+            </div>) : null}
+
+        </div> as HTMLElement
+    }
+
+    renderSettingsInner() {
+        return (
+            <div>
+                <Input value={this.codeId} placeholder="code id"/>
+            </div>
+        )
+    }
+
+    openCodeRunner() {
+        const code = this.editor?.state.doc.toString() ?? this.data.value
+        const codeId = this.codeId()
+        const passCodeThrough = this.passCodeThrough()
+        const codeRunnerUrl = this.codeRunnerUrl()
+
+        if (passCodeThrough === 'localstorage') {
+            localStorage.setItem(codeId, code)
+            window.open(`${codeRunnerUrl!}?codeId=${codeId}`)
+        } else if (passCodeThrough === 'url') {
+            window.open(`${codeRunnerUrl!}?codeId=${codeId}&code=${encodeURIComponent(code)}`)
+        } else {
+            throw new Error(`unknown passCodeThrough ${this.data.passCodeThrough}`)
+        }
     }
 }
 

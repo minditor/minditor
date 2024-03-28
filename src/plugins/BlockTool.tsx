@@ -15,6 +15,10 @@ class BlockToolPlugin extends Plugin {
     public items: BlockToolWidget[] = []
 }
 
+type ConfigurableBlock = {
+    renderSettings?: () => any
+}
+
 export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>) {
     return class OneBlockToolPlugin extends BlockToolPlugin {
         constructor(doc: Document) {
@@ -83,6 +87,7 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                     {<Menu size={16}/>}
                 </div>
                 <div style={widgetContainerStyle}>
+                    {() => (lastMouseEnteredActiveBlock() as ConfigurableBlock)?.renderSettings?.()}
                     {this.items.map(item => item.render())}
                 </div>
             </div>

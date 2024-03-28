@@ -64,6 +64,9 @@ const result = scaffold(root, {data: jsonData, types, plugins}, {
         containerLeft: {
             flexShrink: 0,
             flexGrow: 0,
+            '@media (width < 800px)': {
+                display: 'none'
+            }
         }
     }
 } )

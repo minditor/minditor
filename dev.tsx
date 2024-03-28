@@ -18,7 +18,8 @@ import {
     scaffold,
     Text,
     ULItem,
-    createTOCTool
+    createTOCTool,
+    DocumentData
 } from "./src/index.js";
 
 const root= document.getElementById('root')!
@@ -42,7 +43,7 @@ const plugins = [
     createSuggestionTool(defaultSuggestionWidgets),
     createTOCTool()
 ]
-const result = scaffold(root, {data: jsonData, types, plugins}, {debug: true})
+const result = scaffold(root, {data: jsonData as DocumentData, types, plugins}, {debug: true})
 result.render()
 
 
