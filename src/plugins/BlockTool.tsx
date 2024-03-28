@@ -15,7 +15,7 @@ class BlockToolPlugin extends Plugin {
     public items: BlockToolWidget[] = []
 }
 
-type ConfigurableBlock = {
+export type ConfigurableBlock = {
     renderSettings?: () => any
 }
 

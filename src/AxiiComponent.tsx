@@ -42,15 +42,6 @@ export class AxiiComponent extends Component {
         this.axiiRoot.render(this.renderInner(...argv))
         return rootElement
     }
-    renderSettingsInner(): JSX.Element | null {
-        return null
-    }
-    renderSettings() {
-        const settingsElement = <div />
-        this.axiiSettingsRoot = createRoot(settingsElement as HTMLElement)
-        this.axiiSettingsRoot.render(this.renderSettingsInner())
-        return settingsElement
-    }
 }
 
 export class AxiiTextBasedComponent extends AxiiComponent {

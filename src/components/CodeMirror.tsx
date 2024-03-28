@@ -21,6 +21,8 @@ import {yaml} from "@codemirror/lang-yaml"
 import {indentWithTab} from "@codemirror/commands"
 import {dracula as theme} from "thememirror"
 import {AxiiComponent} from "../AxiiComponent.js";
+import {Radio} from "../lib/Radio.js";
+import {ConfigurableBlock} from "../plugins/BlockTool.js";
 
 export type CodeData = {
     value: string,
@@ -30,7 +32,7 @@ export type CodeData = {
     passCodeThrough?: 'localstorage' | 'url',
 }
 
-export class Code extends AxiiComponent {
+export class Code extends AxiiComponent implements ConfigurableBlock {
     static displayName = 'Code'
     public element?: HTMLElement
     static langToPlugin = {
@@ -129,10 +131,18 @@ ${this.editor?.state.doc.toString() ?? this.data.value}
         </div> as HTMLElement
     }
 
-    renderSettingsInner() {
+    renderSettings() {
         return (
-            <div>
-                <Input value={this.codeId} placeholder="code id"/>
+            <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                <div>
+                    <Input value={this.codeId} placeholder="code id"/>
+                </div>
+                <div>
+                    <Input value={this.codeRunnerUrl} placeholder="runner url"/>
+                </div>
+                <div>
+                    <Radio value={this.passCodeThrough} options={['localstorage', 'url']}/>
+                </div>
             </div>
         )
     }

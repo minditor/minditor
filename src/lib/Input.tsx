@@ -1,5 +1,4 @@
 import {Atom, RenderContext} from "axii";
-import {HTMLInputElement} from "happy-dom";
 
 export type InputProps = {
     value: Atom<string>,
