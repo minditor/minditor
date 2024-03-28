@@ -149,8 +149,11 @@ ${this.editor?.state.doc.toString() ?? this.data.value}
             </div>
         )
     }
+    copyCode = () => {
+        navigator.clipboard.writeText(this.editor?.state.doc.toString() ?? this.data.value)
+    }
 
-    openCodeRunner() {
+    openCodeRunner = () => {
         const code = this.editor?.state.doc.toString() ?? this.data.value
         const codeId = this.codeId()
         const passCodeThrough = this.passCodeThrough()
@@ -158,9 +161,9 @@ ${this.editor?.state.doc.toString() ?? this.data.value}
 
         if (passCodeThrough === 'localstorage') {
             localStorage.setItem(codeId, code)
-            window.open(`${codeRunnerUrl!}?codeId=${codeId}`)
+            window.open(`${codeRunnerUrl!}?codeId=${codeId}`, '_blank')
         } else if (passCodeThrough === 'url') {
-            window.open(`${codeRunnerUrl!}?codeId=${codeId}&code=${encodeURIComponent(code)}`)
+            window.open(`${codeRunnerUrl!}?codeId=${codeId}&code=${encodeURIComponent(code)}`,'_blank')
         } else {
             throw new Error(`unknown passCodeThrough ${this.data.passCodeThrough}`)
         }

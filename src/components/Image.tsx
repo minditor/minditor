@@ -154,10 +154,6 @@ export function createImageBlock(uploadType: keyof typeof uploaderTypes, config:
             delete this.uppy
         }
         toJSON(): any {
-            console.log('toJSON',{
-                ...super.toJSON(),
-                src: this.src(),
-            } )
             return {
                 ...super.toJSON(),
                 src: this.src(),
