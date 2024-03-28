@@ -75,7 +75,10 @@ export class Code extends AxiiComponent implements ConfigurableBlock {
         return {
             type: 'Code',
             value: this.editor?.state.doc.toString() ?? this.data.value,
-            language: this.data.language
+            language: this.data.language,
+            codeId: this.codeId(),
+            codeRunnerUrl: this.codeRunnerUrl(),
+            passCodeThrough: this.passCodeThrough()
         }
     }
     toText() {
