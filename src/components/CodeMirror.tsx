@@ -123,7 +123,7 @@ ${this.editor?.state.doc.toString() ?? this.data.value}
         return <div>
             {this.element = <div style={style} contenteditable={false} onKeyDown={(e: KeyboardEvent) => e.stopPropagation()}></div> as HTMLElement}
             {() => this.codeId() ? (<div style={{display: 'flex', justifyContent: 'flex-end', marginTop: 4, gap: 8}}>
-                <div style={buttonStyle}>
+                <div style={buttonStyle} onClick={this.copyCode}>
                     Copy
                 </div>
                 <div style={buttonStyle} onClick={this.openCodeRunner}>
