@@ -19,7 +19,14 @@ export type ConfigurableBlock = {
     renderSettings?: () => any
 }
 
-export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>) {
+export type BlockToolConfig = {
+    style?: {
+        [k: string]: any
+    }
+}
+
+
+export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>, config?: BlockToolConfig) {
     return class OneBlockToolPlugin extends BlockToolPlugin {
         constructor(doc: Document) {
             super(doc);
@@ -68,7 +75,8 @@ export function createBlockTool(BlockToolWidgets: Array<typeof BlockToolWidget>)
                     boxShadow: '2px 2px 5px rgba(0,0,0,.1)',
                     transition: 'all',
                     whiteSpace: 'nowrap',
-                    zIndex: 100000000
+                    zIndex: 100000000,
+                    ...(config?.style||{})
                 }
             }
 
