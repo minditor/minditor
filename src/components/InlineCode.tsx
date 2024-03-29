@@ -17,7 +17,7 @@ export class InlineCode extends InlineComponent {
     }
     render()  {
         return (
-            <div style={{display: 'inline-block', background: '#eee', padding: 4, margin:1}} contenteditable={false}>
+            <div style={{display: 'inline-block', background: '#eee', padding: '0 4px', margin:1}} contenteditable={false}>
                 <span contenteditable={true}
                       onInput={this.onInput}>
                     {this.data.value}
